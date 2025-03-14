@@ -30,10 +30,14 @@ export namespace Pistache {
             using Pistache::Http::Header::AccessControlAllowMethods;
             using Pistache::Http::Header::AccessControlAllowHeaders;
             using Pistache::Http::Header::AccessControlAllowOrigin;
+            using Pistache::Http::Header::ContentType;
 
             namespace detail {
                 using Pistache::Http::Header::detail::hash;
             }
+        }
+        namespace Mime {
+            using Pistache::Http::Mime::MediaType;
         }
     }
     namespace Log {

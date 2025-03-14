@@ -2,13 +2,15 @@ module;
 
 #include <cstdint>
 #include <iostream>
-#include <format>
+#include <memory>
 
 export module backend.opentelemetry;
 
 import pistache;
 import proto;
 import gzip;
+import spdlog;
+import backend.utils;
 
 namespace backend::opentelemetry {
     export class Server {
@@ -23,7 +25,7 @@ namespace backend::opentelemetry {
             }
 
             Server(Pistache::Address address = defaultAddress(), Pistache::Http::Endpoint::Options options = defaultOptions())
-                : address(address), server(address), router() {
+                : address(address), server(address), router(), logger(spdlog::default_logger()->clone("opentelemetry")) {
                 server.init(options);
 
                 router.post("/v1/logs", Pistache::Rest::Routes::bind(&Server::handleLog, this));
@@ -31,21 +33,21 @@ namespace backend::opentelemetry {
             }
 
             void serve() {
-                std::cout << std::format("Serving OpenTelemetry collector on http://{}:{}\n", address.host(), static_cast<uint16_t>(address.port()));
+                logger->info("Serving OpenTelemetry collector on http://{}", address);
                 server.serve();
             }
             void serveThreaded() {
-                std::cout << std::format("Serving OpenTelemetry collector on http://{}:{}\n", address.host(), static_cast<uint16_t>(address.port()));
+                logger->info("Serving OpenTelemetry collector on http://{}", address);
                 server.serveThreaded();
             }
         private:
             Pistache::Rest::Route::Result handleLog(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-                std::cout << "Received a POST request to /v1/logs" << std::endl;
+                logger->trace("{} | Received a POST request to /v1/logs", request.address());
                 std::string body = gzip::decompress(request.body().data(), request.body().size());
 
                 ::opentelemetry::proto::collector::logs::v1::ExportLogsServiceRequest req;
                 if(!req.ParseFromString(body)) {
-                    std::cout << "Failed to parse request body" << std::endl;
+                    logger->warn("{} | Failed to parse request body", request.address());
                     response.send(Pistache::Http::Code::Bad_Request, "Invalid request body");
                     return Pistache::Rest::Route::Result::Failure;
                 }
@@ -60,6 +62,7 @@ namespace backend::opentelemetry {
                 return Pistache::Rest::Route::Result::Ok;
             }
 
+            std::shared_ptr<spdlog::logger> logger;
             Pistache::Address address;
             Pistache::Http::Endpoint server;
             Pistache::Rest::Router router;

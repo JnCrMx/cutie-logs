@@ -13,11 +13,12 @@ ExternalProject_Add(frontend
         -DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}
         -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
 )
-add_executable(frontend_mainpage IMPORTED)
+add_library(frontend_mainpage STATIC IMPORTED)
 set_property(
     TARGET frontend_mainpage
     PROPERTY
         IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/frontend/mainpage.wasm"
+        INTERFACE_DEPENDENCIES "${CMAKE_CURRENT_BINARY_DIR}/frontend/mainpage.wasm"
 )
 
 add_subdirectory(backend)

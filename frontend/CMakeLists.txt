@@ -39,11 +39,14 @@ target_compile_definitions(stdModule PRIVATE _LIBCPP_CSETJMP _LIBCPP_CSIGNAL)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../third_party ${CMAKE_CURRENT_BINARY_DIR}/third_party)
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/public/style.css ${CMAKE_CURRENT_BINARY_DIR}/style.css COPYONLY)
+
 set(SOURCES
-  mainpage.cpp
+  src/mainpage.cpp
+  src/c++support.cpp
 )
 set(MODULE_SOURCES
-  web.cppm
+  src/web.cppm
 )
 
 add_executable(mainpage ${SOURCES})
@@ -52,3 +55,4 @@ target_compile_features(mainpage PRIVATE cxx_std_26)
 target_link_libraries(mainpage PRIVATE stdModule webxxModule jsonModule)
 target_link_options(mainpage PRIVATE -Wl,--no-entry)
 target_link_options(mainpage PRIVATE -nostartfiles)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/public/mainpage.html ${CMAKE_CURRENT_BINARY_DIR}/mainpage.html COPYONLY)

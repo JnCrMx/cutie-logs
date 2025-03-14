@@ -31,7 +31,10 @@ FetchContent_Declare(argparse
 set(PISTACHE_BUILD_TESTS OFF CACHE BOOL "Pistache: Build tests" FORCE)
 set(SKIP_BUILD_TEST ON CACHE BOOL "" FORCE)
 set(BUILD_TEST OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(opentelemetry-proto pistache gzip-hpp pqxx argparse)
+
+find_package(spdlog REQUIRED)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../third_party ${CMAKE_CURRENT_BINARY_DIR}/third_party)
 
@@ -60,12 +63,15 @@ set(SOURCES
 )
 set(MODULE_SOURCES
   backend.cppm
+  utils.cppm
+  database/database.cppm
   opentelemetry/server.cppm
   web/server.cppm
 )
 
 add_executable(server ${SOURCES})
 target_sources(server PRIVATE FILE_SET CXX_MODULES FILES ${MODULE_SOURCES})
-target_link_libraries(server PRIVATE protoModule pistacheModule gzipModule pqxxModule argparseModule protobuf::libprotobuf)
+target_link_libraries(server PRIVATE protoModule pistacheModule gzipModule pqxxModule argparseModule spdlogModule protobuf::libprotobuf)
 target_compile_options(server PRIVATE --embed-dir=${CMAKE_BINARY_DIR}/frontend/ -Wno-c23-extensions)
 add_dependencies(server frontend_mainpage)
+add_dependencies(server frontend)

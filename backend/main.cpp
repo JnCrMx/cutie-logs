@@ -1,6 +1,7 @@
 import pistache;
 import pqxx;
 import argparse;
+import spdlog;
 
 import backend.opentelemetry;
 import backend.web;
@@ -11,6 +12,8 @@ import backend.web;
 constexpr auto version = "0.1";
 
 int main(int argc, char** argv) {
+    spdlog::cfg::load_env_levels();
+
     argparse::ArgumentParser program("cutie-logs", version);
     program.add_argument("--otel-address")
         .help("Address to listen for OpenTelemetry requests on")
@@ -33,7 +36,7 @@ int main(int argc, char** argv) {
     }
 
     using namespace backend;
-    std::cout << std::format("Starting cutie-logs version {}\n", version);
+    spdlog::info("Starting cutie-logs version {}", version);
 
     web::Server webServer(Pistache::Address(program.get<std::string>("--web-address")));
     if(!program.get<bool>("--disable-web")) {

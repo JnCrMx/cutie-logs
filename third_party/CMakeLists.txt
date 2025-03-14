@@ -19,6 +19,11 @@ if(${BUILD_TARGET} STREQUAL "backend")
     target_sources(argparseModule PUBLIC FILE_SET CXX_MODULES FILES argparse.cppm)
     target_compile_features(argparseModule PUBLIC cxx_std_23)
     target_link_libraries(argparseModule PUBLIC argparse::argparse)
+
+    add_library(spdlogModule STATIC)
+    target_sources(spdlogModule PUBLIC FILE_SET CXX_MODULES FILES spdlog.cppm)
+    target_compile_features(spdlogModule PUBLIC cxx_std_23)
+    target_link_libraries(spdlogModule PUBLIC spdlog::spdlog)
 endif()
 
 if(${BUILD_TARGET} STREQUAL "frontend")

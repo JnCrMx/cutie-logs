@@ -1,12 +1,13 @@
 module;
 
 #include <cstdint>
-#include <iostream>
-#include <format>
+#include <memory>
 
 export module backend.web;
 
 import pistache;
+import spdlog;
+import backend.utils;
 
 namespace backend::web {
     export class Server {
@@ -21,7 +22,7 @@ namespace backend::web {
             }
 
             Server(Pistache::Address address = defaultAddress(), Pistache::Http::Endpoint::Options options = defaultOptions())
-                : address(address), server(address), router() {
+                : address(address), server(address), router(), logger(spdlog::default_logger()->clone("web")) {
                 server.init(options);
 
                 setupStaticRoutes();
@@ -31,17 +32,18 @@ namespace backend::web {
             }
 
             void serve() {
-                std::cout << std::format("Serving web interface on http://{}:{}\n", address.host(), static_cast<uint16_t>(address.port()));
+                logger->info("Serving web interface on http://{}", address);
                 server.serve();
             }
             void serveThreaded() {
-                std::cout << std::format("Serving web interface on http://{}:{}\n", address.host(), static_cast<uint16_t>(address.port()));
+                logger->info("Serving web interface on http://{}", address);
                 server.serveThreaded();
             }
         private:
             void setupStaticRoutes();
             void setupApiRoutes();
 
+            std::shared_ptr<spdlog::logger> logger;
             Pistache::Address address;
             Pistache::Http::Endpoint server;
             Pistache::Rest::Router router;
