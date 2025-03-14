@@ -13,6 +13,7 @@ namespace web {
     [[clang::import_name("get_property")]] char* get_property(const char* id, size_t id_len, const char* prop, size_t prop_len);
     [[clang::import_name("set_style_property")]] int set_style_property(const char* id, size_t id_len, const char* style, size_t style_len, const char* value, size_t value_len);
     [[clang::import_name("get_style_property")]] char* get_style_property(const char* id, size_t id_len, const char* prop, size_t prop_len);
+    [[clang::import_name("set_attribute")]] int set_attribute(const char* id, size_t id_len, const char* attr, size_t attr_len, const char* value, size_t value_len);
     [[clang::import_name("add_element")]] int add_element(const char* parent, size_t parent_len, const char* tag, size_t tag_len, const char* id, size_t id_len);
     [[clang::import_name("add_element_html")]] int add_element_html(const char* parent, size_t parent_len, const char* html, size_t html_len);
     [[clang::import_name("remove_element")]] int remove_element(const char* id, size_t id_len);
@@ -186,6 +187,15 @@ namespace web {
         });
     }
 
+    export std::expected<void, web_error> set_attribute(std::string_view id, std::string_view attribute, std::string_view value) {
+        return from_web_error(set_attribute(id.data(), id.size(), attribute.data(), attribute.size(), value.data(), value.size()));
+    }
+    export template<class... Args>
+    std::expected<void, web_error> set_attribute(std::string_view id, std::string_view attribute, std::format_string<Args...> value, Args&&... args) {
+        std::string s = std::format(value, std::forward<Args>(args)...);
+        return from_web_error(set_attribute(id.data(), id.size(), attribute.data(), attribute.size(), s.data(), s.size()));
+    }
+
     export std::expected<void, web_error> add_element(std::string_view parent, std::string_view tag, std::string_view id) {
         return from_web_error(add_element(parent.data(), parent.size(), tag.data(), tag.size(), id.data(), id.size()));
     }
@@ -203,19 +213,19 @@ namespace web {
         return from_web_error(remove_element(id.data(), id.size()));
     }
 
-    using event_callback = std::function<void(std::string_view)>;
+    export using event_callback = std::function<void(std::string_view)>;
     export class callback_data {
         public:
             void abandon() {
                 callback = nullptr;
             }
+            callback_data(event_callback callback, bool once) : callback{callback}, once{once} {}
         private:
             friend callback_data* add_event_listener(std::string_view, std::string_view, event_callback, bool, bool);
             friend callback_data* set_timeout(std::chrono::milliseconds, event_callback);
             friend callback_data* fetch(std::string_view, event_callback);
             friend void callback(void*, char*, size_t);
 
-            callback_data(event_callback callback, bool once) : callback{callback}, once{once} {}
             event_callback callback;
             bool once = false;
             callback_data* sibling = nullptr;

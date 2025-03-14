@@ -15,6 +15,13 @@ export namespace Webxx {
     using Webxx::component;
     using Webxx::fragment;
 
+    using Webxx::attr;
+    using Webxx::el;
+
+    namespace internal {
+        using Webxx::internal::HtmlAttribute;
+    }
+
     using Webxx::a;
     using Webxx::abbr;
     using Webxx::address;
