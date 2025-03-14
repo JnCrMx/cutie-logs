@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 3.30)
 
 include(ExternalProject)
 
@@ -13,4 +13,11 @@ ExternalProject_Add(frontend
         -DCMAKE_C_COMPILER:FILEPATH=${CMAKE_C_COMPILER}
         -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
 )
+add_executable(frontend_mainpage IMPORTED)
+set_property(
+    TARGET frontend_mainpage
+    PROPERTY
+        IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/frontend/mainpage.wasm"
+)
+
 add_subdirectory(backend)

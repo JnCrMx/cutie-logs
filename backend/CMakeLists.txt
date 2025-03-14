@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.31)
+cmake_minimum_required(VERSION 3.30)
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -68,4 +68,4 @@ add_executable(server ${SOURCES})
 target_sources(server PRIVATE FILE_SET CXX_MODULES FILES ${MODULE_SOURCES})
 target_link_libraries(server PRIVATE protoModule pistacheModule gzipModule pqxxModule argparseModule protobuf::libprotobuf)
 target_compile_options(server PRIVATE --embed-dir=${CMAKE_BINARY_DIR}/frontend/ -Wno-c23-extensions)
-target_sources(server PRIVATE ${CMAKE_BINARY_DIR}/frontend/mainpage.wasm)
+add_dependencies(server frontend_mainpage)
