@@ -1,0 +1,6 @@
+{
+    "cmake.mergedCompileCommands": "${workspaceFolder}/build/merged/compile_commands.json",
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}/build/merged"
+    ]
+}
