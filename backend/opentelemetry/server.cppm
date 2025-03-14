@@ -1,6 +1,5 @@
 module;
 
-#include <cstdint>
 #include <iostream>
 #include <memory>
 
@@ -25,7 +24,8 @@ namespace backend::opentelemetry {
             }
 
             Server(Pistache::Address address = defaultAddress(), Pistache::Http::Endpoint::Options options = defaultOptions())
-                : address(address), server(address), router(), logger(spdlog::default_logger()->clone("opentelemetry")) {
+                : address(address), server(address), router(), logger(spdlog::default_logger()->clone("opentelemetry"))
+            {
                 server.init(options);
 
                 router.post("/v1/logs", Pistache::Rest::Routes::bind(&Server::handleLog, this));

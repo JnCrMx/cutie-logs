@@ -22,7 +22,8 @@ namespace backend::web {
             }
 
             Server(Pistache::Address address = defaultAddress(), Pistache::Http::Endpoint::Options options = defaultOptions())
-                : address(address), server(address), router(), logger(spdlog::default_logger()->clone("web")) {
+                : address(address), server(address), router(), logger(spdlog::default_logger()->clone("web"))
+            {
                 server.init(options);
 
                 setupStaticRoutes();
