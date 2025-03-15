@@ -81,6 +81,13 @@ target_link_libraries(server PRIVATE
   common protoModule
   pistacheModule gzipModule pqxxModule argparseModule spdlogModule glazeModule
   protobuf::libprotobuf)
-target_compile_options(server PRIVATE --embed-dir=${CMAKE_BINARY_DIR}/frontend/ --embed-dir=${CMAKE_CURRENT_SOURCE_DIR}/database/migrations -Wno-c23-extensions)
+target_compile_options(server PRIVATE --embed-dir=${CMAKE_BINARY_DIR}/frontend/ -Wno-c23-extensions)
 add_dependencies(server frontend_mainpage)
 add_dependencies(server frontend)
+
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/migrations.inc
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/database/generate_migrations.sh ${CMAKE_CURRENT_SOURCE_DIR}/database/migrations ${CMAKE_CURRENT_BINARY_DIR}/migrations.inc
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/database/generate_migrations.sh ${CMAKE_CURRENT_SOURCE_DIR}/database/migrations
+)
+target_sources(server PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/migrations.inc)
