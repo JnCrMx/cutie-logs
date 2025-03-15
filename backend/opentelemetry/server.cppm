@@ -1,5 +1,5 @@
 module;
-
+#include <chrono>
 #include <memory>
 
 export module backend.opentelemetry;
@@ -81,7 +81,7 @@ namespace backend::opentelemetry {
                     return Pistache::Rest::Route::Result::Failure;
                 }
 
-                db.queue_work([req = std::move(req)](pqxx::connection& conn) {
+                db.queue_work([this, req = std::move(req)](pqxx::connection& conn) {
                     pqxx::work txn(conn);
                     for(auto& resourceLog : req.resource_logs()) {
                         for(auto& scopeLog : resourceLog.scope_logs()) {
@@ -90,10 +90,9 @@ namespace backend::opentelemetry {
                                 for(auto& attr : log.attributes()) {
                                     attributes[attr.key()] = to_json(attr.value());
                                 }
-                                auto e = glz::write_json(attributes).value();
-
-                                txn.exec("INSERT INTO logs (resource, timestamp, scope, severity, attributes, body) VALUES (1, to_timestamp($1), $2, 'INFO', $3, $4)",
-                                    {((log.time_unix_nano()/1000.0)/1000.0/1000.0), scopeLog.scope().name(), e, log.body().string_value()});
+                                common::log_severity severity = static_cast<common::log_severity>(log.severity_number());
+                                std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> ts{std::chrono::nanoseconds(log.time_unix_nano())};
+                                db.insert_log(txn, ts, scopeLog.scope().name(), severity, attributes, to_json(log.body()));
                             }
                         }
                     }

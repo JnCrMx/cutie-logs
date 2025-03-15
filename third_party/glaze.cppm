@@ -10,4 +10,7 @@ export namespace glz {
 
     using glz::meta;
     using glz::opts;
+
+    using glz::reflect;
+    using glz::reflectable;
 }

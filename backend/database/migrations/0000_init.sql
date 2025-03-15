@@ -14,7 +14,7 @@ CREATE TABLE logs (
     scope TEXT NOT NULL,
     severity log_severity NOT NULL,
     attributes JSONB NOT NULL,
-    body TEXT NOT NULL,
+    body JSONB NOT NULL,
 
     PRIMARY KEY(resource, timestamp, scope)
 );

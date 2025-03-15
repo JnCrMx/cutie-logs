@@ -43,6 +43,7 @@ int main(int argc, char** argv) {
 
     database::Database db(program.get<std::string>("--database"));
     db.run_migrations();
+    db.start_workers();
 
     web::Server webServer(Pistache::Address(program.get<std::string>("--web-address")));
     if(!program.get<bool>("--disable-web")) {

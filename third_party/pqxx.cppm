@@ -11,6 +11,7 @@ export namespace pqxx {
     using pqxx::work;
     using pqxx::result;
     using pqxx::row;
+    using pqxx::prepped;
 
     using pqxx::unexpected_rows;
 
@@ -18,4 +19,7 @@ export namespace pqxx {
     using pqxx::string_traits;
     using pqxx::no_null;
     using pqxx::nullness;
+    using pqxx::type_name;
+
+    using pqxx::conversion_error;
 }
