@@ -84,9 +84,9 @@ export class Database {
             }
         }
 
-        void queue_work(std::function<void(pqxx::connection&)> work) {
+        void queue_work(std::move_only_function<void(pqxx::connection&)>&& work) {
             std::unique_lock lock(mutex);
-            queue.push_back(work);
+            queue.push_back(std::move(work));
             cv.notify_one();
         }
         void insert_log(pqxx::transaction_base& txn, std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>& timestamp,
@@ -107,7 +107,7 @@ export class Database {
             prepare_statements(conn);
 
             while(!st.stop_requested()) {
-                std::function<void(pqxx::connection&)> work;
+                std::move_only_function<void(pqxx::connection&)> work;
                 {
                     std::unique_lock lock(mutex);
                     cv.wait(lock, [this, &work, &st] {
@@ -119,7 +119,7 @@ export class Database {
                             return false;
                         }
 
-                        work = queue.front();
+                        work = std::move(queue.front());
                         queue.pop_front();
                         return true;
                     });
@@ -138,7 +138,7 @@ export class Database {
         std::vector<std::jthread> threads;
         std::mutex mutex;
         std::condition_variable cv;
-        std::deque<std::function<void(pqxx::connection&)>> queue;
+        std::deque<std::move_only_function<void(pqxx::connection&)>> queue;
 };
 
 }

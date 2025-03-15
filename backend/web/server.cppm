@@ -1,6 +1,5 @@
 module;
 
-#include <cstdint>
 #include <memory>
 
 export module backend.web;
@@ -8,6 +7,7 @@ export module backend.web;
 import pistache;
 import spdlog;
 import backend.utils;
+import backend.database;
 
 namespace backend::web {
     export class Server {
@@ -21,8 +21,8 @@ namespace backend::web {
                     .flags(Pistache::Tcp::Options::ReuseAddr);
             }
 
-            Server(Pistache::Address address = defaultAddress(), Pistache::Http::Endpoint::Options options = defaultOptions())
-                : address(address), server(address), router(), logger(spdlog::default_logger()->clone("web"))
+            Server(database::Database& db, Pistache::Address address = defaultAddress(), Pistache::Http::Endpoint::Options options = defaultOptions())
+                : db(db), address(address), server(address), router(), logger(spdlog::default_logger()->clone("web"))
             {
                 server.init(options);
 
@@ -48,5 +48,6 @@ namespace backend::web {
             Pistache::Address address;
             Pistache::Http::Endpoint server;
             Pistache::Rest::Router router;
+            database::Database& db;
     };
 }

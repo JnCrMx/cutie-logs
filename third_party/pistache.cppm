@@ -1,8 +1,11 @@
 module;
 
+#include <cstdint>
+
 #include <pistache/async.h>
-#include <pistache/http.h>
 #include <pistache/endpoint.h>
+#include <pistache/http.h>
+#include <pistache/mime.h>
 #include <pistache/router.h>
 
 export module pistache;
@@ -38,6 +41,8 @@ export namespace Pistache {
         }
         namespace Mime {
             using Pistache::Http::Mime::MediaType;
+            using Pistache::Http::Mime::Type;
+            using Pistache::Http::Mime::Subtype;
         }
     }
     namespace Log {
