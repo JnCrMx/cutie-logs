@@ -1,6 +1,8 @@
 module;
 
 #include "opentelemetry/proto/collector/logs/v1/logs_service.pb.h"
+#include "opentelemetry/proto/logs/v1/logs.pb.h"
+#include "opentelemetry/proto/common/v1/common.pb.h"
 
 export module proto;
 
@@ -12,5 +14,8 @@ export namespace opentelemetry::proto {
     }
     namespace logs::v1 {
         using opentelemetry::proto::logs::v1::ResourceLogs;
+    }
+    namespace common::v1 {
+        using opentelemetry::proto::common::v1::AnyValue;
     }
 }

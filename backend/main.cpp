@@ -4,6 +4,7 @@ import argparse;
 import spdlog;
 
 import common;
+import backend.database;
 import backend.opentelemetry;
 import backend.web;
 
@@ -24,6 +25,10 @@ int main(int argc, char** argv) {
     program.add_argument("--disable-web")
         .help("Disable the web interface")
         .flag();
+    program.add_argument("--database")
+        .help("Database connection string")
+        .required()
+        .nargs(1).metavar("CONNECTION_STRING");
 
     try {
         program.parse_args(argc, argv);
@@ -36,12 +41,15 @@ int main(int argc, char** argv) {
     using namespace backend;
     spdlog::info("Starting {} version {}", common::project_name, common::project_version);
 
+    database::Database db(program.get<std::string>("--database"));
+    db.run_migrations();
+
     web::Server webServer(Pistache::Address(program.get<std::string>("--web-address")));
     if(!program.get<bool>("--disable-web")) {
         webServer.serveThreaded();
     }
 
-    opentelemetry::Server opentelemetryServer(Pistache::Address(program.get<std::string>("--otel-address")));
+    opentelemetry::Server opentelemetryServer(db, Pistache::Address(program.get<std::string>("--otel-address")));
     opentelemetryServer.serve();
 
     return 0;

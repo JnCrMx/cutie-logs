@@ -3,6 +3,8 @@ module;
 
 export module common;
 
+export import :structs;
+
 export namespace common {
     constexpr std::string_view project_name = "cutie-logs";
     constexpr std::string_view project_version = "0.1";

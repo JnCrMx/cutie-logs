@@ -1,6 +1,9 @@
 module;
 #include <condition_variable>
+#include <deque>
 #include <format>
+#include <functional>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -12,11 +15,11 @@ import spdlog;
 
 namespace backend::database {
 
-export class database {
+export class Database {
     public:
         constexpr static unsigned int default_connection_count = 4;
 
-        database(const std::string& connection_string, unsigned int connection_count = default_connection_count)
+        Database(const std::string& connection_string, unsigned int connection_count = default_connection_count)
             : logger(spdlog::default_logger()->clone("database"))
         {
             connections.reserve(connection_count);
@@ -32,15 +35,50 @@ export class database {
             }
         }
 
+        void queue_work(std::function<void(pqxx::connection&)> work) {
+            std::unique_lock lock(mutex);
+            queue.push_back(work);
+            cv.notify_one();
+        }
+
+        void run_migrations();
     private:
         void worker(unsigned int id, pqxx::connection& conn, std::stop_token st) {
             logger->debug("Worker {} started", id);
+
+            while(!st.stop_requested()) {
+                std::function<void(pqxx::connection&)> work;
+                {
+                    std::unique_lock lock(mutex);
+                    cv.wait(lock, [this, &work, &st] {
+                        if(st.stop_requested()) {
+                            return true;
+                        }
+
+                        if(queue.empty()) {
+                            return false;
+                        }
+
+                        work = queue.front();
+                        queue.pop_front();
+                        return true;
+                    });
+                }
+
+                if(st.stop_requested()) {
+                    break;
+                }
+
+                work(conn);
+            }
         }
 
         std::shared_ptr<spdlog::logger> logger;
         std::vector<pqxx::connection> connections;
         std::vector<std::jthread> threads;
+        std::mutex mutex;
         std::condition_variable cv;
+        std::deque<std::function<void(pqxx::connection&)>> queue;
 };
 
 }

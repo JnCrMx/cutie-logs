@@ -1,15 +1,44 @@
 module;
 
-#include <iostream>
 #include <memory>
 
 export module backend.opentelemetry;
 
-import pistache;
-import proto;
+import glaze;
 import gzip;
+import pistache;
+import pqxx;
+import proto;
 import spdlog;
+
+import common;
 import backend.utils;
+import backend.database;
+
+glz::json_t to_json(const ::opentelemetry::proto::common::v1::AnyValue& v) {
+    if(v.has_bool_value()) {
+        return v.bool_value();
+    } else if(v.has_int_value()) {
+        return v.int_value();
+    } else if(v.has_double_value()) {
+        return v.double_value();
+    } else if(v.has_string_value()) {
+        return v.string_value();
+    } else if(v.has_kvlist_value()) {
+        auto obj = glz::json_t::object_t{};
+        for(auto& kv : v.kvlist_value().values()) {
+            obj[kv.key()] = to_json(kv.value());
+        }
+        return obj;
+    } else if(v.has_array_value()) {
+        auto arr = glz::json_t::array_t{};
+        for(auto& elem : v.array_value().values()) {
+            arr.push_back(to_json(elem));
+        }
+        return arr;
+    }
+    return glz::json_t::null_t{};
+}
 
 namespace backend::opentelemetry {
     export class Server {
@@ -23,8 +52,8 @@ namespace backend::opentelemetry {
                     .flags(Pistache::Tcp::Options::ReuseAddr);
             }
 
-            Server(Pistache::Address address = defaultAddress(), Pistache::Http::Endpoint::Options options = defaultOptions())
-                : address(address), server(address), router(), logger(spdlog::default_logger()->clone("opentelemetry"))
+            Server(database::Database& db, Pistache::Address address = defaultAddress(), Pistache::Http::Endpoint::Options options = defaultOptions())
+                : db(db), address(address), server(address), router(), logger(spdlog::default_logger()->clone("opentelemetry"))
             {
                 server.init(options);
 
@@ -52,13 +81,26 @@ namespace backend::opentelemetry {
                     return Pistache::Rest::Route::Result::Failure;
                 }
 
-                for(auto& resourceLog : req.resource_logs()) {
-                    for(auto& log : resourceLog.scope_logs()) {
-                        std::cout << "Log: " << log.scope().name() << std::endl;
-                    }
-                }
+                db.queue_work([req = std::move(req)](pqxx::connection& conn) {
+                    pqxx::work txn(conn);
+                    for(auto& resourceLog : req.resource_logs()) {
+                        for(auto& scopeLog : resourceLog.scope_logs()) {
+                            for(auto& log : scopeLog.log_records()) {
+                                glz::json_t::object_t attributes;
+                                for(auto& attr : log.attributes()) {
+                                    attributes[attr.key()] = to_json(attr.value());
+                                }
+                                auto e = glz::write_json(attributes).value();
 
-                response.send(Pistache::Http::Code::Ok, "Hello, World! :D");
+                                txn.exec("INSERT INTO logs (resource, timestamp, scope, severity, attributes, body) VALUES (1, to_timestamp($1), $2, 'INFO', $3, $4)",
+                                    {((log.time_unix_nano()/1000.0)/1000.0/1000.0), scopeLog.scope().name(), e, log.body().string_value()});
+                            }
+                        }
+                    }
+                    txn.commit();
+                });
+
+                response.send(Pistache::Http::Code::Ok, "");
                 return Pistache::Rest::Route::Result::Ok;
             }
 
@@ -66,5 +108,6 @@ namespace backend::opentelemetry {
             Pistache::Address address;
             Pistache::Http::Endpoint server;
             Pistache::Rest::Router router;
+            database::Database& db;
     };
 }

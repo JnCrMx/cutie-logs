@@ -87,7 +87,8 @@ auto page(std::string_view current_theme) {
             dv{{_class{"flex items-center mr-4"}},
                 ThemeButton{ctx, current_theme}
             }
-        }
+        },
+        button{{_class{"btn"}}, "Test" },
     };
 }
 

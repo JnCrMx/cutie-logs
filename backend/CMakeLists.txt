@@ -27,12 +27,16 @@ FetchContent_Declare(pqxx
 FetchContent_Declare(argparse
   GIT_REPOSITORY https://github.com/p-ranav/argparse.git
   GIT_TAG        v3.2)
+FetchContent_Declare(glaze
+  GIT_REPOSITORY https://github.com/stephenberry/glaze.git
+  GIT_TAG v5.0.0
+  GIT_SHALLOW TRUE)
 
 set(PISTACHE_BUILD_TESTS OFF CACHE BOOL "Pistache: Build tests" FORCE)
 set(SKIP_BUILD_TEST ON CACHE BOOL "" FORCE)
 set(BUILD_TEST OFF CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(opentelemetry-proto pistache gzip-hpp pqxx argparse)
+FetchContent_MakeAvailable(opentelemetry-proto pistache gzip-hpp pqxx argparse glaze)
 
 find_package(spdlog REQUIRED)
 
@@ -59,6 +63,7 @@ target_sources(protoModule PUBLIC FILE_SET CXX_MODULES FILES
 
 set(SOURCES
   main.cpp
+  database/migrations.cpp
   web/api.cpp
   web/static.cpp
 )
@@ -72,7 +77,10 @@ set(MODULE_SOURCES
 
 add_executable(server ${SOURCES})
 target_sources(server PRIVATE FILE_SET CXX_MODULES FILES ${MODULE_SOURCES})
-target_link_libraries(server PRIVATE common protoModule pistacheModule gzipModule pqxxModule argparseModule spdlogModule protobuf::libprotobuf)
-target_compile_options(server PRIVATE --embed-dir=${CMAKE_BINARY_DIR}/frontend/ -Wno-c23-extensions)
+target_link_libraries(server PRIVATE
+  common protoModule
+  pistacheModule gzipModule pqxxModule argparseModule spdlogModule glazeModule
+  protobuf::libprotobuf)
+target_compile_options(server PRIVATE --embed-dir=${CMAKE_BINARY_DIR}/frontend/ --embed-dir=${CMAKE_CURRENT_SOURCE_DIR}/database/migrations -Wno-c23-extensions)
 add_dependencies(server frontend_mainpage)
 add_dependencies(server frontend)

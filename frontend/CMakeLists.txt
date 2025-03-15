@@ -23,12 +23,15 @@ set(CMAKE_LINK_DEPENDS_USE_LINKER OFF)
 
 FetchContent_Declare(webxx
   GIT_REPOSITORY https://github.com/rthrfrd/webxx.git
-  GIT_TAG v0.9.2
-)
+  GIT_TAG v0.9.2)
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
+FetchContent_Declare(glaze
+  GIT_REPOSITORY https://github.com/stephenberry/glaze.git
+  GIT_TAG v5.0.0
+  GIT_SHALLOW TRUE)
 
 add_compile_options(-fno-rtti -fno-exceptions)
-FetchContent_MakeAvailable(webxx json)
+FetchContent_MakeAvailable(webxx json glaze)
 
 add_library(stdModule STATIC)
 target_sources(stdModule PUBLIC FILE_SET CXX_MODULES BASE_DIRS /usr/lib/llvm-19/share/libc++/v1/
