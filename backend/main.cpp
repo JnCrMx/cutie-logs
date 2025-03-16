@@ -22,6 +22,9 @@ int main(int argc, char** argv) {
         .help("Address to serve web interface on")
         .default_value("127.0.0.1:8080")
         .nargs(1).metavar("ADDRESS");
+    program.add_argument("--web-dev-path")
+        .help("Path to serve static files from in development mode")
+        .nargs(1).metavar("PATH");
     program.add_argument("--disable-web")
         .help("Disable the web interface")
         .flag();
@@ -45,13 +48,18 @@ int main(int argc, char** argv) {
     db.run_migrations();
     db.start_workers();
 
-    web::Server webServer(db, Pistache::Address(program.get<std::string>("--web-address")));
+    web::Server web_server(db, Pistache::Address(program.get<std::string>("--web-address")));
+    if(program.present("--web-dev-path")) {
+        auto path = program.get<std::string>("--web-dev-path");
+        spdlog::info("Serving static frontend files from {} instead of embedded files", path);
+        web_server.set_static_dev_path(path);
+    }
     if(!program.get<bool>("--disable-web")) {
-        webServer.serveThreaded();
+        web_server.serve_threaded();
     }
 
-    opentelemetry::Server opentelemetryServer(db, Pistache::Address(program.get<std::string>("--otel-address")));
-    opentelemetryServer.serve();
+    opentelemetry::Server opentelemetry_server(db, Pistache::Address(program.get<std::string>("--otel-address")));
+    opentelemetry_server.serve();
 
     return 0;
 }

@@ -43,21 +43,21 @@ glz::json_t to_json(const ::opentelemetry::proto::common::v1::AnyValue& v) {
 namespace backend::opentelemetry {
     export class Server {
         public:
-            static Pistache::Address defaultAddress() {
+            static Pistache::Address default_address() {
                 return Pistache::Address(Pistache::Ipv4::any(), Pistache::Port(4318));
             }
-            static Pistache::Http::Endpoint::Options defaultOptions() {
+            static Pistache::Http::Endpoint::Options default_options() {
                 return Pistache::Http::Endpoint::options()
                     .threads(4)
                     .flags(Pistache::Tcp::Options::ReuseAddr);
             }
 
-            Server(database::Database& db, Pistache::Address address = defaultAddress(), Pistache::Http::Endpoint::Options options = defaultOptions())
+            Server(database::Database& db, Pistache::Address address = default_address(), Pistache::Http::Endpoint::Options options = default_options())
                 : db(db), address(address), server(address), router(), logger(spdlog::default_logger()->clone("opentelemetry"))
             {
                 server.init(options);
 
-                router.post("/v1/logs", Pistache::Rest::Routes::bind(&Server::handleLog, this));
+                router.post("/v1/logs", Pistache::Rest::Routes::bind(&Server::handle_log, this));
                 server.setHandler(router.handler());
             }
 
@@ -65,12 +65,12 @@ namespace backend::opentelemetry {
                 logger->info("Serving OpenTelemetry collector on http://{}", address);
                 server.serve();
             }
-            void serveThreaded() {
+            void serve_threaded() {
                 logger->info("Serving OpenTelemetry collector on http://{}", address);
                 server.serveThreaded();
             }
         private:
-            Pistache::Rest::Route::Result handleLog(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+            Pistache::Rest::Route::Result handle_log(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
                 logger->trace("{} | Received a POST request to /v1/logs", request.address());
                 std::string body = gzip::decompress(request.body().data(), request.body().size());
 

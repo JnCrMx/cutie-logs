@@ -28,7 +28,7 @@ struct log_entry {
     glz::json_t body;
 };
 
-void Server::setupApiRoutes() {
+void Server::setup_api_routes() {
     router.get("/api/v1/healthz", [](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         response.send(Pistache::Http::Code::Ok, "OK");
         return Pistache::Rest::Route::Result::Ok;
