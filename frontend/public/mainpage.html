@@ -36,6 +36,12 @@
             data.set(buffer);
             return [str_ptr, buffer.length];
         }
+        function copy_data(instance, buffer) {
+            const str_ptr = instance.exports.new_string(buffer.length);
+            const data = new Uint8Array(instance.exports.memory.buffer, str_ptr, buffer.length);
+            data.set(buffer);
+            return [str_ptr, buffer.length];
+        }
         function copy_string_null(instance, s) {
             const buffer = new TextEncoder().encode(s);
             const str_ptr = instance.exports.new_string(buffer.length+1);
@@ -213,9 +219,10 @@
                     fetch: (url_ptr, url_len, ptr) => {
                         const url = get_string(instance, url_ptr, url_len);
                         fetch(url).then(response => {
-                            return response.text();
-                        }).then(text => {
-                            const [str_ptr, len] = copy_string(instance, text);
+                            return response.arrayBuffer();
+                        }).then(data => {
+                            const view = new Uint8Array(data);
+                            const [str_ptr, len] = copy_data(instance, view);
                             instance.exports.callback(ptr, str_ptr, len);
                             delete_string(instance, str_ptr);
                         }).catch(error => {

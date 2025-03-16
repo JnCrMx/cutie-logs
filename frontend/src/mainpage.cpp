@@ -47,48 +47,48 @@ struct stats_data {
 };
 auto page_stats(const stats_data& data) {
     using namespace Webxx;
-    return dv{{_class{"stats shadow grow"}},
+    return dv{{_class{"stats shadow"}},
         dv{{_class{"stat"}},
             dv{{_class{"stat-title"}}, "Total Log Entries"},
-            dv{{_class{"stat-value"}}, std::to_string(data.total_logs)},
-            dv{{_class{"stat-desc"}}, "Total number of log entries"}
+            dv{{_class{"stat-value"}}, std::to_string(data.total_logs)}
         },
         dv{{_class{"stat"}},
             dv{{_class{"stat-title"}}, "Total Attributes"},
-            dv{{_class{"stat-value"}}, std::to_string(data.total_attributes)},
-            dv{{_class{"stat-desc"}}, "Unique attributes across all logs"}
+            dv{{_class{"stat-value"}}, std::to_string(data.total_attributes)}
         },
         dv{{_class{"stat"}},
             dv{{_class{"stat-title"}}, "Total Resources"},
-            dv{{_class{"stat-value"}}, std::to_string(data.total_resources)},
-            dv{{_class{"stat-desc"}}, "Unique resources across all logs"}
+            dv{{_class{"stat-value"}}, std::to_string(data.total_resources)}
         },
         dv{{_class{"stat"}},
             dv{{_class{"stat-title"}}, "Total Scopes"},
-            dv{{_class{"stat-value"}}, std::to_string(data.total_scopes)},
-            dv{{_class{"stat-desc"}}, "Unique scopes across all logs"}
+            dv{{_class{"stat-value"}}, std::to_string(data.total_scopes)}
         }
     };
 }
-auto page_selection(std::string_view what, const std::unordered_map<std::string, int>& attributes) {
+auto page_selection(std::string_view what, const std::unordered_map<std::string, unsigned int>& attributes, unsigned int total = 1, bool show_percent = false) {
     using namespace Webxx;
-    int total = attributes.empty() ? 0 : attributes.at("_");
     return fieldset{{_class{"fieldset p-4 rounded-box shadow h-full flex flex-col"}},
         legend{{_class{"fieldset-legend"}}, what},
         label{{_class{"input w-full mb-2"}},
             input{{_type{"search"}, _class{"grow"}, _placeholder{"Search..."}}},
         },
         dv{{_class{"overflow-y-auto h-full flex flex-col gap-1"}},
-            each(attributes, [total](const auto& attr) {
-                if(attr.first == "_") {
-                    return fragment{};
-                }
+            each(attributes, [total, show_percent](const auto& attr) {
                 return fragment{label{{_class{"fieldset-label"}},
                     input{{_type{"checkbox"}, _class{"checkbox"}, _ariaLabel{attr.first}, _value{attr.first}}},
-                    attr.first, " (", std::to_string(attr.second*100/total), "%)"
+                    show_percent ?
+                        std::format("{} ({}%)", attr.first, attr.second*100/total) :
+                        std::format("{} ({})", attr.first, attr.second)
                 }};
             })
         }
+    };
+}
+auto page_display_options() {
+    using namespace Webxx;
+    return fieldset{{_class{"fieldset p-4 rounded-box shadow h-full flex flex-col"}},
+        legend{{_class{"fieldset-legend"}}, "Display Options"},
     };
 }
 auto page_logs() {
@@ -141,17 +141,18 @@ auto page(std::string_view current_theme) {
     return fragment {
         dv{{_class{"flex flex-row items-baseline pt-4 pb-4 sticky top-0 z-10 bg-base-200"}},
             dv{{_class{"text-2xl font-bold ml-4"}}, common::project_name},
-            dv{{_class{"text-1xl font-bold ml-2 grow"}}, "version ", common::project_version},
+            dv{{_class{"text-1xl font-bold ml-2"}}, "version ", common::project_version},
+            dv{{_id{"stats"}, _class{"ml-2 mr-2 grow flex flex-row justify-center items-center"}}, page_stats({})},
             dv{{_class{"flex items-center mr-4"}},
                 ThemeButton{ctx, current_theme}
             }
         },
         dv{{_class{"w-7xl mx-auto mt-4"}},
-            dv{{_id{"stats"}, _class{"flex flex-row justify-center items-center"}}, page_stats({})},
-            dv{{_class{"flex flex-row gap-4 h-60"}},
+            dv{{_class{"flex flex-row gap-4 h-80"}},
                 dv{{_id{"attributes"}, _class{"basis-0 grow"}}, page_selection("Select Attributes", {})},
                 dv{{_id{"resources"}, _class{"basis-0 grow"}}, page_selection("Filter Resources", {})},
                 dv{{_id{"scopes"}, _class{"basis-0 grow"}}, page_selection("Filter Scopes", {})},
+                dv{{_id{"display"}, _class{"basis-0 grow"}}, page_display_options()},
             },
             dv{{_id{"logs"}, _class{"mt-4"}}, page_logs()},
         }
@@ -169,21 +170,20 @@ int main() {
     web::set_html("main", Webxx::render(page(theme)));
 
     web::coro::submit([]()->web::coro::coroutine<void> {
-        auto att = co_await web::coro::fetch("/api/v1/logs/attributes");
-        std::unordered_map<std::string, int> attributes =
-            glz::read_json<std::unordered_map<std::string, int>>(co_await web::coro::fetch("/api/v1/logs/attributes"))
-            .value_or(std::unordered_map<std::string, int>{});
-        web::set_html("attributes", Webxx::render(page_selection("Select Attributes", attributes)));
+        auto attributes =
+            glz::read_beve<common::logs_attributes_response>(co_await web::coro::fetch("/api/v1/logs/attributes"))
+            .value_or(common::logs_attributes_response{});
+        web::set_html("attributes", Webxx::render(page_selection("Select Attributes", attributes.attributes, attributes.total_logs, true)));
 
-        std::unordered_map<std::string, int> scopes =
-            glz::read_json<std::unordered_map<std::string, int>>(co_await web::coro::fetch("/api/v1/logs/scopes"))
-            .value_or(std::unordered_map<std::string, int>{});
-        web::set_html("scopes", Webxx::render(page_selection("Filter Scopes", scopes)));
+        auto scopes =
+            glz::read_beve<common::logs_scopes_response>(co_await web::coro::fetch("/api/v1/logs/scopes"))
+            .value_or(common::logs_scopes_response{});
+        web::set_html("scopes", Webxx::render(page_selection("Filter Scopes", scopes.scopes, 1, false)));
 
         stats_data stats;
-        stats.total_attributes = attributes.size()-1;
-        stats.total_logs = attributes["_"];
-        stats.total_scopes = scopes.size()-1;
+        stats.total_attributes = attributes.attributes.size();
+        stats.total_logs = attributes.total_logs;
+        stats.total_scopes = scopes.scopes.size();
         web::set_html("stats", Webxx::render(page_stats(stats)));
 
         co_return;

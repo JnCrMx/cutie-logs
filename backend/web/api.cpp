@@ -17,16 +17,8 @@ namespace backend::web {
 
 namespace mime {
 static const auto application_json = Pistache::Http::Mime::MediaType{Pistache::Http::Mime::Type::Application, Pistache::Http::Mime::Subtype::Json};
+static const auto application_octet = Pistache::Http::Mime::MediaType{Pistache::Http::Mime::Type::Application, Pistache::Http::Mime::Subtype::OctetStream};
 }
-
-struct log_entry {
-    unsigned int resource;
-    double timestamp;
-    std::string scope;
-    common::log_severity severity;
-    glz::json_t attributes;
-    glz::json_t body;
-};
 
 void Server::setup_api_routes() {
     router.get("/api/v1/healthz", [](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
@@ -57,11 +49,11 @@ void Server::setup_api_routes() {
 
             logger->trace("Executing query: {}", query);
             try {
-                auto res = txn.exec(query);
-                std::vector<log_entry> logs;
-                logs.reserve(res.size());
-                for(const auto& row : res) {
-                    auto& l = logs.emplace_back(
+                auto result = txn.exec(query);
+                common::logs_response res;
+                res.logs.reserve(result.size());
+                for(const auto& row : result) {
+                    auto& l = res.logs.emplace_back(
                         row["resource"].as<unsigned int>(),
                         row["unix_time"].as<double>(),
                         row["scope"].as<std::string>(),
@@ -74,8 +66,8 @@ void Server::setup_api_routes() {
                         l.attributes[sv] = *glz::read_json<glz::json_t>(row[i].as<std::optional<std::string>>().value_or("null"));
                     }
                 }
-                auto json = *glz::write_json(logs);
-                response.send(Pistache::Http::Code::Ok, json, mime::application_json);
+                auto beve = *glz::write_beve(res);
+                response.send(Pistache::Http::Code::Ok, beve.data(), beve.size(), mime::application_octet);
             } catch(const pqxx::sql_error& e) {
                 response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
             }
@@ -85,34 +77,30 @@ void Server::setup_api_routes() {
     router.get("/api/v1/logs/attributes", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         db.queue_work([this, response = std::move(response)](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
-            auto res = txn.exec("SELECT jsonb_object_keys(attributes) as key, COUNT(*) as count FROM logs GROUP BY key;");
-            std::unordered_map<std::string, int> attributes;
-            for(const auto& row : res) {
-                attributes[row["key"].as<std::string>()] = row["count"].as<int>();
+            auto result = txn.exec("SELECT jsonb_object_keys(attributes) as key, COUNT(*) as count FROM logs GROUP BY key;");
+            common::logs_attributes_response res;
+            for(const auto& row : result) {
+                res.attributes[row["key"].as<std::string>()] = row["count"].as<int>();
             }
+            res.total_logs = txn.exec("SELECT COUNT(*) FROM logs;").one_field().as<unsigned int>();
 
-            auto count = txn.exec("SELECT COUNT(*) FROM logs;").one_field().as<unsigned int>();
-            attributes["_"] = count;
-
-            auto json = *glz::write_json(attributes);
-            response.send(Pistache::Http::Code::Ok, json, mime::application_json);
+            auto beve = *glz::write_beve(res);
+            response.send(Pistache::Http::Code::Ok, beve.data(), beve.size(), mime::application_octet);
         });
         return Pistache::Rest::Route::Result::Ok;
     });
     router.get("/api/v1/logs/scopes", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         db.queue_work([this, response = std::move(response)](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
-            auto res = txn.exec("SELECT scope, COUNT(*) as count FROM logs GROUP BY scope;");
-            std::unordered_map<std::string, int> scopes;
-            for(const auto& row : res) {
-                scopes[row["scope"].as<std::string>()] = row["count"].as<int>();
+            auto result = txn.exec("SELECT scope, COUNT(*) as count FROM logs GROUP BY scope;");
+            common::logs_scopes_response res;
+            for(const auto& row : result) {
+                res.scopes[row["scope"].as<std::string>()] = row["count"].as<int>();
             }
+            res.total_logs = txn.exec("SELECT COUNT(*) FROM logs;").one_field().as<unsigned int>();
 
-            auto count = txn.exec("SELECT COUNT(*) FROM logs;").one_field().as<unsigned int>();
-            scopes["_"] = count;
-
-            auto json = *glz::write_json(scopes);
-            response.send(Pistache::Http::Code::Ok, json, mime::application_json);
+            auto beve = *glz::write_beve(res);
+            response.send(Pistache::Http::Code::Ok, beve.data(), beve.size(), mime::application_octet);
         });
         return Pistache::Rest::Route::Result::Ok;
     });

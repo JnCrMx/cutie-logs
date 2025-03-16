@@ -2,9 +2,11 @@ module;
 #include <array>
 #include <string>
 #include <unordered_map>
-#include <variant>
+#include <vector>
 
 export module common:structs;
+
+import glaze;
 
 export namespace common {
     struct log_resource {
@@ -31,13 +33,24 @@ export namespace common {
         "FATAL", "FATAL2", "FATAL3", "FATAL4"
     };
 
-    using value = std::variant<std::string, int64_t>;
-
     struct log_entry {
-        log_resource resource;
+        unsigned int resource;
         double timestamp;
         std::string scope;
-        std::unordered_map<std::string, value> attributes;
-        std::string body;
+        common::log_severity severity;
+        glz::json_t attributes;
+        glz::json_t body;
+    };
+
+    struct logs_response {
+        std::vector<common::log_entry> logs;
+    };
+    struct logs_attributes_response {
+        unsigned int total_logs;
+        std::unordered_map<std::string, unsigned int> attributes;
+    };
+    struct logs_scopes_response {
+        unsigned int total_logs;
+        std::unordered_map<std::string, unsigned int> scopes;
     };
 }

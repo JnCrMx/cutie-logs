@@ -9,6 +9,12 @@ export module glaze;
 export namespace glz {
     using glz::write_json;
     using glz::read_json;
+    using glz::write_beve;
+    using glz::read_beve;
+    using glz::format_error;
+    using glz::error_code;
+    using glz::error_ctx;
+
     using glz::json_t;
 
     using glz::write;
@@ -18,4 +24,6 @@ export namespace glz {
 
     using glz::reflect;
     using glz::reflectable;
+
+    using glz::stencil;
 }
