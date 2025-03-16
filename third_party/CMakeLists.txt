@@ -25,11 +25,6 @@ if(${BUILD_TARGET} STREQUAL "backend")
     target_sources(spdlogModule PUBLIC FILE_SET CXX_MODULES FILES spdlog.cppm)
     target_compile_features(spdlogModule PUBLIC cxx_std_23)
     target_link_libraries(spdlogModule PUBLIC spdlog::spdlog)
-
-    add_library(glazeModule STATIC)
-    target_sources(glazeModule PUBLIC FILE_SET CXX_MODULES FILES glaze.cppm)
-    target_compile_features(glazeModule PUBLIC cxx_std_23)
-    target_link_libraries(glazeModule PUBLIC glaze::glaze)
 endif()
 
 # Frontend modules
@@ -38,11 +33,11 @@ if(${BUILD_TARGET} STREQUAL "frontend")
     target_sources(webxxModule PUBLIC FILE_SET CXX_MODULES FILES webxx.cppm)
     target_compile_features(webxxModule PUBLIC cxx_std_26)
     target_link_libraries(webxxModule PUBLIC webxx::webxx)
-
-    add_library(jsonModule STATIC)
-    target_sources(jsonModule PUBLIC FILE_SET CXX_MODULES FILES json.cppm)
-    target_compile_features(jsonModule PUBLIC cxx_std_26)
-    target_link_libraries(jsonModule PUBLIC nlohmann_json::nlohmann_json)
 endif()
 
 # Common modules
+add_library(glazeModule STATIC)
+target_sources(glazeModule PUBLIC FILE_SET CXX_MODULES FILES glaze.cppm)
+target_compile_features(glazeModule PUBLIC cxx_std_23)
+target_link_libraries(glazeModule PUBLIC glaze::glaze)
+target_compile_definitions(glazeModule PUBLIC BUILD_TARGET_${BUILD_TARGET})

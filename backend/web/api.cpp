@@ -99,6 +99,23 @@ void Server::setupApiRoutes() {
         });
         return Pistache::Rest::Route::Result::Ok;
     });
+    router.get("/api/v1/logs/scopes", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        db.queue_work([this, response = std::move(response)](pqxx::connection& conn) mutable {
+            pqxx::nontransaction txn{conn};
+            auto res = txn.exec("SELECT scope, COUNT(*) as count FROM logs GROUP BY scope;");
+            std::unordered_map<std::string, int> scopes;
+            for(const auto& row : res) {
+                scopes[row["scope"].as<std::string>()] = row["count"].as<int>();
+            }
+
+            auto count = txn.exec("SELECT COUNT(*) FROM logs;").one_field().as<unsigned int>();
+            scopes["_"] = count;
+
+            auto json = *glz::write_json(scopes);
+            response.send(Pistache::Http::Code::Ok, json, mime::application_json);
+        });
+        return Pistache::Rest::Route::Result::Ok;
+    });
 }
 
 }
