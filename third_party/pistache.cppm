@@ -23,6 +23,7 @@ export namespace Pistache {
         using Pistache::Http::ResponseWriter;
         using Pistache::Http::Request;
         using Pistache::Http::Method;
+        using Pistache::Http::operator<<;
 
         namespace Header {
             using Pistache::Http::Header::Header;

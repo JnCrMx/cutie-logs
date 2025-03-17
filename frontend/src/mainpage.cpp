@@ -100,6 +100,23 @@ web::coro::coroutine<void> run_query() {
     co_return;
 };
 
+web::coro::coroutine<void> download_logs() {
+    std::string attributes_selector{};
+    for(const auto& [attr, selected] : selected_attributes) {
+        if(selected) {
+            attributes_selector += std::format("{},", attr);
+        }
+    }
+    if(!attributes_selector.empty()) {
+        attributes_selector.pop_back();
+    }
+
+    auto url = "/api/v1/logs/stencil?limit=1000&attributes="+attributes_selector+"&stencil="+stencil_format;
+    web::eval("window.open('{}', '_blank');", url);
+
+    co_return;
+};
+
 struct stats_data {
     unsigned int total_logs{};
     unsigned int total_attributes{};
@@ -280,6 +297,12 @@ auto page(std::string_view current_theme) {
                         web::add_class("run_button_icon", "hidden");
                         web::remove_class("run_button_loading", "hidden");
                         web::coro::submit(run_query());
+                    }),
+                    ctx.on_click(button{{_class{"btn btn-primary"}},
+                        span{{_id{"download_button_icon"}}, assets::icons::run},
+                        "Download"
+                    }, [](std::string_view) {
+                        web::coro::submit(download_logs());
                     })
                 }
             },

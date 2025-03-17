@@ -80,8 +80,11 @@ namespace common {
             first_key = key.substr(0, pos);
             second_key = key.substr(pos + 1);
         }
-        std::expected<std::string, std::string> result = first_key.ends_with("?") ?
-            std::expected<std::string, std::string>("") : std::unexpected("key not found: "+std::string(first_key));
+        std::expected<std::string, std::string> result = std::unexpected("key not found: "+std::string(first_key));
+        if(first_key.ends_with("?")) {
+            first_key = first_key.substr(0, first_key.size() - 1);
+            result = "";
+        }
 
         auto keys = get_keys(obj);
         unsigned int index = 0;
