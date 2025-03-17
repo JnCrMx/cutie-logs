@@ -24,6 +24,10 @@ export namespace glz {
 
     using glz::reflect;
     using glz::reflectable;
+    using glz::for_each_field;
+    using glz::name_v;
+    using glz::get_enum_name;
+    using glz::glaze_object_t;
 
     using glz::stencil;
 }

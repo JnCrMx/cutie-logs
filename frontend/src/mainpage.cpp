@@ -21,14 +21,25 @@ namespace Webxx {
 
     constexpr static char onClickAttr[] = "onclick";
     using _onClick = attr<onClickAttr>;
+
+    constexpr static char onInputAttr[] = "oninput";
+    using _onInput = attr<onInputAttr>;
 }
 
 class event_context {
     public:
         auto on_click(auto el, web::event_callback&& cb) {
+            return on_event<Webxx::_onClick>(std::move(el), std::move(cb));
+        }
+        auto on_input(auto el, web::event_callback&& cb) {
+            return on_event<Webxx::_onInput>(std::move(el), std::move(cb));
+        }
+
+        template<typename EventAttribute>
+        auto on_event(auto el, web::event_callback&& cb) {
             auto& data = callbacks.emplace_back(std::make_unique<web::callback_data>(std::move(cb), false));
             el.data.attributes.push_back(Webxx::_dataCallback{std::format("{}", reinterpret_cast<std::uintptr_t>(data.get()))});
-            el.data.attributes.push_back(Webxx::_onClick{"handleEvent(this, event);"});
+            el.data.attributes.push_back(EventAttribute{"handleEvent(this, event);"});
             return el;
         }
 
@@ -86,9 +97,34 @@ auto page_selection(std::string_view what, const std::unordered_map<std::string,
     };
 }
 auto page_display_options() {
+    static event_context ctx;
+    ctx.clear();
+
     using namespace Webxx;
     return fieldset{{_class{"fieldset p-4 rounded-box shadow h-full flex flex-col"}},
         legend{{_class{"fieldset-legend"}}, "Display Options"},
+        ctx.on_input(textarea{{_id{"stencil_textarea"}, _class{"textarea h-24 w-full"}, _placeholder{"Log line stencil. Use {...} to insert values."}},},
+            [](std::string_view) {
+                web::coro::submit_next([]() -> web::coro::coroutine<void> {
+                    auto val = *web::get_property("stencil_textarea", "value");
+                    common::log_entry test{};
+                    if(auto r = common::stencil(val, test)) {
+                        web::set_html("stencil_validator", "Stencil valid.");
+                        web::remove_class("stencil_validator", "text-error");
+
+                        web::add_class("stencil_textarea", "textarea-success");
+                        web::remove_class("stencil_textarea", "textarea-error");
+                    } else {
+                        web::set_html("stencil_validator", "Stencil invalid: \"{}\"", r.error());
+                        web::add_class("stencil_validator", "text-error");
+
+                        web::add_class("stencil_textarea", "textarea-error");
+                        web::remove_class("stencil_textarea", "textarea-success");
+                    }
+                    co_return;
+                }());
+            }),
+        dv{{_id{"stencil_validator"}, _class{"fieldset-label"}}, "Stencil valid."}
     };
 }
 auto page_logs() {
@@ -147,13 +183,13 @@ auto page(std::string_view current_theme) {
                 ThemeButton{ctx, current_theme}
             }
         },
-        dv{{_class{"w-7xl mx-auto mt-4"}},
-            dv{{_class{"flex flex-row gap-4 h-80"}},
+        dv{{_class{"w-7xl mx-auto mt-2"}},
+            dv{{_class{"flex flex-row gap-4 h-60"}},
                 dv{{_id{"attributes"}, _class{"basis-0 grow"}}, page_selection("Select Attributes", {})},
                 dv{{_id{"resources"}, _class{"basis-0 grow"}}, page_selection("Filter Resources", {})},
                 dv{{_id{"scopes"}, _class{"basis-0 grow"}}, page_selection("Filter Scopes", {})},
-                dv{{_id{"display"}, _class{"basis-0 grow"}}, page_display_options()},
             },
+            dv{{_id{"display"}, _class{"w-full"}}, page_display_options()},
             dv{{_id{"logs"}, _class{"mt-4"}}, page_logs()},
         }
     };
