@@ -28,6 +28,7 @@ export namespace glz {
     using glz::name_v;
     using glz::get_enum_name;
     using glz::glaze_object_t;
+    using glz::string_literal;
 
     using glz::stencil;
 }

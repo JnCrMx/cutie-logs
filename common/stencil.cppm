@@ -15,9 +15,9 @@ import :structs;
 
 namespace common {
     template<typename T>
-    std::expected<std::string, std::string> format_if_possible(const T& obj) {
+    std::expected<std::string, std::string> format_if_possible(const T& obj, std::string_view opts = "") {
         if constexpr (std::formattable<T, char>) {
-            return std::format("{}", obj);
+            return std::vformat("{:"+std::string{opts}+"}", std::make_format_args(obj));
         } else if constexpr (std::is_same_v<T, glz::json_t>) {
             if(obj.is_string()) {
                 return obj.get_string();
@@ -80,7 +80,8 @@ namespace common {
             first_key = key.substr(0, pos);
             second_key = key.substr(pos + 1);
         }
-        std::expected<std::string, std::string> result = std::unexpected("key not found: "+std::string(first_key));
+        std::expected<std::string, std::string> result = first_key.ends_with("?") ?
+            std::expected<std::string, std::string>("") : std::unexpected("key not found: "+std::string(first_key));
 
         auto keys = get_keys(obj);
         unsigned int index = 0;

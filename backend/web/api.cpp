@@ -31,13 +31,13 @@ void Server::setup_api_routes() {
     });
     router.get("/api/v1/logs", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         auto filter = request.query().get("filter").value_or("");
-        auto attrs = request.query().get("attrs").value_or("");
+        auto attributes = request.query().get("attributes").value_or("");
         auto limit = request.query().get("limit").value_or("100");
         auto offset = request.query().get("offset").value_or("0");
-        db.queue_work([this, response = std::move(response), filter, attrs, limit, offset](pqxx::connection& conn) mutable {
+        db.queue_work([this, response = std::move(response), filter, attributes, limit, offset](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
             std::string query = "SELECT resource, timestamp, extract(epoch from timestamp) as unix_time, scope, severity, body";
-            for(const auto& attr : attrs | std::views::split(',')) {
+            for(const auto& attr : attributes | std::views::split(',')) {
                 query += ", attributes->'";
                 query += txn.esc(std::string_view{attr});
                 query += "'";
@@ -61,9 +61,10 @@ void Server::setup_api_routes() {
                     );
                     l.body = glz::json_t::object_t{};
                     unsigned int i=row.column_number("body")+1;
-                    for(const auto& attr : attrs | std::views::split(',')) {
+                    for(const auto& attr : attributes | std::views::split(',')) {
                         auto sv = std::string_view{attr};
                         l.attributes[sv] = *glz::read_json<glz::json_t>(row[i].as<std::optional<std::string>>().value_or("null"));
+                        i++;
                     }
                 }
                 auto beve = *glz::write_beve(res);
