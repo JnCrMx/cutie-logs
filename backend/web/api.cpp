@@ -1,11 +1,12 @@
 module;
+#include <expected>
 #include <format>
 #include <ranges>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <glaze/util/fast_float.hpp>
+
 #include <malloc.h>
 
 module backend.web;
@@ -62,11 +63,14 @@ std::vector<common::log_entry> get_logs(pqxx::transaction_base& txn, const std::
             row["scope"].as<std::string>(),
             row["severity"].as<common::log_severity>()
         );
-        l.body = glz::json_t::object_t{};
+        l.body = row["body"].as<std::optional<glz::json_t>>().value_or(glz::json_t::null_t{});
         unsigned int i=row.column_number("body")+1;
         for(const auto& attr : attributes | std::views::split(',')) {
             auto sv = std::string_view{attr};
-            l.attributes[sv] = *glz::read_json<glz::json_t>(row[i].as<std::optional<std::string>>().value_or("null"));
+            auto json = row[i].as<std::optional<glz::json_t>>();
+            if(json) {
+                l.attributes[sv] = std::move(*json);
+            }
             i++;
         }
     }
@@ -97,6 +101,7 @@ void Server::setup_api_routes() {
             } catch(const pqxx::sql_error& e) {
                 response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
             }
+            malloc_trim(1024*1024);
         });
         return Pistache::Rest::Route::Result::Ok;
     });
@@ -109,10 +114,15 @@ void Server::setup_api_routes() {
         db.queue_work([this, response = std::move(response), filter, attributes, limit, offset, stencil](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
             try {
-                auto logs = get_logs(txn, attributes, filter, limit, offset);
-
                 auto stream = response.stream(Pistache::Http::Code::Ok);
-                for(const auto& log : logs) {
+                std::string query = "SELECT resource, extract(epoch from timestamp) as unix_time, scope, severity, attributes, body FROM logs ORDER BY timestamp DESC";
+                query += " LIMIT " + std::to_string(std::stoi(limit));
+                query += " OFFSET " + std::to_string(std::stoi(offset));
+
+                for(auto [resource, timestamp, scope, severity, attributes, body] :
+                    txn.stream<unsigned int, double, std::string, common::log_severity, glz::json_t, glz::json_t>(query))
+                {
+                    common::log_entry log{resource, timestamp, scope, severity, attributes, body};
                     std::string line = *common::stencil(stencil, log)
                         .or_else([](auto err) -> std::expected<std::string, std::string> { return std::format("Stencil invalid: \"{}\"", err); })
                         +"\n";
@@ -122,7 +132,7 @@ void Server::setup_api_routes() {
             } catch(const pqxx::sql_error& e) {
                 response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
             }
-            malloc_trim(0);
+            malloc_trim(1024*1024);
         });
         return Pistache::Rest::Route::Result::Ok;
     });

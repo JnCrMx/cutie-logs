@@ -12,6 +12,7 @@ export namespace pqxx {
     using pqxx::result;
     using pqxx::row;
     using pqxx::prepped;
+    using pqxx::params;
 
     using pqxx::unexpected_rows;
 

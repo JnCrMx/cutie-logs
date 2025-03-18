@@ -11,6 +11,8 @@ module;
 #include <utility>
 #include <vector>
 
+#include <glaze/util/fast_float.hpp>
+
 export module backend.database;
 
 import pqxx;
@@ -20,9 +22,9 @@ import glaze;
 import common;
 
 namespace pqxx {
-    template<> std::string const type_name<common::log_severity>{"log_severity"};
-    template<> struct nullness<common::log_severity> : pqxx::no_null<common::log_severity> {};
-    template<> struct string_traits<common::log_severity> {
+    export template<> std::string const type_name<common::log_severity>{"log_severity"};
+    export template<> struct nullness<common::log_severity> : pqxx::no_null<common::log_severity> {};
+    export template<> struct string_traits<common::log_severity> {
         static constexpr bool converts_to_string{true};
         static constexpr bool converts_from_string{true};
 
@@ -53,6 +55,20 @@ namespace pqxx {
                 }
             }
             throw pqxx::conversion_error{std::format("Could not convert {} to log_severity", text)};
+        }
+    };
+
+    export template<> std::string const type_name<glz::json_t>{"glz::json_t"};
+    export template<> struct nullness<glz::json_t> : pqxx::no_null<glz::json_t> {};
+    export template<> struct string_traits<glz::json_t> {
+        static constexpr bool converts_from_string{true};
+
+        static glz::json_t from_string(std::string_view text) {
+            auto ret = glz::read_json<glz::json_t>(text);
+            if(!ret) {
+                throw pqxx::conversion_error{std::format("Could not convert {} to glz::json_t: {}", text, glz::format_error(ret.error()))};
+            }
+            return *ret;
         }
     };
 }
