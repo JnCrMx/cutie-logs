@@ -25,5 +25,5 @@ steps:
       repo: *repositories
       dockerfile: Dockerfile
       platforms: *platforms
-      tag: ["latest", "${CI_COMMIT_SHA}", "${CI_COMMIT_SHA:0:8}"]
+      tag: ["latest", "${CI_COMMIT_SHA}", "${CI_COMMIT_SHA:0:10}"]
       logins: *publish_logins
