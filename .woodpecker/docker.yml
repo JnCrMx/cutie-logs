@@ -1,12 +1,18 @@
 variables:
   - &buildx_plugin 'docker.io/woodpeckerci/plugin-docker-buildx:5.2.1'
   - &platforms 'linux/arm64'
+  - &repositories ['git.jcm.re/jcm/cutie-logs', 'ghcr.io/JnCrMx/cutie-logs']
   - publish_logins: &publish_logins
       - registry: https://git.jcm.re
         username:
           from_secret: gitea_package_user
         password:
           from_secret: gitea_package_token
+      - registry: https://ghcr.io
+        username:
+          from_secret: ghcr_user
+        password:
+          from_secret: ghcr_token
 
 when:
   - event: push
@@ -16,7 +22,7 @@ steps:
   docker:
     image: *buildx_plugin
     settings:
-      repo: ["jcm/cutie-logs"]
+      repo: *repositories
       dockerfile: Dockerfile
       platforms: *platforms
       tag: ["latest", "${CI_COMMIT_SHA}"]
