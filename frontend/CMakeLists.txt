@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.31.6)
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -61,3 +61,10 @@ target_link_options(mainpage PRIVATE -Wl,--no-entry)
 target_link_options(mainpage PRIVATE -nostartfiles)
 target_compile_options(mainpage PRIVATE --embed-dir=${CMAKE_CURRENT_SOURCE_DIR} -Wno-c23-extensions)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/public/mainpage.html ${CMAKE_CURRENT_BINARY_DIR}/mainpage.html COPYONLY)
+
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/mainpage.opt.wasm
+  DEPENDS $<TARGET_FILE:mainpage>
+  COMMAND wasm-strip $<TARGET_FILE:mainpage> -o ${CMAKE_CURRENT_BINARY_DIR}/mainpage.opt.wasm
+)
+add_custom_target(mainpage_opt ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/mainpage.opt.wasm)

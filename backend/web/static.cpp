@@ -24,7 +24,11 @@ constexpr char mainpage_html[] = {
     #embed "mainpage.html"
 };
 constexpr char mainpage_wasm[] = {
-    #embed "mainpage.wasm"
+    #ifdef NDEBUG
+        #embed "mainpage.opt.wasm"
+    #else
+        #embed "mainpage.wasm"
+    #endif
 };
 
 constexpr std::array entries = {

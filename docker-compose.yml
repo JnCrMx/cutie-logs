@@ -1,0 +1,15 @@
+services:
+  cutie-logs:
+    build: .
+    ports:
+      - "8080:8080"
+      - "4318:4318"
+    environment:
+      - CUTIE_LOGS_DATABASE_URL=postgresql://postgres:password@postgres:5432/postgres
+      - CUTIE_LOGS_WEB_ADDRESS=0.0.0.0:8080
+  postgres:
+    image: "postgres:latest"
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: "password"

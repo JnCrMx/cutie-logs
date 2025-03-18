@@ -243,7 +243,6 @@ auto page(std::string_view current_theme) {
         "nord", "sunset", "caramellatte", "abyss", "silk",
     };
     struct ThemeButton : component<ThemeButton> {
-
         ThemeButton(event_context& ctx, std::string_view current) : component<ThemeButton>{
             dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Themes"}},
                 dv{{_class{"dropdown dropdown-end dropdown-bottom"}},

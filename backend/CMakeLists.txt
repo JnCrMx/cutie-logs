@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.31.6)
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -83,7 +83,7 @@ target_link_libraries(server PRIVATE
   protobuf::libprotobuf)
 target_compile_options(server PRIVATE --embed-dir=${CMAKE_BINARY_DIR}/frontend/ -Wno-c23-extensions)
 add_dependencies(server frontend_mainpage)
-add_dependencies(server frontend)
+add_dependencies(server frontend_mainpage_opt)
 
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/migrations.inc

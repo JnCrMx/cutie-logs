@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.31.6)
 
 include(ExternalProject)
 
@@ -14,12 +14,20 @@ ExternalProject_Add(frontend
         -DCMAKE_CXX_COMPILER:FILEPATH=${CMAKE_CXX_COMPILER}
         -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=${CMAKE_EXPORT_COMPILE_COMMANDS}
 )
+
 add_library(frontend_mainpage STATIC IMPORTED)
 set_property(
     TARGET frontend_mainpage
     PROPERTY
         IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/frontend/mainpage.wasm"
         INTERFACE_DEPENDENCIES "${CMAKE_CURRENT_BINARY_DIR}/frontend/mainpage.wasm"
+)
+add_library(frontend_mainpage_opt STATIC IMPORTED)
+set_property(
+    TARGET frontend_mainpage_opt
+    PROPERTY
+        IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/frontend/mainpage.opt.wasm"
+        INTERFACE_DEPENDENCIES "${CMAKE_CURRENT_BINARY_DIR}/frontend/mainpage.opt.wasm"
 )
 
 add_subdirectory(backend)
