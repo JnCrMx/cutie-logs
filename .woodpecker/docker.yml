@@ -1,7 +1,7 @@
 variables:
   - &buildx_plugin 'docker.io/woodpeckerci/plugin-docker-buildx:5.2.1'
   - &platforms 'linux/amd64,linux/arm64,linux/riscv64'
-  - publish_login: &publish_login
+  - publish_logins: &publish_logins
       - registry: https://git.jcm.re
         username:
           from_secret: gitea_package_user
@@ -16,8 +16,8 @@ steps:
   docker:
     image: *buildx_plugin
     settings:
-      repo: jcm/cutie-logs
+      repo: ["jcm/cutie-logs"]
       dockerfile: Dockerfile
       platforms: *platforms
-      tags: ["latest", "${CI_COMMIT_SHA}"]
-      logins: *publish_login
+      tag: ["latest", "${CI_COMMIT_SHA}"]
+      logins: *publish_logins
