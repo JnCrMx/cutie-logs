@@ -1,6 +1,6 @@
 variables:
   - &buildx_plugin 'docker.io/woodpeckerci/plugin-docker-buildx:5.2.1'
-  - &platforms 'linux/amd64,linux/arm64,linux/riscv64'
+  - &platforms 'linux/arm64'
   - publish_logins: &publish_logins
       - registry: https://git.jcm.re
         username:
