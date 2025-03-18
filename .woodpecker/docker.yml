@@ -1,7 +1,7 @@
 variables:
   - &buildx_plugin 'docker.io/woodpeckerci/plugin-docker-buildx:5.2.1'
   - &platforms 'linux/arm64'
-  - &repositories ['git.jcm.re/jcm/cutie-logs', 'ghcr.io/JnCrMx/cutie-logs']
+  - &repositories ['git.jcm.re/jcm/cutie-logs', 'ghcr.io/jncrmx/cutie-logs']
   - publish_logins: &publish_logins
       - registry: https://git.jcm.re
         username:
