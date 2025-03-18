@@ -1,6 +1,6 @@
 variables:
   - &buildx_plugin 'docker.io/woodpeckerci/plugin-docker-buildx:5.2.1'
-  - &platforms 'linux/arm64'
+  - &platforms 'linux/arm64, linux/amd64'
   - &repositories ['git.jcm.re/jcm/cutie-logs', 'ghcr.io/jncrmx/cutie-logs']
   - publish_logins: &publish_logins
       - registry: https://git.jcm.re
@@ -25,5 +25,5 @@ steps:
       repo: *repositories
       dockerfile: Dockerfile
       platforms: *platforms
-      tag: ["latest", "${CI_COMMIT_SHA}"]
+      tag: ["latest", "${CI_COMMIT_SHA}", "${CI_COMMIT_SHA:0:8}"]
       logins: *publish_logins
