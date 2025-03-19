@@ -91,7 +91,7 @@ web::coro::coroutine<void> run_query() {
         each(logs.logs, [&](const auto& entry) {
             auto r = common::stencil(stencil_format, entry);
             return li{{_class{"list-item"}},
-                code{{_class{r ? "" : "text-error font-bold"}}, *r.or_else([](auto err) -> decltype(r) { return std::format("Stencil invalid: \"{}\"", err); })}
+                code{{_class{r ? "whitespace-nowrap" : "whitespace-nowrap text-error font-bold"}}, *r.or_else([](auto err) -> decltype(r) { return std::format("Stencil invalid: \"{}\"", err); })}
             };
         })
     };
@@ -311,7 +311,7 @@ auto page(std::string_view current_theme) {
                     })
                 }
             },
-            dv{{_id{"logs"}, _class{"mt-4"}}, page_logs()},
+            dv{{_id{"logs"}, _class{"mt-4 overflow-x-auto"}}, page_logs()},
         }
     };
 }
