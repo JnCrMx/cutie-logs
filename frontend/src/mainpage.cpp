@@ -144,15 +144,28 @@ auto page_stats(const stats_data& data) {
         }
     };
 }
-template<glz::string_literal what>
-auto page_selection(const std::unordered_map<std::string, unsigned int>& attributes,
+
+template<glz::string_literal identifier>
+auto page_selection(std::string_view title,
+    const std::unordered_map<std::string, unsigned int>& attributes,
     std::unordered_map<std::string, bool>& selections, unsigned int total = 1, bool show_percent = false)
 {
     static event_context ctx;
+    ctx.clear();
+
+    auto search_id = std::format("select_{}_search", identifier.sv());
+    auto saved = web::eval("let saved = localStorage.getItem('select_{}_selections'); if(saved === null) {{saved = '{{}}';}}; saved",
+        identifier.sv());
+    using selection_map = std::unordered_map<std::string, bool>;
+    static auto saved_selections = glz::read_json<selection_map>(saved).value_or(selection_map{});
+    for(const auto& [s, v] : saved_selections) {
+        if(selections.contains(s))
+            selections[s] = v;
+    }
+
     using namespace Webxx;
-    auto search_id = std::format("select_{}_search", what.sv());
     return fieldset{{_class{"fieldset p-4 rounded-box shadow h-full flex flex-col"}},
-        legend{{_class{"fieldset-legend"}}, what.sv()},
+        legend{{_class{"fieldset-legend"}}, title},
         label{{_class{"input w-full mb-2"}},
             ctx.on_input(input{{_id{search_id}, _type{"search"}, _class{"grow"}, _placeholder{"Search..."}}},
                 [search_id, attributes](std::string_view) {
@@ -163,7 +176,7 @@ auto page_selection(const std::unordered_map<std::string, unsigned int>& attribu
                         std::string name = attr;
                         std::transform(name.begin(), name.end(), name.begin(), [](char c){return std::tolower(c);});
 
-                        auto id = std::format("select_{}_entry_{}", what.sv(), attr);
+                        auto id = std::format("select_{}_entry_{}", identifier.sv(), attr);
                         if(name.find(search) != std::string::npos) {
                             web::remove_class(id, "hidden");
                         } else {
@@ -174,13 +187,15 @@ auto page_selection(const std::unordered_map<std::string, unsigned int>& attribu
         },
         dv{{_class{"overflow-y-auto h-full flex flex-col gap-1"}},
             each(attributes, [total, show_percent, &selections](const auto& attr) {
-                auto id = std::format("select_{}_entry_{}", what.sv(), attr.first);
-                auto checkbox_id = std::format("select_{}_entry_{}_checkbox", what.sv(), attr.first);
+                auto id = std::format("select_{}_entry_{}", identifier.sv(), attr.first);
+                auto checkbox_id = std::format("select_{}_entry_{}_checkbox", identifier.sv(), attr.first);
 
                 auto checkbox = ctx.on_change(input{{_id{checkbox_id}, _type{"checkbox"}, _class{"checkbox"}, _ariaLabel{attr.first}, _value{attr.first}}},
                     [checkbox_id, attr, &selections](std::string_view event){
                         bool checked = web::get_property(checkbox_id, "checked") == "true";
                         selections[attr.first] = checked;
+                        saved_selections[attr.first] = checked; // maintain those two seperately, so saved_selections can contain values not present in selections
+                        web::eval("localStorage.setItem('select_{}_selections', '{}'); ''", identifier.sv(), glz::write_json(saved_selections).value_or("[]"));
                     });
                 if(selections[attr.first]) {
                     checkbox.data.attributes.push_back(_checked{});
@@ -287,9 +302,9 @@ auto page(std::string_view current_theme) {
         },
         dv{{_class{"w-7xl mx-auto mt-2"}},
             dv{{_class{"flex flex-row gap-4 h-60"}},
-                dv{{_id{"attributes"}, _class{"basis-0 grow"}}, page_selection<"Select Attributes">({}, selected_attributes)},
-                dv{{_id{"resources"}, _class{"basis-0 grow"}}, page_selection<"Filter Resources">({}, selected_resources)},
-                dv{{_id{"scopes"}, _class{"basis-0 grow"}}, page_selection<"Filter Scopes">({}, selected_scopes)},
+                dv{{_id{"attributes"}, _class{"basis-0 grow"}}, page_selection<"attributes">("Select Attributes", {}, selected_attributes)},
+                dv{{_id{"resources"}, _class{"basis-0 grow"}}, page_selection<"resources">("Filter Resources", {}, selected_resources)},
+                dv{{_id{"scopes"}, _class{"basis-0 grow"}}, page_selection<"scopes">("Filter Scopes", {}, selected_scopes)},
             },
             dv{{_class{"flex flex-row gap-4 items-center"}},
                 dv{{_id{"display"}, _class{"grow"}}, page_display_options()},
@@ -331,15 +346,15 @@ int main() {
             glz::read_beve<common::logs_attributes_response>(co_await web::coro::fetch("/api/v1/logs/attributes"))
             .value_or(common::logs_attributes_response{});
         std::transform(attributes.attributes.begin(), attributes.attributes.end(), std::inserter(selected_attributes, selected_attributes.end()),
-            [](const auto& attr) { return std::pair{attr.first, true}; });
-        web::set_html("attributes", Webxx::render(page_selection<"Select Attributes">(attributes.attributes, selected_attributes, attributes.total_logs, true)));
+            [](const auto& attr) { return std::pair{attr.first, false}; }); // all attributes are deselected by default
+        web::set_html("attributes", Webxx::render(page_selection<"attributes">("Select Attributes", attributes.attributes, selected_attributes, attributes.total_logs, true)));
 
         auto scopes =
             glz::read_beve<common::logs_scopes_response>(co_await web::coro::fetch("/api/v1/logs/scopes"))
             .value_or(common::logs_scopes_response{});
         std::transform(scopes.scopes.begin(), scopes.scopes.end(), std::inserter(selected_scopes, selected_scopes.end()),
-            [](const auto& scope) { return std::pair{scope.first, true}; });
-        web::set_html("scopes", Webxx::render(page_selection<"Filter Scopes">(scopes.scopes, selected_scopes, 1, false)));
+            [](const auto& scope) { return std::pair{scope.first, true}; }); // all scopes are selected by default
+        web::set_html("scopes", Webxx::render(page_selection<"scopes">("Filter Scopes", scopes.scopes, selected_scopes, 1, false)));
 
         stats_data stats;
         stats.total_attributes = attributes.attributes.size();
