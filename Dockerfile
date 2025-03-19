@@ -18,7 +18,6 @@ RUN ln -sf /usr/bin/ld.lld-19 /usr/bin/ld
 ADD . /src
 WORKDIR /src
 
-RUN cat /toolchain.cmake
 RUN cmake -B build -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_C_COMPILER=clang-19 -DCMAKE_CXX_COMPILER=clang++-19 \
     -DCMAKE_TOOLCHAIN_FILE=/toolchain.cmake \

@@ -2,6 +2,7 @@
 
 if [ "$TARGETARCH" == "$BUILDARCH" ]; then
     echo "TARGETARCH is the same as BUILDARCH, skipping cross-compilation setup"
+    touch /toolchain.cmake
     exit 0
 fi
 
@@ -22,7 +23,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends dpkg-d
 
 TARGET_TRIPLE=$(dpkg-architecture -a$TARGETARCH -qDEB_HOST_GNU_TYPE)
 
-cat > /toolchain.cmake <<-EOF
+tee /toolchain.cmake <<-EOF
 MESSAGE(STATUS "Cross-compiling for $TARGETARCH")
 
 SET(CMAKE_SYSTEM_NAME Linux)
