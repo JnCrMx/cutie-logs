@@ -18,9 +18,9 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && DEBIA
     libpq5 libprotobuf32t64 libspdlog1.15
 
 RUN mkdir /app
-COPY --from=builder /src/build/backend/server /app/server
+COPY --from=builder /src/build/backend/server /app/cutie-logs-server
 
 WORKDIR /app
-CMD ["./server"]
+CMD ["./cutie-logs-server"]
 EXPOSE 8080
 EXPOSE 4318
