@@ -146,7 +146,7 @@ auto page_stats(const stats_data& data) {
 }
 template<glz::string_literal what>
 auto page_selection(const std::unordered_map<std::string, unsigned int>& attributes,
-    std::unordered_map<std::string, bool>& output, unsigned int total = 1, bool show_percent = false)
+    std::unordered_map<std::string, bool>& selections, unsigned int total = 1, bool show_percent = false)
 {
     static event_context ctx;
     using namespace Webxx;
@@ -173,15 +173,21 @@ auto page_selection(const std::unordered_map<std::string, unsigned int>& attribu
                 })
         },
         dv{{_class{"overflow-y-auto h-full flex flex-col gap-1"}},
-            each(attributes, [total, show_percent, &output](const auto& attr) {
+            each(attributes, [total, show_percent, &selections](const auto& attr) {
                 auto id = std::format("select_{}_entry_{}", what.sv(), attr.first);
                 auto checkbox_id = std::format("select_{}_entry_{}_checkbox", what.sv(), attr.first);
+
+                auto checkbox = ctx.on_change(input{{_id{checkbox_id}, _type{"checkbox"}, _class{"checkbox"}, _ariaLabel{attr.first}, _value{attr.first}}},
+                    [checkbox_id, attr, &selections](std::string_view event){
+                        bool checked = web::get_property(checkbox_id, "checked") == "true";
+                        selections[attr.first] = checked;
+                    });
+                if(selections[attr.first]) {
+                    checkbox.data.attributes.push_back(_checked{});
+                }
+
                 return fragment{label{{_id{id}, _class{"fieldset-label"}},
-                    ctx.on_change(input{{_id{checkbox_id}, _type{"checkbox"}, _class{"checkbox"}, _ariaLabel{attr.first}, _value{attr.first}}},
-                        [checkbox_id, attr, &output](std::string_view event){
-                            bool checked = web::get_property(checkbox_id, "checked") == "true";
-                            output[attr.first] = checked;
-                        }),
+                    std::move(checkbox),
                     show_percent ?
                         std::format("{} ({}%)", attr.first, attr.second*100/total) :
                         std::format("{} ({})", attr.first, attr.second)
@@ -324,11 +330,15 @@ int main() {
         auto attributes =
             glz::read_beve<common::logs_attributes_response>(co_await web::coro::fetch("/api/v1/logs/attributes"))
             .value_or(common::logs_attributes_response{});
+        std::transform(attributes.attributes.begin(), attributes.attributes.end(), std::inserter(selected_attributes, selected_attributes.end()),
+            [](const auto& attr) { return std::pair{attr.first, true}; });
         web::set_html("attributes", Webxx::render(page_selection<"Select Attributes">(attributes.attributes, selected_attributes, attributes.total_logs, true)));
 
         auto scopes =
             glz::read_beve<common::logs_scopes_response>(co_await web::coro::fetch("/api/v1/logs/scopes"))
             .value_or(common::logs_scopes_response{});
+        std::transform(scopes.scopes.begin(), scopes.scopes.end(), std::inserter(selected_scopes, selected_scopes.end()),
+            [](const auto& scope) { return std::pair{scope.first, true}; });
         web::set_html("scopes", Webxx::render(page_selection<"Filter Scopes">(scopes.scopes, selected_scopes, 1, false)));
 
         stats_data stats;
@@ -340,7 +350,6 @@ int main() {
         std::string attributes_selector{};
         for(const auto& [attr, _] : attributes.attributes) {
             attributes_selector += std::format("{},", attr);
-            selected_attributes[attr] = false;
         }
         if(!attributes_selector.empty()) {
             attributes_selector.pop_back();
