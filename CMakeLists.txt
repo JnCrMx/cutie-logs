@@ -15,19 +15,34 @@ ExternalProject_Add(frontend
         -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=${CMAKE_EXPORT_COMPILE_COMMANDS}
 )
 
-add_library(frontend_mainpage STATIC IMPORTED)
-set_property(
-    TARGET frontend_mainpage
-    PROPERTY
-        IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/frontend/mainpage.wasm"
-        INTERFACE_DEPENDENCIES "${CMAKE_CURRENT_BINARY_DIR}/frontend/mainpage.wasm"
-)
-add_library(frontend_mainpage_opt STATIC IMPORTED)
-set_property(
-    TARGET frontend_mainpage_opt
-    PROPERTY
-        IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/frontend/mainpage.opt.wasm"
-        INTERFACE_DEPENDENCIES "${CMAKE_CURRENT_BINARY_DIR}/frontend/mainpage.opt.wasm"
+function(AddExternalProjectFileDependency
+         ExternalProjectName
+         TargetName
+         GeneratedFilePaths)
+    include(ExternalProject)
+    if(NOT TARGET ${ExternalProjectName})
+        message(FATAL_ERROR "External project '${ExternalProjectName}' is not defined.")
+    endif()
+    ExternalProject_Get_Property(${ExternalProjectName} BINARY_DIR)
+    set(GENERATED_FILES)
+    foreach(FILE ${GeneratedFilePaths})
+        list(APPEND GENERATED_FILES "${BINARY_DIR}/${FILE}")
+    endforeach()
+    add_custom_command(
+        OUTPUT ${GENERATED_FILES}
+        DEPENDS ${ExternalProjectName}
+        COMMENT "Waiting for generated files from ExternalProject \"${ExternalProjectName}\""
+        COMMAND ${CMAKE_COMMAND} -E echo "Waiting for generated files from ExternalProject \"${ExternalProjectName}\""
+    )
+    add_custom_target(${TargetName} DEPENDS ${GENERATED_FILES})
+endfunction()
+
+
+AddExternalProjectFileDependency(frontend frontend_files
+    mainpage.html
+    style.css
+    mainpage.wasm
+    mainpage.opt.wasm
 )
 
 add_subdirectory(backend)

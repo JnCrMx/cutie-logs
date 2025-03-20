@@ -42,8 +42,6 @@ target_compile_definitions(stdModule PRIVATE _LIBCPP_CSETJMP _LIBCPP_CSIGNAL)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../third_party ${CMAKE_CURRENT_BINARY_DIR}/third_party)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../common ${CMAKE_CURRENT_BINARY_DIR}/common)
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/public/style.css ${CMAKE_CURRENT_BINARY_DIR}/style.css COPYONLY)
-
 set(SOURCES
   src/mainpage.cpp
   src/c++support.cpp
@@ -69,7 +67,19 @@ target_link_libraries(mainpage PRIVATE common stdModule webxxModule glazeModule)
 target_link_options(mainpage PRIVATE -Wl,--no-entry)
 target_link_options(mainpage PRIVATE -nostartfiles)
 target_compile_options(mainpage PRIVATE --embed-dir=${CMAKE_CURRENT_SOURCE_DIR} -Wno-c23-extensions)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/public/mainpage.html ${CMAKE_CURRENT_BINARY_DIR}/mainpage.html COPYONLY)
+
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/mainpage.html
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/public/mainpage.html
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/public/mainpage.html ${CMAKE_CURRENT_BINARY_DIR}/mainpage.html
+)
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/style.css
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/public/style.css
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/public/style.css ${CMAKE_CURRENT_BINARY_DIR}/style.css
+)
+add_custom_target(mainpage_public ALL DEPENDS
+  ${CMAKE_CURRENT_BINARY_DIR}/mainpage.html ${CMAKE_CURRENT_BINARY_DIR}/style.css)
 
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/mainpage.opt.wasm
