@@ -25,7 +25,7 @@ struct stats_data {
 };
 auto page_stats(const stats_data& data) {
     using namespace Webxx;
-    return dv{{_class{"stats shadow"}},
+    return dv{{_class{"stats stats-vertical md:stats-horizontal shadow"}},
         dv{{_class{"stat"}},
             dv{{_class{"stat-title"}}, "Total Log Entries"},
             dv{{_class{"stat-value"}}, std::to_string(data.total_logs)}
@@ -51,7 +51,7 @@ auto page(std::string_view current_theme) {
     static event_context ctx;
     ctx.clear();
     return fragment {
-        dv{{_class{"flex flex-row items-baseline pt-4 pb-4 sticky top-0 z-10 bg-base-200"}},
+        dv{{_class{"flex flex-row items-baseline pt-4 pb-4 md:sticky top-0 z-10 bg-base-200"}},
             dv{{_class{"text-2xl font-bold ml-4"}}, common::project_name},
             dv{{_class{"text-1xl font-bold ml-2"}}, "version ", common::project_version},
             dv{{_id{"stats"}, _class{"ml-2 mr-2 grow flex flex-row justify-center items-center"}}, page_stats({})},
@@ -59,7 +59,7 @@ auto page(std::string_view current_theme) {
                 components::theme_button{ctx, current_theme}
             }
         },
-        dv{{_class{"w-7xl mx-auto mt-2"}, {_id{"page"}}}}
+        dv{{_class{"w-full mx-auto my-2 px-4 md:w-auto md:mx-[10vw]"}, {_id{"page"}}}}
     };
 }
 

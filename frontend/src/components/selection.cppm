@@ -29,8 +29,8 @@ auto selection(std::string_view title,
     using namespace Webxx;
     return fieldset{{_class{"fieldset p-4 rounded-box shadow h-full flex flex-col"}},
         legend{{_class{"fieldset-legend"}}, title},
-        label{{_class{"input w-full mb-2"}},
-            ctx.on_input(input{{_id{search_id}, _type{"search"}, _class{"grow"}, _placeholder{"Search..."}}},
+        label{{_class{"input w-full mb-2 flex flex-col"}},
+            ctx.on_input(input{{_id{search_id}, _type{"search"}, _class{"grow basis-[3rem] md:basis-[3.5rem]"}, _placeholder{"Search..."}}},
                 [search_id, attributes](std::string_view) {
                     auto search = web::get_property(search_id, "value").value_or("");
                     std::transform(search.begin(), search.end(), search.begin(), [](char c){return std::tolower(c);});

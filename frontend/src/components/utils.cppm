@@ -64,11 +64,28 @@ struct event_data {
     void add_callback(std::function<void(event_data&)> cb) {
         callbacks.push_back(std::move(cb));
     }
-    T& operator=(const T& value) {
-        data = value;
+    void update() {
         for (auto& cb : callbacks) {
             cb(*this);
         }
+    }
+    void set_value(const T& value) {
+        data = value;
+        update();
+    }
+    void set_value(T&& value) {
+        data = std::move(value);
+        update();
+    }
+
+    T& operator=(const T& value) {
+        data = value;
+        update();
+        return data;
+    }
+    T& operator=(T&& value) {
+        data = std::move(value);
+        update();
         return data;
     }
 

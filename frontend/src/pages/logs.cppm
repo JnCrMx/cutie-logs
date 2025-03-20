@@ -139,32 +139,34 @@ export class logs : public page {
 
             using namespace Webxx;
             return Webxx::fragment {
-                dv{{_class{"flex flex-row gap-4 h-60"}},
-                    dv{{_id{"attributes"}, _class{"basis-0 grow"}}, components::selection<"attributes">("Select Attributes", attributes->attributes, selected_attributes, attributes->total_logs, true)},
-                    dv{{_id{"resources"}, _class{"basis-0 grow"}}, components::selection<"resources">("Filter Resources", {}, selected_resources)},
-                    dv{{_id{"scopes"}, _class{"basis-0 grow"}}, components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, 1, false)},
-                },
-                dv{{_class{"flex flex-row gap-4 items-center"}},
-                    dv{{_id{"display"}, _class{"grow"}}, page_display_options()},
-                    dv{{_class{"flex flex-col gap-4"}},
-                        ctx.on_click(button{{_class{"btn btn-primary"}},
-                            span{{_id{"run_button_loading"}, _class{"loading loading-spinner hidden"}}},
-                            span{{_id{"run_button_icon"}}, assets::icons::run},
-                            "Run"
-                        }, [this](std::string_view) {
-                            web::add_class("run_button_icon", "hidden");
-                            web::remove_class("run_button_loading", "hidden");
-                            web::coro::submit(run_query());
-                        }),
-                        ctx.on_click(button{{_class{"btn btn-primary"}},
-                            span{{_id{"download_button_icon"}}, assets::icons::download},
-                            "Download"
-                        }, [this](std::string_view) {
-                            web::coro::submit(download_logs());
-                        })
-                    }
-                },
-                dv{{_id{"logs"}, _class{"mt-4 overflow-x-auto"}}},
+                dv{{_class{"flex flex-col m-0 p-0"}},
+                    dv{{_class{"flex flex-col md:flex-row gap-4"}},
+                        dv{{_id{"attributes"}, _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"attributes">("Select Attributes", attributes->attributes, selected_attributes, attributes->total_logs, true)},
+                        dv{{_id{"resources"},  _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"resources">("Filter Resources", {}, selected_resources)},
+                        dv{{_id{"scopes"},     _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, 1, false)},
+                    },
+                    dv{{_class{"flex flex-col md:flex-row gap-4 items-center"}},
+                        dv{{_id{"display"}, _class{"grow w-full"}}, page_display_options()},
+                        dv{{_class{"flex flex-row md:flex-col gap-4"}},
+                            ctx.on_click(button{{_class{"btn btn-primary"}},
+                                span{{_id{"run_button_loading"}, _class{"loading loading-spinner hidden"}}},
+                                span{{_id{"run_button_icon"}}, assets::icons::run},
+                                "Run"
+                            }, [this](std::string_view) {
+                                web::add_class("run_button_icon", "hidden");
+                                web::remove_class("run_button_loading", "hidden");
+                                web::coro::submit(run_query());
+                            }),
+                            ctx.on_click(button{{_class{"btn btn-primary"}},
+                                span{{_id{"download_button_icon"}}, assets::icons::download},
+                                "Download"
+                            }, [this](std::string_view) {
+                                web::coro::submit(download_logs());
+                            })
+                        }
+                    },
+                    dv{{_id{"logs"}, _class{"mt-4 overflow-x-auto"}}},
+                }
             };
         }
 };
