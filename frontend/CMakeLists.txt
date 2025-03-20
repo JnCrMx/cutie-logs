@@ -55,6 +55,7 @@ set(MODULE_SOURCES
   src/assets.cppm
   src/components/_components.cppm
   src/components/selection.cppm
+  src/components/theme_button.cppm
   src/components/utils.cppm
   src/pages/_pages.cppm
   src/pages/logs.cppm
