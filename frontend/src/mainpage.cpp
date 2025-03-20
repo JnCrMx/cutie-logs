@@ -45,13 +45,6 @@ auto page_stats(const stats_data& data) {
     };
 }
 
-auto page_logs() {
-    using namespace Webxx;
-    return
-        "Logs will be displayed here"
-    ;
-}
-
 auto page(std::string_view current_theme) {
     using namespace Webxx;
 
