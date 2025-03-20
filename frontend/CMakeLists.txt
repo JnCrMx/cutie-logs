@@ -47,10 +47,18 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/public/style.css ${CMAKE_CURRENT_BINA
 set(SOURCES
   src/mainpage.cpp
   src/c++support.cpp
+  src/assets.cpp
 )
 set(MODULE_SOURCES
   src/web.cppm
   src/web_coro.cppm
+  src/assets.cppm
+  src/components/_components.cppm
+  src/components/selection.cppm
+  src/components/utils.cppm
+  src/pages/_pages.cppm
+  src/pages/logs.cppm
+  src/pages/page.cppm
 )
 
 add_executable(mainpage ${SOURCES})
