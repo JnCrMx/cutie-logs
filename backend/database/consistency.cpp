@@ -8,7 +8,7 @@ import spdlog;
 namespace backend::database {
 
 void Database::ensure_consistency() {
-    spdlog::info("Ensuring database consistency, this may take a while...");
+    logger->info("Ensuring database consistency, this may take a while...");
 
     pqxx::work txn(connections.front());
 
@@ -43,11 +43,11 @@ void Database::ensure_consistency() {
                 count_array = EXCLUDED.count_array,
                 count_object = EXCLUDED.count_object;)",
             {attribute, count, count_null, count_number, count_string, count_boolean, count_array, count_object});
-        spdlog::debug("Attribute {}: null={}, number={}, string={}, boolean={}, array={}, object={}", attribute, count_null, count_number, count_string, count_boolean, count_array, count_object);
+        logger->debug("Attribute {}: null={}, number={}, string={}, boolean={}, array={}, object={}", attribute, count_null, count_number, count_string, count_boolean, count_array, count_object);
     }
     txn.commit();
 
-    spdlog::info("Database consistency check complete");
+    logger->info("Database consistency check complete");
 }
 
 }
