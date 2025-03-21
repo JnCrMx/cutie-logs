@@ -23,12 +23,21 @@ double parse_int(std::string_view x) {
 
 export struct stencil_functions {
     std::add_pointer_t<double(glz::json_t)> get_number = [](glz::json_t x){
+        if(!x.is_number()) {
+            return 0.0;
+        }
         return x.get_number();
     };
     std::add_pointer_t<std::string(glz::json_t)> get_string = [](glz::json_t x){
+        if(!x.is_string()) {
+            return std::string{};
+        }
         return x.get_string();
     };
     std::add_pointer_t<bool(glz::json_t)> get_boolean = [](glz::json_t x){
+        if(!x.is_boolean()) {
+            return false;
+        }
         return x.get_boolean();
     };
 
@@ -46,6 +55,67 @@ export struct stencil_functions {
     };
     std::add_pointer_t<double(double, std::string_view)> mod = [](double x, std::string_view y){
         return std::fmod(x, parse_int(y));
+    };
+
+    struct {
+        std::string operator()(std::string_view x) const {
+            return std::string{x};
+        }
+        std::string operator()(double x) const {
+            return std::to_string(x);
+        }
+        std::string operator()(bool x) const {
+            return x ? "true" : "false";
+        }
+        std::string operator()(const glz::json_t& x) const {
+            return x.dump().value_or("null");
+        }
+    } to_string{};
+    std::add_pointer_t<std::string(std::string)> to_upper = [](std::string x){
+        for(auto& c : x) {
+            c = std::toupper(c);
+        }
+        return x;
+    };
+    std::add_pointer_t<std::string(std::string)> to_lower = [](std::string x){
+        for(auto& c : x) {
+            c = std::tolower(c);
+        }
+        return x;
+    };
+    std::add_pointer_t<std::string(std::string, std::string_view)> pad_left = [](std::string x, std::string_view y){
+        int n = parse_int(y);
+        return std::format("{:>{}}", x, n);
+    };
+    std::add_pointer_t<std::string(std::string, std::string_view)> pad_right = [](std::string x, std::string_view y){
+        int n = parse_int(y);
+        return std::format("{:<{}}", x, n);
+    };
+    std::add_pointer_t<std::string(std::string, std::string_view)> pad_both = [](std::string x, std::string_view y){
+        int n = parse_int(y);
+        return std::format("{:^{}}", x, n);
+    };
+    std::add_pointer_t<std::string(std::string, std::string_view)> truncate = [](std::string x, std::string_view y){
+        int n = parse_int(y);
+        if(x.size() > n) {
+            return x.substr(0, n);
+        }
+        return x;
+    };
+    std::add_pointer_t<std::string(std::string, std::string_view)> truncate_left = [](std::string x, std::string_view y){
+        int n = parse_int(y);
+        if(x.size() > n) {
+            return x.substr(x.size() - n);
+        }
+        return x;
+    };
+    std::add_pointer_t<std::string(std::string, std::string_view)> repeat = [](std::string x, std::string_view y){
+        int n = parse_int(y);
+        std::string result;
+        for(int i = 0; i < n; ++i) {
+            result += x;
+        }
+        return result;
     };
 
     using sys_seconds_double = std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double>>;

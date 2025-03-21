@@ -74,7 +74,8 @@ export class logs : public page {
                 each(logs.logs, [&](const auto& entry) {
                     auto r = common::stencil(stencil_format, entry);
                     return li{{_class{"list-item"}},
-                        code{{_class{r ? "whitespace-nowrap" : "whitespace-nowrap text-error font-bold"}}, *r.or_else([](auto err) -> decltype(r) { return std::format("Stencil invalid: \"{}\"", err); })}
+                        code{{_class{r ? "whitespace-pre" : "whitespace-pre text-error font-bold"}},
+                            *r.or_else([](auto err) -> decltype(r) { return std::format("Stencil invalid: \"{}\"", err); })}
                     };
                 })
             };
