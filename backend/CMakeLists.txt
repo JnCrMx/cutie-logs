@@ -63,6 +63,7 @@ target_sources(protoModule PUBLIC FILE_SET CXX_MODULES FILES
 
 set(SOURCES
   main.cpp
+  database/consistency.cpp
   database/migrations.cpp
   web/api.cpp
   web/static.cpp

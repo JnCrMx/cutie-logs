@@ -38,10 +38,14 @@ std::string url_decode(const std::string& str) {
 
 std::string build_query(pqxx::transaction_base& txn, const std::string& attributes, const std::string& filter, const std::string& limit, const std::string& offset) {
     std::string query = "SELECT resource, timestamp, extract(epoch from timestamp) as unix_time, scope, severity, body";
-    for(const auto& attr : attributes | std::views::split(',')) {
-        query += ", attributes->'";
-        query += txn.esc(std::string_view{attr});
-        query += "'";
+    if(attributes == "*") {
+        query += ", attributes";
+    } else {
+        for(const auto& attr : attributes | std::views::split(',')) {
+            query += ", attributes->'";
+            query += txn.esc(std::string_view{attr});
+            query += "'";
+        }
     }
     query += " FROM logs";
     query += " ORDER BY timestamp DESC";
@@ -65,13 +69,17 @@ std::vector<common::log_entry> get_logs(pqxx::transaction_base& txn, const std::
         );
         l.body = row["body"].as<std::optional<glz::json_t>>().value_or(glz::json_t::null_t{});
         unsigned int i=row.column_number("body")+1;
-        for(const auto& attr : attributes | std::views::split(',')) {
-            auto sv = std::string_view{attr};
-            auto json = row[i].as<std::optional<glz::json_t>>();
-            if(json) {
-                l.attributes[sv] = std::move(*json);
+        if(attributes == "*") {
+            l.attributes = row["attributes"].as<glz::json_t>();
+        } else {
+            for(const auto& attr : attributes | std::views::split(',')) {
+                auto sv = std::string_view{attr};
+                auto json = row[i].as<std::optional<glz::json_t>>();
+                if(json) {
+                    l.attributes[sv] = std::move(*json);
+                }
+                i++;
             }
-            i++;
         }
     }
     return logs;
@@ -139,10 +147,10 @@ void Server::setup_api_routes() {
     router.get("/api/v1/logs/attributes", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         db.queue_work([this, response = std::move(response)](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
-            auto result = txn.exec("SELECT jsonb_object_keys(attributes) as key, COUNT(*) as count FROM logs GROUP BY key;");
+            auto result = txn.exec("SELECT attribute, count FROM log_attributes;");
             common::logs_attributes_response res;
             for(const auto& row : result) {
-                res.attributes[row["key"].as<std::string>()] = row["count"].as<int>();
+                res.attributes[row["attribute"].as<std::string>()] = row["count"].as<int>();
             }
             res.total_logs = txn.exec("SELECT COUNT(*) FROM logs;").one_field().as<unsigned int>();
 

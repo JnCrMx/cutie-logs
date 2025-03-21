@@ -97,15 +97,8 @@ int main() {
         stats.total_scopes = scopes->scopes.size();
         web::set_html("stats", Webxx::render(page_stats(stats)));
 
-        std::string attributes_selector{};
-        for(const auto& [attr, _] : attributes->attributes) {
-            attributes_selector += std::format("{},", attr);
-        }
-        if(!attributes_selector.empty()) {
-            attributes_selector.pop_back();
-        }
         auto example =
-            glz::read_beve<common::logs_response>(co_await web::coro::fetch("/api/v1/logs?limit=1&attributes="+attributes_selector))
+            glz::read_beve<common::logs_response>(co_await web::coro::fetch("/api/v1/logs?limit=1&attributes=*"))
             .value_or(common::logs_response{});
         if(!example.logs.empty()) {
             example_entry = example.logs.front();

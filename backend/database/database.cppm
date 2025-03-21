@@ -91,6 +91,8 @@ export class Database {
         }
 
         void run_migrations();
+        void ensure_consistency();
+
         void start_workers() {
             for(int i = 0; i < connections.size(); i++) {
                 auto& thread = threads.emplace_back([this, i](std::stop_token st) {
@@ -109,13 +111,32 @@ export class Database {
             const std::string& scope, common::log_severity severity, const glz::json_t& attributes, const glz::json_t& body)
         {
             std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double, std::chrono::seconds::period>> ts_seconds = timestamp;
-            pqxx::result res = txn.exec(pqxx::prepped{"insert_log"}, {ts_seconds.time_since_epoch().count(), scope, severity, *attributes.dump(), *body.dump()});
+            txn.exec(pqxx::prepped{"insert_log"}, {ts_seconds.time_since_epoch().count(), scope, severity, *attributes.dump(), *body.dump()});
+            if(attributes.is_object()) {
+                for(const auto& [key, value] : attributes.get_object()) {
+                    txn.exec(pqxx::prepped{"update_attribute"}, {key, 1,
+                        value.is_null(), value.is_number(), value.is_string(),
+                        value.is_boolean(), value.is_array(), value.is_object()
+                    });
+                }
+            }
         }
     private:
         void prepare_statements(pqxx::connection& conn) {
             conn.prepare("insert_log",
                 "INSERT INTO logs (resource, timestamp, scope, severity, attributes, body) "
                 "VALUES (1, to_timestamp($1::double precision), $2, $3, $4::jsonb, $5::jsonb)");
+            conn.prepare("update_attribute",
+                "INSERT INTO log_attributes (attribute, count, count_null, count_number, count_string, count_boolean, count_array, count_object) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, $8) "
+                "ON CONFLICT (attribute) DO UPDATE SET "
+                "count = log_attributes.count + EXCLUDED.count, "
+                "count_null = log_attributes.count_null + EXCLUDED.count_null, "
+                "count_number = log_attributes.count_number + EXCLUDED.count_number, "
+                "count_string = log_attributes.count_string + EXCLUDED.count_string, "
+                "count_boolean = log_attributes.count_boolean + EXCLUDED.count_boolean, "
+                "count_array = log_attributes.count_array + EXCLUDED.count_array, "
+                "count_object = log_attributes.count_object + EXCLUDED.count_object");
         }
 
         void worker(unsigned int id, pqxx::connection& conn, std::stop_token st) {

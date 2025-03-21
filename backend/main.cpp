@@ -64,6 +64,7 @@ int main(int argc, char** argv) {
 
     database::Database db(program.get<std::string>("--database"));
     db.run_migrations();
+    db.ensure_consistency();
     db.start_workers();
 
     web::Server web_server(db, Pistache::Address(program.get<std::string>("--web-address")));
