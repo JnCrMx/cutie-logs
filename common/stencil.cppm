@@ -1,23 +1,45 @@
 module;
+#include <chrono>
 #include <expected>
 #include <format>
 #include <string_view>
 #include <string>
 #include <type_traits>
 #include <utility>
-#include <variant>
 #include <vector>
 
 export module common:stencil;
 
 import glaze;
 import :structs;
+import :stencil_functions;
 
 namespace common {
+    template<class Lambda, int=(Lambda{}(), 0)>
+    constexpr bool is_constexpr(Lambda) { return true; }
+    constexpr bool is_constexpr(...) { return false; }
+
+    template<typename T, glz::string_literal fmt = "{}">
+    struct test_format {
+        static constexpr bool value = is_constexpr([](){
+            std::format_string<T> test{fmt};
+            return true;
+        });
+    };
+
+    // required with libc++-wasi
+    template<typename Clock, typename Duration>
+    struct test_format<std::chrono::time_point<Clock, Duration>, "{}"> {
+        static constexpr bool value = false;
+    };
+
     template<typename T>
-    std::expected<std::string, std::string> format_if_possible(const T& obj, std::string_view opts = "") {
-        if constexpr (std::formattable<T, char>) {
-            return std::vformat("{:"+std::string{opts}+"}", std::make_format_args(obj));
+    concept trivially_formattable = std::formattable<T, char> && test_format<T>::value;
+
+    template<typename T>
+    std::expected<std::string, std::string> format_if_possible(const T& obj) {
+        if constexpr (trivially_formattable<T>) {
+            return std::format("{}", obj);
         } else if constexpr (std::is_same_v<T, glz::json_t>) {
             if(obj.is_string()) {
                 return obj.get_string();
@@ -72,8 +94,81 @@ namespace common {
         }
     }
 
-    export template<can_get_field T>
-    std::expected<std::string, std::string> get_field(const T& obj, std::string_view key) {
+    std::string_view trim(std::string_view str) {
+        while(!str.empty() && str.front() == ' ') {
+            str.remove_prefix(1);
+        }
+        while(!str.empty() && str.back() == ' ') {
+            str.remove_suffix(1);
+        }
+        return str;
+    }
+
+    export template<typename T>
+    std::expected<std::string, std::string> eval_expression(T&& value, std::string_view expression, glz::reflectable auto functions) {
+        if(expression.empty()) {
+            return format_if_possible(value);
+        }
+        std::string_view first_expression = trim(expression);
+        std::string_view second_expression = "";
+        if(auto pos = expression.find('|'); pos != std::string::npos) {
+            first_expression = expression.substr(0, pos);
+            second_expression = expression.substr(pos + 1);
+        }
+        first_expression = trim(first_expression);
+
+        std::optional<std::string_view> arg{};
+        if(auto pos = first_expression.find('('); pos != std::string::npos) {
+            if(!first_expression.ends_with(')')) {
+                return std::unexpected{"missing ')'"};
+            }
+            arg = first_expression.substr(pos + 1, first_expression.size() - pos - 2);
+            first_expression = first_expression.substr(0, pos);
+        }
+
+        auto keys = get_keys(functions);
+        unsigned int index = 0;
+        std::expected<std::string, std::string> result = std::unexpected(std::format("cannot find function \"{}\"", first_expression));
+        for_each_field(functions, [&](auto&& field) {
+            using decayed = std::decay_t<decltype(field)>;
+            if(keys[index] == first_expression) {
+                if constexpr (std::is_invocable_v<decltype(field), T&&>) {
+                    if(arg) {
+                        result = std::unexpected(std::format("function \"{}\" does not take arguments", first_expression));
+                        return;
+                    }
+                    auto x = field(std::forward<T>(value));
+                    // TODO: implement error handling (field could return std::expected and then we could optionally unmarshal it, unless the next field takes a std::expected as well)
+                    if(second_expression.empty()) {
+                        result = format_if_possible(x);
+                    } else {
+                        result = eval_expression(x, second_expression, functions);
+                    }
+                } else if constexpr (std::is_invocable_v<decltype(field), T&&, std::string_view>) {
+                    if(!arg) {
+                        result = std::unexpected(std::format("function \"{}\" requires an argument", first_expression));
+                        return;
+                    }
+                    auto x = field(std::forward<T>(value), *arg);
+                    if(second_expression.empty()) {
+                        result = format_if_possible(x);
+                    } else {
+                        result = eval_expression(x, second_expression, functions);
+                    }
+                } else {
+                    result = std::unexpected(std::format("cannot call function \"{}\" with argument of type \"{}\"",
+                        first_expression, glz::name_v<std::decay_t<T>>));
+                }
+            }
+            index++;
+        });
+        return result;
+    }
+
+    export template<can_get_field T, glz::reflectable Functions = stencil_functions>
+    std::expected<std::string, std::string> get_field(const T& obj, std::string_view key,
+        const Functions& functions = stencil_functions{}, std::string_view expression = "")
+    {
         std::string_view first_key = key;
         std::string_view second_key = "";
         if(auto pos = key.find('.'); pos != std::string::npos) {
@@ -93,12 +188,12 @@ namespace common {
             if(keys[index] == first_key) {
                 if constexpr (can_get_field<decayed>) {
                     if(second_key.empty()) {
-                        result = format_if_possible(field);
+                        result = eval_expression(field, expression, functions);
                     } else {
-                        result = get_field(field, second_key);
+                        result = get_field(field, second_key, functions, expression);
                     }
                 } else {
-                    result = format_if_possible(field);
+                    result = eval_expression(field, expression, functions);
                 }
             }
             index++;
@@ -111,8 +206,8 @@ namespace common {
     template<typename T>
     concept can_stencil = can_get_field<T>;
 
-    export template<can_stencil T>
-    std::expected<std::string, std::string> stencil(std::string_view stencil, const T& obj) {
+    export template<can_stencil T, glz::reflectable Functions = stencil_functions>
+    std::expected<std::string, std::string> stencil(std::string_view stencil, const T& obj, const Functions& functions = stencil_functions{}) {
         std::string result{};
         std::string_view::size_type pos = 0;
         while(pos < stencil.size()) {
@@ -126,7 +221,12 @@ namespace common {
                     return std::unexpected{"missing '}'"};
                 }
                 std::string_view key = stencil.substr(pos, end - pos);
-                auto field = get_field(obj, key);
+                std::string_view expression{};
+                if(auto pos = key.find('|'); pos != std::string_view::npos) {
+                    expression = trim(key.substr(pos + 1));
+                    key = trim(key.substr(0, pos));
+                }
+                auto field = get_field(obj, key, functions, expression);
                 if(!field) {
                     return std::unexpected(field.error());
                 }

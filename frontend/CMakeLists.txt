@@ -29,7 +29,7 @@ FetchContent_Declare(glaze
   GIT_TAG v5.0.0
   GIT_SHALLOW TRUE)
 
-add_compile_options(-fno-rtti -fno-exceptions)
+add_compile_options(-fno-rtti -fno-exceptions -ftemplate-backtrace-limit=0)
 FetchContent_MakeAvailable(webxx glaze)
 
 add_library(stdModule STATIC)
