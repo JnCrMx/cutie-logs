@@ -52,8 +52,17 @@ auto page(std::string_view current_theme) {
     ctx.clear();
     return fragment {
         dv{{_class{"flex flex-row items-baseline pt-4 pb-4 md:sticky top-0 z-10 bg-base-200"}},
-            dv{{_class{"text-2xl font-bold ml-4"}}, common::project_name},
-            dv{{_class{"text-1xl font-bold ml-2"}}, "version ", common::project_version},
+            dv{{_class{"flex flex-col m-0 px-4 w-full md:w-auto gap-2"}},
+                dv{{_class{"flex flex-row items-baseline m-0 p-0"}},
+                    dv{{_class{"text-2xl font-bold"}}, common::project_name},
+                    dv{{_class{"text-1xl font-bold ml-2"}}, "version ", common::project_version},
+                },
+                ul{{_class{"menu bg-base-300 md:menu-horizontal rounded-box w-full md:w-auto"}},
+                    li{a{assets::icons::text_view, "Text View"}},
+                    li{a{assets::icons::table_view, "Table View"}},
+                    li{a{assets::icons::analysis, "Analysis"}},
+                }
+            },
             dv{{_id{"stats"}, _class{"ml-2 mr-2 grow flex flex-row justify-center items-center"}}, page_stats({})},
             dv{{_class{"flex items-center mr-4"}},
                 components::theme_button{ctx, current_theme}

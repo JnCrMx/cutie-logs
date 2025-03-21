@@ -4,6 +4,21 @@ import std;
 
 namespace assets {
     namespace icons {
+        constexpr char text_view_data[] = {
+            #embed "assets/icons/text-view.svg"
+        };
+        const std::string_view text_view{text_view_data, sizeof(text_view_data)};
+
+        constexpr char table_view_data[] = {
+            #embed "assets/icons/table-view.svg"
+        };
+        const std::string_view table_view{table_view_data, sizeof(table_view_data)};
+
+        constexpr char analysis_data[] = {
+            #embed "assets/icons/analysis.svg"
+        };
+        const std::string_view analysis{analysis_data, sizeof(analysis_data)};
+
         constexpr char themes_data[] = {
             #embed "assets/icons/themes.svg"
         };
