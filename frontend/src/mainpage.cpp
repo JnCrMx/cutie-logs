@@ -58,9 +58,9 @@ auto page(std::string_view current_theme) {
                     dv{{_class{"text-1xl font-bold ml-2"}}, "version ", common::project_version},
                 },
                 ul{{_class{"menu bg-base-300 md:menu-horizontal rounded-box w-full md:w-auto"}},
-                    li{a{assets::icons::text_view, "Text View"}},
-                    li{a{assets::icons::table_view, "Table View"}},
-                    li{a{assets::icons::analysis, "Analysis"}},
+                    li{a{{_class{"menu-active"}}, assets::icons::text_view, "Text View"}},
+                    li{a{{_class{}}, assets::icons::table_view, "Table View"}},
+                    li{a{{_class{}}, assets::icons::analysis, "Analysis"}},
                 }
             },
             dv{{_id{"stats"}, _class{"ml-2 mr-2 grow flex flex-row justify-center items-center"}}, page_stats({})},
