@@ -27,18 +27,15 @@ static pages::logs logs_page(example_entry, attributes, scopes);
 Webxx::dv page_stats(const stats_data& data);
 
 auto refresh() -> web::coro::coroutine<void> {
+    web::add_class("refresh-button", "btn-disabled");
+    web::add_class("refresh-button", "*:animate-spin");
+
     attributes =
         glz::read_beve<common::logs_attributes_response>(co_await web::coro::fetch("/api/v1/logs/attributes"))
         .value_or(common::logs_attributes_response{});
     scopes =
         glz::read_beve<common::logs_scopes_response>(co_await web::coro::fetch("/api/v1/logs/scopes"))
         .value_or(common::logs_scopes_response{});
-
-    stats_data stats;
-    stats.total_attributes = attributes->attributes.size();
-    stats.total_logs = attributes->total_logs;
-    stats.total_scopes = scopes->scopes.size();
-    web::set_html("stats", Webxx::render(page_stats(stats)));
 
     auto example =
         glz::read_beve<common::logs_response>(co_await web::coro::fetch("/api/v1/logs?limit=1&attributes=*"))
@@ -48,6 +45,16 @@ auto refresh() -> web::coro::coroutine<void> {
     } else {
         example_entry = common::log_entry{};
     }
+
+    stats_data stats;
+    stats.total_attributes = attributes->attributes.size();
+    stats.total_logs = attributes->total_logs;
+    stats.total_scopes = scopes->scopes.size();
+    web::set_html("stats", Webxx::render(page_stats(stats)));
+
+    // in theory we don't need this, because we rerender this area of the page ("stats") anyway
+    web::remove_class("refresh-button", "btn-disabled");
+    web::remove_class("refresh-button", "*:animate-spin");
     co_return;
 }
 
@@ -73,7 +80,7 @@ Webxx::dv page_stats(const stats_data& data) {
             dv{{_class{"stat-title"}}, "Total Scopes"},
             dv{{_class{"stat-value"}}, std::to_string(data.total_scopes)}
         },
-        ctx.on_click(button{{_class{"btn btn-square size-20 p-2 m-2"}}, assets::icons::refresh},
+        ctx.on_click(button{{_id{"refresh-button"}, _class{"btn btn-square size-20 p-2 m-2"}}, assets::icons::refresh},
             [](std::string_view) {
                 web::coro::submit(refresh());
             }
