@@ -115,8 +115,8 @@ export class Database {
             if(attributes.is_object()) {
                 for(const auto& [key, value] : attributes.get_object()) {
                     txn.exec(pqxx::prepped{"update_attribute"}, {key, 1,
-                        value.is_null(), value.is_number(), value.is_string(),
-                        value.is_boolean(), value.is_array(), value.is_object()
+                        static_cast<int>(value.is_null()), static_cast<int>(value.is_number()), static_cast<int>(value.is_string()),
+                        static_cast<int>(value.is_boolean()), static_cast<int>(value.is_array()), static_cast<int>(value.is_object())
                     });
                 }
             }
