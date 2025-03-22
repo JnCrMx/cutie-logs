@@ -39,6 +39,13 @@ glz::json_t to_json(const ::opentelemetry::proto::common::v1::AnyValue& v) {
     }
     return glz::json_t::null_t{};
 }
+glz::json_t::object_t to_json(const ::google::protobuf::RepeatedPtrField<::opentelemetry::proto::common::v1::KeyValue>& kv) {
+    auto obj = glz::json_t::object_t{};
+    for(const auto& elem : kv) {
+        obj[elem.key()] = to_json(elem.value());
+    }
+    return obj;
+}
 
 namespace backend::opentelemetry {
     export class Server {
@@ -84,15 +91,13 @@ namespace backend::opentelemetry {
                 db.queue_work([this, req = std::move(req)](pqxx::connection& conn) {
                     pqxx::work txn(conn);
                     for(auto& resourceLog : req.resource_logs()) {
+                        unsigned int resource = db.ensure_resource(txn, to_json(resourceLog.resource().attributes()));
                         for(auto& scopeLog : resourceLog.scope_logs()) {
                             for(auto& log : scopeLog.log_records()) {
-                                glz::json_t::object_t attributes;
-                                for(auto& attr : log.attributes()) {
-                                    attributes[attr.key()] = to_json(attr.value());
-                                }
+                                glz::json_t::object_t attributes = to_json(log.attributes());
                                 common::log_severity severity = static_cast<common::log_severity>(log.severity_number());
                                 std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> ts{std::chrono::nanoseconds(log.time_unix_nano())};
-                                db.insert_log(txn, ts, scopeLog.scope().name(), severity, attributes, to_json(log.body()));
+                                db.insert_log(txn, resource, ts, scopeLog.scope().name(), severity, attributes, to_json(log.body()));
                             }
                         }
                     }

@@ -107,11 +107,15 @@ export class Database {
             queue.push_back(std::move(work));
             cv.notify_one();
         }
-        void insert_log(pqxx::transaction_base& txn, std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>& timestamp,
+        unsigned int ensure_resource(pqxx::transaction_base& txn, const glz::json_t& attributes) {
+            pqxx::result res = txn.exec(pqxx::prepped{"ensure_resource"}, pqxx::params{*attributes.dump()});
+            return res[0][0].as<unsigned int>();
+        };
+        void insert_log(pqxx::transaction_base& txn, unsigned int resource, std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>& timestamp,
             const std::string& scope, common::log_severity severity, const glz::json_t& attributes, const glz::json_t& body)
         {
             std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double, std::chrono::seconds::period>> ts_seconds = timestamp;
-            txn.exec(pqxx::prepped{"insert_log"}, {ts_seconds.time_since_epoch().count(), scope, severity, *attributes.dump(), *body.dump()});
+            txn.exec(pqxx::prepped{"insert_log"}, {resource, ts_seconds.time_since_epoch().count(), scope, severity, *attributes.dump(), *body.dump()});
             if(attributes.is_object()) {
                 for(const auto& [key, value] : attributes.get_object()) {
                     txn.exec(pqxx::prepped{"update_attribute"}, {key, 1,
@@ -125,7 +129,7 @@ export class Database {
         void prepare_statements(pqxx::connection& conn) {
             conn.prepare("insert_log",
                 "INSERT INTO logs (resource, timestamp, scope, severity, attributes, body) "
-                "VALUES (1, to_timestamp($1::double precision), $2, $3, $4::jsonb, $5::jsonb)");
+                "VALUES ($1, to_timestamp($2::double precision), $3, $4, $5::jsonb, $6::jsonb)");
             conn.prepare("update_attribute",
                 "INSERT INTO log_attributes (attribute, count, count_null, count_number, count_string, count_boolean, count_array, count_object) "
                 "VALUES ($1, $2, $3, $4, $5, $6, $7, $8) "
@@ -137,6 +141,12 @@ export class Database {
                 "count_boolean = log_attributes.count_boolean + EXCLUDED.count_boolean, "
                 "count_array = log_attributes.count_array + EXCLUDED.count_array, "
                 "count_object = log_attributes.count_object + EXCLUDED.count_object");
+            conn.prepare("ensure_resource",
+                "INSERT INTO log_resources (attributes) "
+                "VALUES ($1::jsonb) "
+                "ON CONFLICT (attributes) DO UPDATE SET "
+                "attributes = EXCLUDED.attributes "
+                "RETURNING id");
         }
 
         void worker(unsigned int id, pqxx::connection& conn, std::stop_token st) {

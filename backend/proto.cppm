@@ -17,5 +17,13 @@ export namespace opentelemetry::proto {
     }
     namespace common::v1 {
         using opentelemetry::proto::common::v1::AnyValue;
+        using opentelemetry::proto::common::v1::KeyValue;
+        using opentelemetry::proto::common::v1::KeyValueList;
+    }
+}
+
+export namespace google {
+    namespace protobuf {
+        using google::protobuf::RepeatedPtrField;
     }
 }
