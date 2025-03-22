@@ -84,7 +84,7 @@ export class logs : public page {
             co_return;
         };
 
-        web::coro::coroutine<void> download_logs() {
+        web::coro::coroutine<void> download_logs(unsigned int limit = 1000) {
             std::string attributes_selector{};
             for(const auto& [attr, selected] : selected_attributes) {
                 if(selected) {
@@ -95,7 +95,7 @@ export class logs : public page {
                 attributes_selector.pop_back();
             }
 
-            auto url = "/api/v1/logs/stencil?limit=1000&attributes="+attributes_selector+"&stencil="+stencil_format;
+            auto url = std::format("/api/v1/logs/stencil?limit={}&attributes={}&stencil={}", limit, attributes_selector, stencil_format);
             web::eval("window.open('{}', '_blank');", url);
 
             co_return;
@@ -152,18 +152,42 @@ export class logs : public page {
                             ctx.on_click(button{{_class{"btn btn-primary"}},
                                 span{{_id{"run_button_loading"}, _class{"loading loading-spinner hidden"}}},
                                 span{{_id{"run_button_icon"}}, assets::icons::run},
-                                "Run"
+                                "Query"
                             }, [this](std::string_view) {
                                 web::add_class("run_button_icon", "hidden");
                                 web::remove_class("run_button_loading", "hidden");
                                 web::coro::submit(run_query());
                             }),
-                            ctx.on_click(button{{_class{"btn btn-primary"}},
-                                span{{_id{"download_button_icon"}}, assets::icons::download},
-                                "Download"
-                            }, [this](std::string_view) {
-                                web::coro::submit(download_logs());
-                            })
+                            dv{{_class{"dropdown dropdown-hover dropdown-top md:dropdown-bottom dropdown-end"}},
+                                ctx.on_click(dv{{_class{"btn btn-primary"}, _role{"button"}, _tabindex{"0"}},
+                                    span{{_id{"download_button_icon"}}, assets::icons::download},
+                                    "Download"
+                                }, [this](std::string_view) {
+                                    web::coro::submit(download_logs());
+                                }),
+                                ul{{_class{"dropdown-content menu bg-base-300 rounded-box z-1 w-full p-1 shadow-sm"}},
+                                    each(std::array{
+                                        std::make_pair<std::string_view, unsigned int>("100 entries", 100),
+                                        std::make_pair<std::string_view, unsigned int>("1k entries", 1000),
+                                        std::make_pair<std::string_view, unsigned int>("10k entries", 10000),
+                                        std::make_pair<std::string_view, unsigned int>("100k entries", 100000),
+                                        std::make_pair<std::string_view, unsigned int>("1M entries", 1000000),
+                                    }, [&](const auto& e) {
+                                        constexpr unsigned int warning_limit = 2500;
+                                        if(e.second > warning_limit) {
+                                            return li{ctx.on_click(a{{_class{"btn btn-ghost btn-primary btn-sm justify-start text-warning"}}, assets::icons::warning, e.first},
+                                                [this, limit = e.second](std::string_view){
+                                                    web::coro::submit(download_logs(limit));
+                                                })};
+                                        } else {
+                                            return li{ctx.on_click(a{{_class{"btn btn-ghost btn-primary btn-sm justify-start"}}, span{{_class{"size-5"}}}, e.first},
+                                                [this, limit = e.second](std::string_view){
+                                                    web::coro::submit(download_logs(limit));
+                                                })};
+                                        }
+                                    })
+                                }
+                            }
                         }
                     },
                     dv{{_id{"logs"}, _class{"mt-4 overflow-x-auto"}}},

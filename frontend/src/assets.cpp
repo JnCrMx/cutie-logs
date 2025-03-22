@@ -33,5 +33,10 @@ namespace assets {
             #embed "assets/icons/download.svg"
         };
         const std::string_view download{download_data, sizeof(download_data)};
+
+        constexpr char warning_data[] = {
+            #embed "assets/icons/warning.svg"
+        };
+        const std::string_view warning{warning_data, sizeof(warning_data)};
     }
 }
