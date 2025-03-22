@@ -28,16 +28,22 @@ export struct theme_button : component<theme_button> {
                 ul{{_class{"dropdown-content bg-base-300 rounded-box z-[1] w-52 p-2 shadow-2xl h-80 overflow-y-auto"}, _tabindex{"0"}},
                     each(themes, [&ctx, current](const auto& theme) {
                         auto cb = [theme](std::string_view) {
+                            auto current = web::eval("localStorage.getItem('theme')");
+                            web::remove_class(std::format("theme-button-{}", current), "btn-active");
+                            web::add_class(std::format("theme-button-{}", theme), "btn-active");
+
                             web::eval("localStorage.setItem('theme', '{}'); ''", theme);
                             web::set_attribute("main", "data-theme", theme);
                         };
                         if(current == theme) {
                             return li{ctx.on_click(input{{_type{"radio"}, _name{"theme-dropdown"},
-                                _class{"theme-controller btn btn-block btn-ghost btn-sm justify-start"},
+                                _id{std::format("theme-button-{}", theme)},
+                                _class{"theme-controller btn btn-block btn-ghost btn-primary btn-sm justify-start btn-active"},
                                 _ariaLabel{theme}, _value{theme}, _checked{}}}, cb)};
                         } else {
                             return li{ctx.on_click(input{{_type{"radio"}, _name{"theme-dropdown"},
-                                _class{"theme-controller btn btn-block btn-ghost btn-sm justify-start"},
+                                _id{std::format("theme-button-{}", theme)},
+                                _class{"theme-controller btn btn-block btn-ghost btn-primary btn-sm justify-start"},
                                 _ariaLabel{theme}, _value{theme}}}, cb)};
                         }
                     })
