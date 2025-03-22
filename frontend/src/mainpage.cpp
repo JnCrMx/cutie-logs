@@ -11,21 +11,52 @@ import frontend.pages;
 
 namespace frontend {
 
-static r<common::log_entry> example_entry;
-static r<common::logs_attributes_response> attributes;
-static r<common::logs_scopes_response> scopes;
-
-static pages::logs logs_page(example_entry, attributes, scopes);
-
 struct stats_data {
     unsigned int total_logs{};
     unsigned int total_attributes{};
     unsigned int total_resources{};
     unsigned int total_scopes{};
 };
-auto page_stats(const stats_data& data) {
+
+static r<common::log_entry> example_entry;
+static r<common::logs_attributes_response> attributes;
+static r<common::logs_scopes_response> scopes;
+
+static pages::logs logs_page(example_entry, attributes, scopes);
+
+Webxx::dv page_stats(const stats_data& data);
+
+auto refresh() -> web::coro::coroutine<void> {
+    attributes =
+        glz::read_beve<common::logs_attributes_response>(co_await web::coro::fetch("/api/v1/logs/attributes"))
+        .value_or(common::logs_attributes_response{});
+    scopes =
+        glz::read_beve<common::logs_scopes_response>(co_await web::coro::fetch("/api/v1/logs/scopes"))
+        .value_or(common::logs_scopes_response{});
+
+    stats_data stats;
+    stats.total_attributes = attributes->attributes.size();
+    stats.total_logs = attributes->total_logs;
+    stats.total_scopes = scopes->scopes.size();
+    web::set_html("stats", Webxx::render(page_stats(stats)));
+
+    auto example =
+        glz::read_beve<common::logs_response>(co_await web::coro::fetch("/api/v1/logs?limit=1&attributes=*"))
+        .value_or(common::logs_response{});
+    if(!example.logs.empty()) {
+        example_entry = example.logs.front();
+    } else {
+        example_entry = common::log_entry{};
+    }
+    co_return;
+}
+
+Webxx::dv page_stats(const stats_data& data) {
+    static event_context ctx;
+    ctx.clear();
+
     using namespace Webxx;
-    return dv{{_class{"stats stats-vertical md:stats-horizontal shadow"}},
+    return dv{{_class{"stats stats-vertical md:stats-horizontal shadow items-center"}},
         dv{{_class{"stat"}},
             dv{{_class{"stat-title"}}, "Total Log Entries"},
             dv{{_class{"stat-value"}}, std::to_string(data.total_logs)}
@@ -41,7 +72,12 @@ auto page_stats(const stats_data& data) {
         dv{{_class{"stat"}},
             dv{{_class{"stat-title"}}, "Total Scopes"},
             dv{{_class{"stat-value"}}, std::to_string(data.total_scopes)}
-        }
+        },
+        ctx.on_click(button{{_class{"btn btn-square size-20 p-2 m-2"}}, assets::icons::refresh},
+            [](std::string_view) {
+                web::coro::submit(refresh());
+            }
+        )
     };
 }
 
@@ -83,31 +119,7 @@ int main() {
     web::set_html("main", Webxx::render(page(theme)));
     web::set_html("page", Webxx::render(logs_page.render()));
 
-    web::coro::submit([]()->web::coro::coroutine<void> {
-        attributes =
-            glz::read_beve<common::logs_attributes_response>(co_await web::coro::fetch("/api/v1/logs/attributes"))
-            .value_or(common::logs_attributes_response{});
-        scopes =
-            glz::read_beve<common::logs_scopes_response>(co_await web::coro::fetch("/api/v1/logs/scopes"))
-            .value_or(common::logs_scopes_response{});
-
-        stats_data stats;
-        stats.total_attributes = attributes->attributes.size();
-        stats.total_logs = attributes->total_logs;
-        stats.total_scopes = scopes->scopes.size();
-        web::set_html("stats", Webxx::render(page_stats(stats)));
-
-        auto example =
-            glz::read_beve<common::logs_response>(co_await web::coro::fetch("/api/v1/logs?limit=1&attributes=*"))
-            .value_or(common::logs_response{});
-        if(!example.logs.empty()) {
-            example_entry = example.logs.front();
-        } else {
-            example_entry = common::log_entry{};
-        }
-
-        co_return;
-    }());
+    web::coro::submit(refresh());
 
     return 0;
 }
