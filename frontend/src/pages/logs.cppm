@@ -160,7 +160,7 @@ export class logs : public page {
                 transformed_resources[std::to_string(id)] = {resource_name(id, std::get<0>(e)), std::get<1>(e)};
             }
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
-                [](const auto& res) { return std::pair{res.first, true}; }); // all resources are selected by default
+                [](const auto& res) { return std::pair{res.first, false}; }); // all resources are deselected by default
             web::set_html("resources", Webxx::render(components::selection_detail<"resources">("Filter Resources", transformed_resources, selected_resources)));
         }
 

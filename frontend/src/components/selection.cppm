@@ -30,6 +30,11 @@ auto selection_detail(std::string_view title,
             selections[s] = v;
     }
 
+    std::set<std::tuple<std::string, std::string>> sorted_attributes;
+    for(const auto& [key, e] : attributes) {
+        sorted_attributes.insert({std::get<0>(e), key});
+    }
+
     auto toggle_id = std::format("select_{}_toggle", identifier.sv());
 
     using namespace Webxx;
@@ -67,9 +72,9 @@ auto selection_detail(std::string_view title,
             },
         },
         dv{{_class{"overflow-y-auto h-full flex flex-col gap-1"}},
-            each(attributes, [total, show_percent, &selections](const auto& attr) {
-                auto [key, e] = attr;
-                auto [name, count] = e;
+            each(sorted_attributes, [total, show_percent, &attributes, &selections](const auto& attr) {
+                auto [name, key] = attr;
+                auto count = std::get<1>(attributes.at(key));
 
                 auto id = std::format("select_{}_entry_{}", identifier.sv(), key);
                 auto checkbox_id = std::format("select_{}_entry_{}_checkbox", identifier.sv(), key);
