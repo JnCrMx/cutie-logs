@@ -78,33 +78,41 @@ namespace backend::opentelemetry {
             }
         private:
             Pistache::Rest::Route::Result handle_log(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-                logger->trace("{} | Received a POST request to /v1/logs", request.address());
-                std::string body = gzip::decompress(request.body().data(), request.body().size());
+                try {
+                    logger->trace("{} | Received a POST request to /v1/logs", request.address());
+                    std::string body = gzip::decompress(request.body().data(), request.body().size());
 
-                ::opentelemetry::proto::collector::logs::v1::ExportLogsServiceRequest req;
-                if(!req.ParseFromString(body)) {
-                    logger->warn("{} | Failed to parse request body", request.address());
-                    response.send(Pistache::Http::Code::Bad_Request, "Invalid request body");
-                    return Pistache::Rest::Route::Result::Failure;
-                }
-
-                db.queue_work([this, req = std::move(req)](pqxx::connection& conn) {
-                    pqxx::work txn(conn);
-                    for(auto& resourceLog : req.resource_logs()) {
-                        unsigned int resource = db.ensure_resource(txn, to_json(resourceLog.resource().attributes()));
-                        for(auto& scopeLog : resourceLog.scope_logs()) {
-                            for(auto& log : scopeLog.log_records()) {
-                                glz::json_t::object_t attributes = to_json(log.attributes());
-                                common::log_severity severity = static_cast<common::log_severity>(log.severity_number());
-                                std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> ts{std::chrono::nanoseconds(log.time_unix_nano())};
-                                db.insert_log(txn, resource, ts, scopeLog.scope().name(), severity, attributes, to_json(log.body()));
-                            }
-                        }
+                    ::opentelemetry::proto::collector::logs::v1::ExportLogsServiceRequest req;
+                    if(!req.ParseFromString(body)) {
+                        logger->warn("{} | Failed to parse request body", request.address());
+                        response.send(Pistache::Http::Code::Bad_Request, "Invalid request body");
+                        return Pistache::Rest::Route::Result::Failure;
                     }
-                    txn.commit();
-                });
 
-                response.send(Pistache::Http::Code::Ok, "");
+                    db.queue_work([this, address = request.address(), req = std::move(req), response = std::move(response)](pqxx::connection& conn) mutable {
+                        try {
+                            pqxx::work txn(conn);
+                            for(auto& resourceLog : req.resource_logs()) {
+                                unsigned int resource = db.ensure_resource(txn, to_json(resourceLog.resource().attributes()));
+                                for(auto& scopeLog : resourceLog.scope_logs()) {
+                                    for(auto& log : scopeLog.log_records()) {
+                                        glz::json_t::object_t attributes = to_json(log.attributes());
+                                        common::log_severity severity = static_cast<common::log_severity>(log.severity_number());
+                                        std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> ts{std::chrono::nanoseconds(log.time_unix_nano())};
+                                        db.insert_log(txn, resource, ts, scopeLog.scope().name(), severity, attributes, to_json(log.body()));
+                                    }
+                                }
+                            }
+                            txn.commit();
+                            response.send(Pistache::Http::Code::Ok, "");
+                        } catch(const std::exception& e) {
+                            logger->error("{} | Unhandled exception: {}", address, e.what());
+                            response.send(Pistache::Http::Code::Internal_Server_Error, "Internal server error");
+                        }
+                    });
+                } catch(const std::exception& e) {
+                    logger->error("{} | Unhandled exception: {}", request.address(), e.what());
+                }
                 return Pistache::Rest::Route::Result::Ok;
             }
 

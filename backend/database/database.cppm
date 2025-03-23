@@ -108,14 +108,14 @@ export class Database {
             cv.notify_one();
         }
         unsigned int ensure_resource(pqxx::transaction_base& txn, const glz::json_t& attributes) {
-            pqxx::result res = txn.exec(pqxx::prepped{"ensure_resource"}, pqxx::params{*attributes.dump()});
+            pqxx::result res = txn.exec(pqxx::prepped{"ensure_resource"}, pqxx::params{attributes.dump().value()});
             return res[0][0].as<unsigned int>();
         };
         void insert_log(pqxx::transaction_base& txn, unsigned int resource, std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>& timestamp,
             const std::string& scope, common::log_severity severity, const glz::json_t& attributes, const glz::json_t& body)
         {
             std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double, std::chrono::seconds::period>> ts_seconds = timestamp;
-            txn.exec(pqxx::prepped{"insert_log"}, {resource, ts_seconds.time_since_epoch().count(), scope, severity, *attributes.dump(), *body.dump()});
+            txn.exec(pqxx::prepped{"insert_log"}, {resource, ts_seconds.time_since_epoch().count(), scope, severity, attributes.dump().value(), body.dump().value()});
             if(attributes.is_object()) {
                 for(const auto& [key, value] : attributes.get_object()) {
                     txn.exec(pqxx::prepped{"update_attribute"}, {key, 1,
