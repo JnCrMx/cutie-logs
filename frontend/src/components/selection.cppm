@@ -8,6 +8,10 @@ import :utils;
 
 namespace frontend::components {
 
+void save_selections(std::string_view identifier, const std::unordered_map<std::string, bool>& saved_selections) {
+    web::eval("localStorage.setItem('select_{}_selections', '{}'); ''", identifier, glz::write_json(saved_selections).value_or("[]"));
+}
+
 export template<glz::string_literal identifier>
 auto selection_detail(std::string_view title,
     const std::unordered_map<std::string, std::tuple<std::string, unsigned int>>& attributes,
@@ -26,27 +30,41 @@ auto selection_detail(std::string_view title,
             selections[s] = v;
     }
 
+    auto toggle_id = std::format("select_{}_toggle", identifier.sv());
+
     using namespace Webxx;
     return fieldset{{_class{"fieldset p-4 rounded-box shadow h-full flex flex-col"}},
         legend{{_class{"fieldset-legend"}}, title},
-        label{{_class{"input w-full mb-2 flex flex-col"}},
-            ctx.on_input(input{{_id{search_id}, _type{"search"}, _class{"grow basis-[3rem] md:basis-[3.5rem]"}, _placeholder{"Search..."}}},
-                [search_id, attributes](std::string_view) {
-                    auto search = web::get_property(search_id, "value").value_or("");
-                    std::transform(search.begin(), search.end(), search.begin(), [](char c){return std::tolower(c);});
+        dv{{_class{"flex flex-row mb-2 p-0 gap-2 items-center"}},
+            ctx.on_change(input{{_id{toggle_id}, _type{"checkbox"}, _class{"checkbox"}}}, [toggle_id, &selections](std::string_view){
+                bool checked = web::get_property(toggle_id, "checked") == "true";
+                web::log("toggle {}", checked);
+                for(auto& [key, value] : selections) {
+                    value = checked;
+                    saved_selections[key] = checked;
+                    web::eval("document.getElementById('select_{}_entry_{}_checkbox').checked = {}; ''", identifier.sv(), key, checked);
+                }
+                save_selections(identifier.sv(), saved_selections);
+            }),
+            label{{_class{"input w-full flex flex-col"}},
+                ctx.on_input(input{{_id{search_id}, _type{"search"}, _class{"grow basis-[3rem] md:basis-[3.5rem]"}, _placeholder{"Search..."}}},
+                    [search_id, attributes](std::string_view) {
+                        auto search = web::get_property(search_id, "value").value_or("");
+                        std::transform(search.begin(), search.end(), search.begin(), [](char c){return std::tolower(c);});
 
-                    for(const auto& [attr, e] : attributes) {
-                        std::string name = std::get<0>(e);
-                        std::transform(name.begin(), name.end(), name.begin(), [](char c){return std::tolower(c);});
+                        for(const auto& [attr, e] : attributes) {
+                            std::string name = std::get<0>(e);
+                            std::transform(name.begin(), name.end(), name.begin(), [](char c){return std::tolower(c);});
 
-                        auto id = std::format("select_{}_entry_{}", identifier.sv(), attr);
-                        if(name.find(search) != std::string::npos) {
-                            web::remove_class(id, "hidden");
-                        } else {
-                            web::add_class(id, "hidden");
+                            auto id = std::format("select_{}_entry_{}", identifier.sv(), attr);
+                            if(name.find(search) != std::string::npos) {
+                                web::remove_class(id, "hidden");
+                            } else {
+                                web::add_class(id, "hidden");
+                            }
                         }
-                    }
-                })
+                    })
+            },
         },
         dv{{_class{"overflow-y-auto h-full flex flex-col gap-1"}},
             each(attributes, [total, show_percent, &selections](const auto& attr) {
@@ -61,7 +79,7 @@ auto selection_detail(std::string_view title,
                         bool checked = web::get_property(checkbox_id, "checked") == "true";
                         selections[key] = checked;
                         saved_selections[key] = checked; // maintain those two seperately, so saved_selections can contain values not present in selections
-                        web::eval("localStorage.setItem('select_{}_selections', '{}'); ''", identifier.sv(), glz::write_json(saved_selections).value_or("[]"));
+                        save_selections(identifier.sv(), saved_selections);
                     });
                 if(selections[key]) {
                     checkbox.data.attributes.push_back(_checked{});
