@@ -5,6 +5,8 @@ module;
 #include <format>
 #include <functional>
 #include <mutex>
+#include <ranges>
+#include <set>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -107,35 +109,62 @@ export class Database {
             queue.push_back(std::move(work));
             cv.notify_one();
         }
-        unsigned int ensure_resource(pqxx::transaction_base& txn, const glz::json_t& attributes) {
-            pqxx::result res = txn.exec(pqxx::prepped{"ensure_resource"}, pqxx::params{attributes.dump().value()});
-            return res[0][0].as<unsigned int>();
-        };
-        void insert_log(pqxx::transaction_base& txn, unsigned int resource, std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>& timestamp,
-            const std::string& scope, common::log_severity severity, const glz::json_t& attributes, const glz::json_t& body)
-        {
-            std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double, std::chrono::seconds::period>> ts_seconds = timestamp;
-            txn.exec(pqxx::prepped{"insert_log"}, {resource, ts_seconds.time_since_epoch().count(), scope, severity, attributes.dump().value(), body.dump().value()});
-
-            std::string select_for_update = "SELECT * FROM log_attributes WHERE attribute IN (";
-            bool first = true;
-            for(const auto& [key, value] : attributes.get_object()) {
-                if(!first) {
-                    select_for_update += ", ";
+        unsigned int ensure_resource(pqxx::connection& conn, const glz::json_t& attributes, unsigned int tries = 3) {
+            try {
+                pqxx::work txn(conn);
+                pqxx::result res = txn.exec(pqxx::prepped{"ensure_resource"}, pqxx::params{attributes.dump().value()});
+                txn.commit();
+                return res[0][0].as<unsigned int>();
+            } catch (const pqxx::deadlock_detected& e) {
+                if(tries > 0) {
+                    logger->warn("Deadlock detected in ensure_resource, retrying");
+                    return ensure_resource(conn, attributes, tries - 1);
                 }
-                select_for_update += txn.quote(key);
-                first = false;
+                logger->error("Deadlock detected in ensure_resource, giving up");
+                throw;
             }
-            select_for_update += ") FOR UPDATE";
-            txn.exec(select_for_update);
+        };
+        void insert_log(pqxx::connection& conn, unsigned int resource, std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>& timestamp,
+            const std::string& scope, common::log_severity severity, const glz::json_t& attributes, const glz::json_t& body, unsigned int tries = 3)
+        {
+            try {
+                pqxx::work txn(conn);
+                std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double, std::chrono::seconds::period>> ts_seconds = timestamp;
+                txn.exec(pqxx::prepped{"insert_log"}, {resource, ts_seconds.time_since_epoch().count(), scope, severity, attributes.dump().value(), body.dump().value()});
 
-            if(attributes.is_object()) {
+                std::string select_for_update = "SELECT * FROM log_attributes WHERE attribute IN (";
+                bool first = true;
                 for(const auto& [key, value] : attributes.get_object()) {
-                    txn.exec(pqxx::prepped{"update_attribute"}, {key, 1,
-                        static_cast<int>(value.is_null()), static_cast<int>(value.is_number()), static_cast<int>(value.is_string()),
-                        static_cast<int>(value.is_boolean()), static_cast<int>(value.is_array()), static_cast<int>(value.is_object())
-                    });
+                    if(!first) {
+                        select_for_update += ", ";
+                    }
+                    select_for_update += txn.quote(key);
+                    first = false;
                 }
+                select_for_update += ") FOR UPDATE";
+                txn.exec(select_for_update);
+
+                if(attributes.is_object()) {
+                    auto view = attributes.get_object() | std::views::keys;
+                    std::set<std::string> keys(view.begin(), view.end());
+
+                    for(const auto& key : keys) {
+                        const auto& value = attributes[key];
+                        txn.exec(pqxx::prepped{"update_attribute"}, {key, 1,
+                            static_cast<int>(value.is_null()), static_cast<int>(value.is_number()), static_cast<int>(value.is_string()),
+                            static_cast<int>(value.is_boolean()), static_cast<int>(value.is_array()), static_cast<int>(value.is_object())
+                        });
+                    }
+                }
+                txn.commit();
+            } catch (const pqxx::deadlock_detected& e) {
+                if(tries > 0) {
+                    logger->warn("Deadlock detected in insert_log, retrying");
+                    insert_log(conn, resource, timestamp, scope, severity, attributes, body, tries - 1);
+                    return;
+                }
+                logger->error("Deadlock detected in insert_log, giving up");
+                throw;
             }
         }
     private:

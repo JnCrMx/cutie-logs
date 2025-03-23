@@ -94,19 +94,17 @@ namespace backend::opentelemetry {
 
                     db.queue_work([this, address = request.address(), req = std::move(req), response = std::move(response)](pqxx::connection& conn) mutable {
                         try {
-                            pqxx::work txn(conn);
                             for(auto& resourceLog : req.resource_logs()) {
-                                unsigned int resource = db.ensure_resource(txn, to_json(resourceLog.resource().attributes()));
+                                unsigned int resource = db.ensure_resource(conn, to_json(resourceLog.resource().attributes()));
                                 for(auto& scopeLog : resourceLog.scope_logs()) {
                                     for(auto& log : scopeLog.log_records()) {
                                         glz::json_t::object_t attributes = to_json(log.attributes());
                                         common::log_severity severity = static_cast<common::log_severity>(log.severity_number());
                                         std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> ts{std::chrono::nanoseconds(log.time_unix_nano())};
-                                        db.insert_log(txn, resource, ts, scopeLog.scope().name(), severity, attributes, to_json(log.body()));
+                                        db.insert_log(conn, resource, ts, scopeLog.scope().name(), severity, attributes, to_json(log.body()));
                                     }
                                 }
                             }
-                            txn.commit();
                             response.send(Pistache::Http::Code::Ok, "");
                         } catch(const std::exception& e) {
                             logger->error("{} | Unhandled exception: {} for request {}", address, e.what(), req.DebugString());
