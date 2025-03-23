@@ -51,7 +51,7 @@ export class logs : public page {
             };
         }
 
-        web::coro::coroutine<void> run_query() {
+        std::string build_attributes_selector(const std::unordered_map<std::string, bool>& selected_attributes) {
             std::string attributes_selector{};
             for(const auto& [attr, selected] : selected_attributes) {
                 if(selected) {
@@ -61,9 +61,26 @@ export class logs : public page {
             if(!attributes_selector.empty()) {
                 attributes_selector.pop_back();
             }
+            return attributes_selector;
+        }
+        std::string build_scopes_selector(const std::unordered_map<std::string, bool>& selected_scopes) {
+            std::string scopes_selector{};
+            for(const auto& [scope, selected] : selected_scopes) {
+                if(selected) {
+                    scopes_selector += std::format("{},", scope.empty() ? "<empty>" : scope);
+                }
+            }
+            return scopes_selector+"<dummy>";
+        }
 
+        web::coro::coroutine<void> run_query() {
+            std::string attributes_selector = build_attributes_selector(selected_attributes);
+            std::string scopes_selector = build_scopes_selector(selected_scopes);
+            constexpr unsigned int limit = 100;
+
+            auto url = std::format("/api/v1/logs?limit={}&attributes={}&scopes={}", limit, attributes_selector, scopes_selector);
             auto logs =
-                glz::read_beve<common::logs_response>(co_await web::coro::fetch("/api/v1/logs?limit=100&attributes="+attributes_selector))
+                glz::read_beve<common::logs_response>(co_await web::coro::fetch(url))
                 .value_or(common::logs_response{});
 
             web::remove_class("run_button_icon", "hidden");
@@ -85,17 +102,10 @@ export class logs : public page {
         };
 
         web::coro::coroutine<void> download_logs(unsigned int limit = 1000) {
-            std::string attributes_selector{};
-            for(const auto& [attr, selected] : selected_attributes) {
-                if(selected) {
-                    attributes_selector += std::format("{},", attr);
-                }
-            }
-            if(!attributes_selector.empty()) {
-                attributes_selector.pop_back();
-            }
+            std::string attributes_selector = build_attributes_selector(selected_attributes);
+            std::string scopes_selector = build_scopes_selector(selected_scopes);
 
-            auto url = std::format("/api/v1/logs/stencil?limit={}&attributes={}&stencil={}", limit, attributes_selector, stencil_format);
+            auto url = std::format("/api/v1/logs/stencil?limit={}&attributes={}&scopes={}&stencil={}", limit, attributes_selector, scopes_selector, stencil_format);
             web::eval("window.open('{}', '_blank');", url);
 
             co_return;

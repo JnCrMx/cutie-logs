@@ -36,7 +36,32 @@ std::string url_decode(const std::string& str) {
     return ret;
 }
 
-std::string build_query(pqxx::transaction_base& txn, const std::string& attributes, const std::string& filter, const std::string& limit, const std::string& offset) {
+std::string build_scope_filter(const std::string& scopes) {
+    std::string filter = "scope IN (";
+    for(const auto& scope : scopes | std::views::split(',')) {
+        filter += "'";
+        std::string_view sv{scope};
+        if(sv != "<empty>") {
+            filter += sv;
+        }
+        filter += "',";
+    }
+    filter.pop_back();
+    filter += ")";
+    return filter;
+}
+std::string build_resource_filter(const std::string& resources) {
+    std::string filter = "resource IN (";
+    for(const auto& resource : resources | std::views::split(',')) {
+        filter += std::to_string(std::stoi(std::string{std::string_view{resource}}));
+        filter += ",";
+    }
+    filter.pop_back();
+    filter += ")";
+    return filter;
+}
+
+std::string build_query(pqxx::transaction_base& txn, const std::string& attributes, const std::string& scopes, const std::string& resources, const std::string& filter, const std::string& limit, const std::string& offset) {
     std::string query = "SELECT resource, timestamp, extract(epoch from timestamp) as unix_time, scope, severity, body";
     if(attributes == "*") {
         query += ", attributes";
@@ -48,14 +73,21 @@ std::string build_query(pqxx::transaction_base& txn, const std::string& attribut
         }
     }
     query += " FROM logs";
+    query += " WHERE TRUE";
+    if(!scopes.empty()) {
+        query += " AND " + build_scope_filter(scopes);
+    }
+    if(!resources.empty()) {
+        query += " AND " + build_resource_filter(resources);
+    }
     query += " ORDER BY timestamp DESC";
     query += " LIMIT " + std::to_string(std::stoi(limit));
     query += " OFFSET " + std::to_string(std::stoi(offset));
     return query;
 }
 
-std::vector<common::log_entry> get_logs(pqxx::transaction_base& txn, const std::string& attributes, const std::string& filter, const std::string& limit, const std::string& offset) {
-    std::string query = build_query(txn, attributes, filter, limit, offset);
+std::vector<common::log_entry> get_logs(pqxx::transaction_base& txn, const std::string& attributes, const std::string& scopes, const std::string& resources, const std::string& filter, const std::string& limit, const std::string& offset) {
+    std::string query = build_query(txn, attributes, scopes, resources, filter, limit, offset);
 
     auto result = txn.exec(query);
     std::vector<common::log_entry> logs;
@@ -95,15 +127,17 @@ void Server::setup_api_routes() {
         return Pistache::Rest::Route::Result::Ok;
     });
     router.get("/api/v1/logs", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-        auto filter = request.query().get("filter").value_or("");
-        auto attributes = request.query().get("attributes").value_or("");
-        auto limit = request.query().get("limit").value_or("100");
-        auto offset = request.query().get("offset").value_or("0");
-        db.queue_work([this, response = std::move(response), filter, attributes, limit, offset](pqxx::connection& conn) mutable {
+        auto filter = request.query().get("filter").transform(url_decode).value_or("");
+        auto attributes = request.query().get("attributes").transform(url_decode).value_or("");
+        auto scopes = request.query().get("scopes").transform(url_decode).value_or("");
+        auto resources = request.query().get("resources").transform(url_decode).value_or("");
+        auto limit = request.query().get("limit").transform(url_decode).value_or("100");
+        auto offset = request.query().get("offset").transform(url_decode).value_or("0");
+        db.queue_work([this, response = std::move(response), filter, attributes, scopes, resources, limit, offset](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
             try {
                 common::logs_response res;
-                res.logs = get_logs(txn, attributes, filter, limit, offset);
+                res.logs = get_logs(txn, attributes, scopes, resources, filter, limit, offset);
                 auto beve = *glz::write_beve(res);
                 response.send(Pistache::Http::Code::Ok, beve.data(), beve.size(), mime::application_octet);
             } catch(const pqxx::sql_error& e) {
@@ -114,16 +148,24 @@ void Server::setup_api_routes() {
         return Pistache::Rest::Route::Result::Ok;
     });
     router.get("/api/v1/logs/stencil", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-        auto filter = request.query().get("filter").value_or("");
-        auto attributes = request.query().get("attributes").value_or("");
-        auto limit = request.query().get("limit").value_or("100");
-        auto offset = request.query().get("offset").value_or("0");
+        auto filter = request.query().get("filter").transform(url_decode).value_or("");
+        auto scopes = request.query().get("scopes").transform(url_decode).value_or("");
+        auto resources = request.query().get("resources").transform(url_decode).value_or("");
+        auto limit = request.query().get("limit").transform(url_decode).value_or("100");
+        auto offset = request.query().get("offset").transform(url_decode).value_or("0");
         auto stencil = request.query().get("stencil").transform(url_decode).value_or("");
-        db.queue_work([this, response = std::move(response), filter, attributes, limit, offset, stencil](pqxx::connection& conn) mutable {
+        db.queue_work([this, response = std::move(response), scopes, resources, filter, limit, offset, stencil](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
             try {
                 auto stream = response.stream(Pistache::Http::Code::Ok);
-                std::string query = "SELECT resource, extract(epoch from timestamp) as unix_time, scope, severity, attributes, body FROM logs ORDER BY timestamp DESC";
+                std::string query = "SELECT resource, extract(epoch from timestamp) as unix_time, scope, severity, attributes, body FROM logs WHERE TRUE";
+                if(!scopes.empty()) {
+                    query += " AND " + build_scope_filter(scopes);
+                }
+                if(!resources.empty()) {
+                    query += " AND " + build_resource_filter(resources);
+                }
+                query += " ORDER BY timestamp DESC";
                 query += " LIMIT " + std::to_string(std::stoi(limit));
                 query += " OFFSET " + std::to_string(std::stoi(offset));
 
