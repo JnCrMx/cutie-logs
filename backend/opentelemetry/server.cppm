@@ -23,7 +23,10 @@ glz::json_t to_json(const ::opentelemetry::proto::common::v1::AnyValue& v) {
     } else if(v.has_double_value()) {
         return v.double_value();
     } else if(v.has_string_value()) {
-        return v.string_value();
+        std::string s = v.string_value();
+        // remove non-printable characters
+        s.erase(std::remove_if(s.begin(), s.end(), [](unsigned char c) { return !std::isprint(c); }), s.end());
+        return s;
     } else if(v.has_kvlist_value()) {
         auto obj = glz::json_t::object_t{};
         for(auto& kv : v.kvlist_value().values()) {
@@ -106,7 +109,7 @@ namespace backend::opentelemetry {
                             txn.commit();
                             response.send(Pistache::Http::Code::Ok, "");
                         } catch(const std::exception& e) {
-                            logger->error("{} | Unhandled exception: {}", address, e.what());
+                            logger->error("{} | Unhandled exception: {} for request {}", address, e.what(), req.DebugString());
                             response.send(Pistache::Http::Code::Internal_Server_Error, "Internal server error");
                         }
                     });
