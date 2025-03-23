@@ -9,8 +9,8 @@ import :utils;
 namespace frontend::components {
 
 export template<glz::string_literal identifier>
-auto selection(std::string_view title,
-    const std::unordered_map<std::string, unsigned int>& attributes,
+auto selection_detail(std::string_view title,
+    const std::unordered_map<std::string, std::tuple<std::string, unsigned int>>& attributes,
     std::unordered_map<std::string, bool>& selections, unsigned int total = 1, bool show_percent = false)
 {
     static frontend::event_context ctx;
@@ -35,8 +35,8 @@ auto selection(std::string_view title,
                     auto search = web::get_property(search_id, "value").value_or("");
                     std::transform(search.begin(), search.end(), search.begin(), [](char c){return std::tolower(c);});
 
-                    for(const auto& [attr, _] : attributes) {
-                        std::string name = attr;
+                    for(const auto& [attr, e] : attributes) {
+                        std::string name = std::get<0>(e);
                         std::transform(name.begin(), name.end(), name.begin(), [](char c){return std::tolower(c);});
 
                         auto id = std::format("select_{}_entry_{}", identifier.sv(), attr);
@@ -50,29 +50,43 @@ auto selection(std::string_view title,
         },
         dv{{_class{"overflow-y-auto h-full flex flex-col gap-1"}},
             each(attributes, [total, show_percent, &selections](const auto& attr) {
-                auto id = std::format("select_{}_entry_{}", identifier.sv(), attr.first);
-                auto checkbox_id = std::format("select_{}_entry_{}_checkbox", identifier.sv(), attr.first);
+                auto [key, e] = attr;
+                auto [name, count] = e;
 
-                auto checkbox = ctx.on_change(input{{_id{checkbox_id}, _type{"checkbox"}, _class{"checkbox"}, _ariaLabel{attr.first}, _value{attr.first}}},
-                    [checkbox_id, attr, &selections](std::string_view event){
+                auto id = std::format("select_{}_entry_{}", identifier.sv(), key);
+                auto checkbox_id = std::format("select_{}_entry_{}_checkbox", identifier.sv(), key);
+
+                auto checkbox = ctx.on_change(input{{_id{checkbox_id}, _type{"checkbox"}, _class{"checkbox"}, _ariaLabel{name}, _value{name}}},
+                    [checkbox_id, key, &selections](std::string_view event){
                         bool checked = web::get_property(checkbox_id, "checked") == "true";
-                        selections[attr.first] = checked;
-                        saved_selections[attr.first] = checked; // maintain those two seperately, so saved_selections can contain values not present in selections
+                        selections[key] = checked;
+                        saved_selections[key] = checked; // maintain those two seperately, so saved_selections can contain values not present in selections
                         web::eval("localStorage.setItem('select_{}_selections', '{}'); ''", identifier.sv(), glz::write_json(saved_selections).value_or("[]"));
                     });
-                if(selections[attr.first]) {
+                if(selections[key]) {
                     checkbox.data.attributes.push_back(_checked{});
                 }
 
                 return fragment{label{{_id{id}, _class{"fieldset-label"}},
                     std::move(checkbox),
                     show_percent ?
-                        std::format("{} ({}%)", attr.first, attr.second*100/total) :
-                        std::format("{} ({})", attr.first, attr.second)
+                        std::format("{} ({}%)", name, count*100/total) :
+                        std::format("{} ({})", name, count)
                 }};
             })
         }
     };
+}
+export template<glz::string_literal identifier>
+auto selection(std::string_view title,
+    const std::unordered_map<std::string, unsigned int>& attributes,
+    std::unordered_map<std::string, bool>& selections, unsigned int total = 1, bool show_percent = false)
+{
+    std::unordered_map<std::string, std::tuple<std::string, unsigned int>> attr_map;
+    for(const auto& [attr, count] : attributes) {
+        attr_map[attr] = {attr, count};
+    }
+    return selection_detail<identifier>(title, attr_map, selections, total, show_percent);
 }
 
 }

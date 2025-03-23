@@ -216,6 +216,25 @@ void Server::setup_api_routes() {
         });
         return Pistache::Rest::Route::Result::Ok;
     });
+    router.get("/api/v1/logs/resources", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        db.queue_work([this, response = std::move(response)](pqxx::connection& conn) mutable {
+            pqxx::nontransaction txn{conn};
+            auto result = txn.exec("select res.id AS id, extract(epoch from res.created_at) AS created_at, res.attributes AS attributes, COUNT(*) AS count from log_resources res, logs WHERE id = resource GROUP BY id;");
+            common::logs_resources_response res;
+            for(const auto& row : result) {
+                unsigned int id = row["id"].as<unsigned int>();
+                unsigned int count = row["count"].as<unsigned int>();
+                common::log_resource r;
+                r.attributes = row["attributes"].as<glz::json_t>();
+                r.created_at = row["created_at"].as<double>();
+                res.resources[id] = {r, count};
+            }
+
+            auto beve = *glz::write_beve(res);
+            response.send(Pistache::Http::Code::Ok, beve.data(), beve.size(), mime::application_octet);
+        });
+        return Pistache::Rest::Route::Result::Ok;
+    });
 }
 
 }

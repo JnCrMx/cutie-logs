@@ -21,8 +21,9 @@ struct stats_data {
 static r<common::log_entry> example_entry;
 static r<common::logs_attributes_response> attributes;
 static r<common::logs_scopes_response> scopes;
+static r<common::logs_resources_response> resources;
 
-static pages::logs logs_page(example_entry, attributes, scopes);
+static pages::logs logs_page(example_entry, attributes, scopes, resources);
 
 Webxx::dv page_stats(const stats_data& data);
 
@@ -36,6 +37,9 @@ auto refresh() -> web::coro::coroutine<void> {
     scopes =
         glz::read_beve<common::logs_scopes_response>(co_await web::coro::fetch("/api/v1/logs/scopes"))
         .value_or(common::logs_scopes_response{});
+    resources =
+        glz::read_beve<common::logs_resources_response>(co_await web::coro::fetch("/api/v1/logs/resources"))
+        .value_or(common::logs_resources_response{});
 
     auto example =
         glz::read_beve<common::logs_response>(co_await web::coro::fetch("/api/v1/logs?limit=1&attributes=*"))

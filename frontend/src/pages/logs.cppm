@@ -72,13 +72,24 @@ export class logs : public page {
             }
             return scopes_selector+"<dummy>";
         }
+        std::string build_resources_selector(const std::unordered_map<std::string, bool>& selected_resources) {
+            std::string resources_selector{};
+            for(const auto& [res, selected] : selected_resources) {
+                if(selected) {
+                    resources_selector += std::format("{},", res);
+                }
+            }
+            return resources_selector+"0";
+        }
 
         web::coro::coroutine<void> run_query() {
             std::string attributes_selector = build_attributes_selector(selected_attributes);
             std::string scopes_selector = build_scopes_selector(selected_scopes);
+            std::string resources_selector = build_resources_selector(selected_resources);
             constexpr unsigned int limit = 100;
 
-            auto url = std::format("/api/v1/logs?limit={}&attributes={}&scopes={}", limit, attributes_selector, scopes_selector);
+            auto url = std::format("/api/v1/logs?limit={}&attributes={}&scopes={}&resources={}",
+                limit, attributes_selector, scopes_selector, resources_selector);
             auto logs =
                 glz::read_beve<common::logs_response>(co_await web::coro::fetch(url))
                 .value_or(common::logs_response{});
@@ -104,8 +115,10 @@ export class logs : public page {
         web::coro::coroutine<void> download_logs(unsigned int limit = 1000) {
             std::string attributes_selector = build_attributes_selector(selected_attributes);
             std::string scopes_selector = build_scopes_selector(selected_scopes);
+            std::string resources_selector = build_resources_selector(selected_resources);
 
-            auto url = std::format("/api/v1/logs/stencil?limit={}&attributes={}&scopes={}&stencil={}", limit, attributes_selector, scopes_selector, stencil_format);
+            auto url = std::format("/api/v1/logs/stencil?limit={}&attributes={}&scopes={}&resources={}&stencil={}",
+                limit, attributes_selector, scopes_selector, resources_selector, stencil_format);
             web::eval("window.open('{}', '_blank');", url);
 
             co_return;
@@ -129,19 +142,44 @@ export class logs : public page {
             web::set_html("scopes", Webxx::render(components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, 1, false)));
         }
 
+        std::string resource_name(unsigned int id, const common::log_resource& resource) {
+            // TODO: make this configurable
+            if(resource.attributes.contains("service.name")) {
+                return resource.attributes.at("service.name").get_string();
+            }
+            if(resource.attributes.contains("k8s.namespace.name")) {
+                if(resource.attributes.contains("k8s.pod.name")) {
+                    return std::format("{}/{}", resource.attributes.at("k8s.namespace.name").get_string(), resource.attributes.at("k8s.pod.name").get_string());
+                }
+            }
+            return std::format("Resource #{}", id);
+        }
+        void update_resources() {
+            transformed_resources.clear();
+            for(const auto& [id, e] : resources->resources) {
+                transformed_resources[std::to_string(id)] = {resource_name(id, std::get<0>(e)), std::get<1>(e)};
+            }
+            std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
+                [](const auto& res) { return std::pair{res.first, true}; }); // all resources are selected by default
+            web::set_html("resources", Webxx::render(components::selection_detail<"resources">("Filter Resources", transformed_resources, selected_resources)));
+        }
+
         r<common::log_entry>& example_entry;
         r<common::logs_attributes_response>& attributes;
         r<common::logs_scopes_response>& scopes;
+        r<common::logs_resources_response>& resources;
 
         std::string stencil_format;
         std::unordered_map<std::string, bool> selected_attributes, selected_resources, selected_scopes;
+        std::unordered_map<std::string, std::tuple<std::string, unsigned int>> transformed_resources;
     public:
-        logs(r<common::log_entry>& example_entry, r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes)
-            : example_entry{example_entry}, attributes{attributes}, scopes{scopes}
+        logs(r<common::log_entry>& example_entry, r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes, r<common::logs_resources_response>& resources)
+            : example_entry{example_entry}, attributes{attributes}, scopes{scopes}, resources{resources}
         {
             example_entry.add_callback([this](auto&) { update_example_entry(); });
             attributes.add_callback([this](auto&) { update_attributes(); });
             scopes.add_callback([this](auto&) { update_scopes(); });
+            resources.add_callback([this](auto&) { update_resources(); });
         }
 
         Webxx::fragment render() override {

@@ -52,7 +52,6 @@ export namespace common {
 
     struct logs_response {
         std::vector<common::log_entry> logs;
-        std::unordered_map<unsigned int, common::log_resource> resources;
     };
     struct logs_attributes_response {
         unsigned int total_logs;
@@ -61,5 +60,8 @@ export namespace common {
     struct logs_scopes_response {
         unsigned int total_logs;
         std::unordered_map<std::string, unsigned int> scopes;
+    };
+    struct logs_resources_response {
+        std::unordered_map<unsigned int, std::tuple<log_resource, unsigned int>> resources;
     };
 }
