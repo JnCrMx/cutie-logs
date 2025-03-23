@@ -116,6 +116,19 @@ export class Database {
         {
             std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double, std::chrono::seconds::period>> ts_seconds = timestamp;
             txn.exec(pqxx::prepped{"insert_log"}, {resource, ts_seconds.time_since_epoch().count(), scope, severity, attributes.dump().value(), body.dump().value()});
+
+            std::string select_for_update = "SELECT * FROM log_attributes WHERE attribute IN (";
+            bool first = true;
+            for(const auto& [key, value] : attributes.get_object()) {
+                if(!first) {
+                    select_for_update += ", ";
+                }
+                select_for_update += txn.quote(key);
+                first = false;
+            }
+            select_for_update += ") FOR UPDATE";
+            txn.exec(select_for_update);
+
             if(attributes.is_object()) {
                 for(const auto& [key, value] : attributes.get_object()) {
                     txn.exec(pqxx::prepped{"update_attribute"}, {key, 1,
