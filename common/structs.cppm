@@ -10,7 +10,8 @@ import glaze;
 
 export namespace common {
     struct log_resource {
-
+        glz::json_t attributes;
+        double created_at;
     };
 
     enum class log_severity {
@@ -42,8 +43,16 @@ export namespace common {
         glz::json_t body;
     };
 
+    struct log_entry_with_resource {
+        log_resource* resource;
+        log_entry* log;
+
+        static constexpr auto root = "log";
+    };
+
     struct logs_response {
         std::vector<common::log_entry> logs;
+        std::unordered_map<unsigned int, common::log_resource> resources;
     };
     struct logs_attributes_response {
         unsigned int total_logs;

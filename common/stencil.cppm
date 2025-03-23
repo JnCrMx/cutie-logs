@@ -165,6 +165,11 @@ namespace common {
         return result;
     }
 
+    template<typename T>
+    concept has_root = requires() {
+        { T::root } -> std::convertible_to<std::string_view>;
+    };
+
     export template<can_get_field T, glz::reflectable Functions = stencil_functions>
     std::expected<std::string, std::string> get_field(const T& obj, std::string_view key,
         const Functions& functions = stencil_functions{}, std::string_view expression = "")
@@ -179,6 +184,13 @@ namespace common {
         if(first_key.ends_with("?")) {
             first_key = first_key.substr(0, first_key.size() - 1);
             result = "";
+        }
+        if(first_key.empty()) {
+            if constexpr (has_root<T>) {
+                first_key = T::root;
+            } else {
+                result = std::unexpected{std::format("empty key given and type \"{}\" does not have a root", glz::name_v<T>)};
+            }
         }
 
         auto keys = get_keys(obj);

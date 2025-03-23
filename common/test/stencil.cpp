@@ -32,7 +32,22 @@ int main() {
 
     common::log_entry log{};
     log.timestamp = 1742524030.321027;
-    std::cout << *common::stencil("{timestamp} = {timestamp | unix_time | strftime}", log).or_else([](auto&& err) -> std::expected<std::string, std::string> {
+    std::cout << *common::stencil("{timestamp} = {timestamp | from_timestamp | strftime}", log).or_else([](auto&& err) -> std::expected<std::string, std::string> {
+        return std::string{"error: "} + err;
+    }) << std::endl;
+
+    common::log_resource resource{};
+    resource.created_at = 1732524030.321027;
+    resource.attributes = glz::json_t::object_t{{"key", "value"}};
+    std::cout << *common::stencil("{created_at} = {created_at | from_timestamp | strftime} | {attributes.key}", resource).or_else([](auto&& err) -> std::expected<std::string, std::string> {
+        return std::string{"error: "} + err;
+    }) << std::endl;
+
+    common::log_entry_with_resource log_with_resource{
+        .resource = &resource,
+        .log = &log
+    };
+    std::cout << *common::stencil("resource: {resource.created_at} = {resource.created_at | from_timestamp | strftime} | {resource.attributes.key} | {.timestamp} = {.timestamp | from_timestamp | strftime}", log_with_resource).or_else([](auto&& err) -> std::expected<std::string, std::string> {
         return std::string{"error: "} + err;
     }) << std::endl;
 
