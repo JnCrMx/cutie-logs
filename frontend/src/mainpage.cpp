@@ -24,6 +24,9 @@ static r<common::logs_scopes_response> scopes;
 static r<common::logs_resources_response> resources;
 
 static pages::logs logs_page(example_entry, attributes, scopes, resources);
+static pages::table table_page(attributes, scopes, resources);
+
+static pages::page* current_page = nullptr;
 
 Webxx::dv page_stats(const stats_data& data);
 
@@ -92,6 +95,23 @@ Webxx::dv page_stats(const stats_data& data) {
     };
 }
 
+void switch_page(pages::page* page, std::string_view menu_id) {
+    if(current_page == page) {
+        return;
+    }
+
+    if(current_page) {
+        current_page->close();
+    }
+    for(auto id : {"menu_logs", "menu_table", "menu_analysis"}) {
+        web::remove_class(id, "menu-active");
+    }
+    web::add_class(menu_id, "menu-active");
+
+    web::set_html("page", Webxx::render(page->render()));
+    web::set_timeout(std::chrono::milliseconds(0), [page](auto){page->open();});
+}
+
 auto page(std::string_view current_theme) {
     using namespace Webxx;
 
@@ -105,9 +125,9 @@ auto page(std::string_view current_theme) {
                     dv{{_class{"text-1xl font-bold ml-2"}}, "version ", common::project_version},
                 },
                 ul{{_class{"menu bg-base-300 md:menu-horizontal rounded-box w-full md:w-auto"}},
-                    li{a{{_class{"menu-active"}}, assets::icons::text_view, "Text View"}},
-                    li{a{{_class{}}, assets::icons::table_view, "Table View"}},
-                    li{a{{_class{}}, assets::icons::analysis, "Analysis"}},
+                    li{ctx.on_click(a{{_id{"menu_logs"}}, assets::icons::text_view, "Text View"}, [](auto){switch_page(&logs_page, "menu_logs");})},
+                    li{ctx.on_click(a{{_id{"menu_table"}}, assets::icons::table_view, "Table View"}, [](auto){switch_page(&table_page, "menu_table");})},
+                    li{ctx.on_click(a{{_id{"menu_analysis"}}, assets::icons::analysis, "Analysis"}, [](auto){switch_page(&logs_page, "menu_analysis");})},
                 }
             },
             dv{{_id{"stats"}, _class{"ml-2 mr-2 grow flex flex-row justify-center items-center"}}, page_stats({})},
@@ -128,7 +148,7 @@ int main() {
     }
     web::set_attribute("main", "data-theme", theme);
     web::set_html("main", Webxx::render(page(theme)));
-    web::set_html("page", Webxx::render(logs_page.render()));
+    switch_page(&logs_page, "menu_logs");
 
     web::coro::submit(refresh());
 

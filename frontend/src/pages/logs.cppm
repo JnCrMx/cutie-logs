@@ -176,10 +176,19 @@ export class logs : public page {
         logs(r<common::log_entry>& example_entry, r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes, r<common::logs_resources_response>& resources)
             : example_entry{example_entry}, attributes{attributes}, scopes{scopes}, resources{resources}
         {
-            example_entry.add_callback([this](auto&) { update_example_entry(); });
-            attributes.add_callback([this](auto&) { update_attributes(); });
-            scopes.add_callback([this](auto&) { update_scopes(); });
-            resources.add_callback([this](auto&) { update_resources(); });
+            example_entry.add_callback([this](auto&) { if(is_open) update_example_entry(); });
+            attributes.add_callback([this](auto&) { if(is_open) update_attributes(); });
+            scopes.add_callback([this](auto&) { if(is_open) update_scopes(); });
+            resources.add_callback([this](auto&) { if(is_open) update_resources(); });
+        }
+
+        void open() override {
+            page::open();
+
+            update_example_entry();
+            update_attributes();
+            update_scopes();
+            update_resources();
         }
 
         Webxx::fragment render() override {

@@ -56,8 +56,9 @@ set(MODULE_SOURCES
   src/components/theme_button.cppm
   src/components/utils.cppm
   src/pages/_pages.cppm
-  src/pages/logs.cppm
   src/pages/page.cppm
+  src/pages/logs.cppm
+  src/pages/table.cppm
 )
 
 add_executable(mainpage ${SOURCES})
