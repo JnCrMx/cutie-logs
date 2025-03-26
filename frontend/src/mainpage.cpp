@@ -62,6 +62,7 @@ auto refresh() -> web::coro::coroutine<void> {
     stats.total_attributes = attributes->attributes.size();
     stats.total_logs = attributes->total_logs;
     stats.total_scopes = scopes->scopes.size();
+    stats.total_resources = resources->resources.size();
     web::set_html("stats", Webxx::render(page_stats(stats)));
 
     // in theory we don't need this, because we rerender this area of the page ("stats") anyway
