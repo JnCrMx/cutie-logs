@@ -161,7 +161,8 @@ export class logs : public page {
             }
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
                 [](const auto& res) { return std::pair{res.first, false}; }); // all resources are deselected by default
-            web::set_html("resources", Webxx::render(components::selection_detail<"resources">("Filter Resources", transformed_resources, selected_resources)));
+            web::set_html("resources", Webxx::render(components::selection_detail<"resources">(
+                "Filter Resources", transformed_resources, selected_resources, 1, false, "resource")));
         }
 
         r<common::log_entry>& example_entry;

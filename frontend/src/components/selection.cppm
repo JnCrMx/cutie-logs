@@ -15,7 +15,8 @@ void save_selections(std::string_view identifier, const std::unordered_map<std::
 export template<glz::string_literal identifier>
 auto selection_detail(std::string_view title,
     const std::unordered_map<std::string, std::tuple<std::string, unsigned int>>& attributes,
-    std::unordered_map<std::string, bool>& selections, unsigned int total = 1, bool show_percent = false)
+    std::unordered_map<std::string, bool>& selections, unsigned int total = 1, bool show_percent = false,
+    std::string_view info_modal_key = "")
 {
     static frontend::event_context ctx;
     ctx.clear();
@@ -72,7 +73,7 @@ auto selection_detail(std::string_view title,
             },
         },
         dv{{_class{"overflow-y-auto h-full flex flex-col gap-1"}},
-            each(sorted_attributes, [total, show_percent, &attributes, &selections](const auto& attr) {
+            each(sorted_attributes, [total, show_percent, &attributes, &selections, info_modal_key](const auto& attr) {
                 auto [name, key] = attr;
                 auto count = std::get<1>(attributes.at(key));
 
@@ -90,11 +91,17 @@ auto selection_detail(std::string_view title,
                     checkbox.data.attributes.push_back(_checked{});
                 }
 
-                return fragment{label{{_id{id}, _class{"fieldset-label"}},
+                return fragment{label{{_id{id}, _class{"fieldset-label flex flex-row w-full"}},
                     std::move(checkbox),
-                    show_percent ?
+                    span{{_class{"grow"}},show_percent ?
                         std::format("{} ({}%)", name, count*100/total) :
-                        std::format("{} ({})", name, count)
+                        std::format("{} ({})", name, count)},
+                    maybe(!info_modal_key.empty(), [key, info_modal_key]() {
+                        return button{{_class{"btn btn-xs btn-outline btn-circle mr-2"},
+                            _onClick{std::format("document.getElementById('modal_{}_{}').showModal()", info_modal_key, key)}},
+                            "i"
+                        };
+                    })
                 }};
             })
         }

@@ -99,11 +99,8 @@ export class table : public page {
                     return tr{
                         td{std::format("{:%Y-%m-%d %H:%M:%S}", timestamp)},
                         td{
-                            ctx.on_click(a{{_class{"link"}}, resource_name(entry.resource, std::get<0>(resources->resources[entry.resource]))},
-                                [entry](std::string_view) {
-                                    web::eval("document.getElementById('modal_resource_{}').showModal(); ''", entry.resource);
-                                }
-                            )
+                            a{{_class{"link"}, _onClick{std::format("document.getElementById('modal_resource_{}').showModal()", entry.resource)}},
+                                resource_name(entry.resource, std::get<0>(resources->resources[entry.resource]))},
                         },
                         td{entry.scope},
                         td{common::log_severity_names[std::to_underlying(entry.severity)]},
@@ -152,7 +149,8 @@ export class table : public page {
             }
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
                 [](const auto& res) { return std::pair{res.first, false}; }); // all resources are deselected by default
-            web::set_html("resources", Webxx::render(components::selection_detail<"resources">("Filter Resources", transformed_resources, selected_resources)));
+            web::set_html("resources", Webxx::render(components::selection_detail<"resources">(
+                "Filter Resources", transformed_resources, selected_resources, 1, false, "resource")));
         }
 
         r<common::logs_attributes_response>& attributes;
