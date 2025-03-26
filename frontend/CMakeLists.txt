@@ -52,6 +52,7 @@ set(MODULE_SOURCES
   src/web_coro.cppm
   src/assets.cppm
   src/components/_components.cppm
+  src/components/resource_modal.cppm
   src/components/selection.cppm
   src/components/theme_button.cppm
   src/components/utils.cppm

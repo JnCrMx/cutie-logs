@@ -44,6 +44,11 @@ auto refresh() -> web::coro::coroutine<void> {
         glz::read_beve<common::logs_resources_response>(co_await web::coro::fetch("/api/v1/logs/resources"))
         .value_or(common::logs_resources_response{});
 
+    auto resource_modals = Webxx::each(resources->resources, [](auto& e){
+        return components::resource_modal{std::get<0>(e), std::get<0>(std::get<1>(e))};
+    });
+    web::set_html("modals-resources", Webxx::render(resource_modals));
+
     auto example =
         glz::read_beve<common::logs_response>(co_await web::coro::fetch("/api/v1/logs?limit=1&attributes=*"))
         .value_or(common::logs_response{});
@@ -135,7 +140,10 @@ auto page(std::string_view current_theme) {
                 components::theme_button{ctx, current_theme}
             }
         },
-        dv{{_class{"w-full mx-auto my-2 px-4 md:w-auto md:mx-[10vw]"}, {_id{"page"}}}}
+        dv{{_class{"w-full mx-auto my-2 px-4 md:w-auto md:mx-[10vw]"}, {_id{"page"}}}},
+        dv{{_id{"modals"}},
+            dv{{_id{"modals-resources"}}}
+        },
     };
 }
 

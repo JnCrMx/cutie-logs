@@ -78,23 +78,33 @@ export class table : public page {
                 }
             }
 
+            static event_context ctx;
+            ctx.clear();
             auto view = Webxx::table{{_class{"table table-pin-rows bg-base-200"}},
                 thead{tr{
                     th{"Timestamp"},
+                    th{"Resource"},
                     th{"Scope"},
                     th{"Severity"},
                     each(attributes_set, [&](const std::string& attr) { return th{attr}; }),
                     maybe(body, [](){return th{"Body"};}),
                 }},
-                each(logs.logs, [&](const common::log_entry& entry) {
+                each(logs.logs, [&, this](const common::log_entry& entry) {
                     using sys_seconds_double = std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double>>;
                     auto timestamp_double = sys_seconds_double{std::chrono::duration<double>{entry.timestamp}};
                     auto timestamp = std::chrono::time_point_cast<std::chrono::sys_seconds::duration>(timestamp_double);
 
-                    auto attributes = entry.attributes.get_object();
+                    auto attributes = entry.attributes.is_object() ? entry.attributes.get_object() : glz::json_t::object_t{};
 
                     return tr{
                         td{std::format("{:%Y-%m-%d %H:%M:%S}", timestamp)},
+                        td{
+                            ctx.on_click(a{{_class{"link"}}, resource_name(entry.resource, std::get<0>(resources->resources[entry.resource]))},
+                                [entry](std::string_view) {
+                                    web::eval("document.getElementById('modal_resource_{}').showModal(); ''", entry.resource);
+                                }
+                            )
+                        },
                         td{entry.scope},
                         td{common::log_severity_names[std::to_underlying(entry.severity)]},
                         each(attributes_set, [&](const std::string& attr) {
