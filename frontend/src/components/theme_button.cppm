@@ -27,13 +27,14 @@ export struct theme_button : component<theme_button> {
                 dv{{_class{"btn btn-square m-1"}, _tabindex{"0"}, _role{"button"}}, assets::icons::themes},
                 ul{{_class{"dropdown-content bg-base-300 rounded-box z-[1] w-52 p-2 shadow-2xl h-80 overflow-y-auto"}, _tabindex{"0"}},
                     each(themes, [&ctx, current](const auto& theme) {
-                        auto cb = [theme](std::string_view) {
-                            auto current = web::eval("localStorage.getItem('theme')");
-                            web::remove_class(std::format("theme-button-{}", current), "btn-active");
-                            web::add_class(std::format("theme-button-{}", theme), "btn-active");
+                        auto cb = [theme](webpp::event) {
+                            auto current = webpp::eval("localStorage.getItem('theme')")["result"].as<std::string>().value_or("light");
 
-                            web::eval("localStorage.setItem('theme', '{}'); ''", theme);
-                            web::set_attribute("main", "data-theme", theme);
+                            webpp::get_element_by_id(std::format("theme-button-{}", current))->remove_class("btn-active");
+                            webpp::get_element_by_id(std::format("theme-button-{}", theme))->add_class("btn-active");
+
+                            webpp::eval("localStorage.setItem('theme', '{}');", theme);
+                            webpp::get_element_by_id("main")->set_property("data-theme", theme);
                         };
                         if(current == theme) {
                             return li{ctx.on_click(input{{_type{"radio"}, _name{"theme-dropdown"},

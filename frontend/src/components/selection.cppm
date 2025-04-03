@@ -2,14 +2,14 @@ export module frontend.components:selection;
 
 import std;
 import glaze;
-import web;
+import webpp;
 
 import :utils;
 
 namespace frontend::components {
 
 void save_selections(std::string_view identifier, const std::unordered_map<std::string, bool>& saved_selections) {
-    web::eval("localStorage.setItem('select_{}_selections', '{}'); ''", identifier, glz::write_json(saved_selections).value_or("[]"));
+    webpp::eval("localStorage.setItem('select_{}_selections', '{}');", identifier, glz::write_json(saved_selections).value_or("[]"));
 }
 
 export template<glz::string_literal identifier>
@@ -22,8 +22,8 @@ auto selection_detail(std::string_view title,
     ctx.clear();
 
     auto search_id = std::format("select_{}_search", identifier.sv());
-    auto saved = web::eval("let saved = localStorage.getItem('select_{}_selections'); if(saved === null) {{saved = '{{}}';}}; saved",
-        identifier.sv());
+    auto saved = webpp::eval("let saved = localStorage.getItem('select_{}_selections'); if(saved === null) {{saved = '{{}}';}}; saved",
+        identifier.sv())["result"].template as<std::string>().value_or("{}");
     using selection_map = std::unordered_map<std::string, bool>;
     static auto saved_selections = glz::read_json<selection_map>(saved).value_or(selection_map{});
     for(const auto& [s, v] : saved_selections) {
@@ -42,20 +42,19 @@ auto selection_detail(std::string_view title,
     return fieldset{{_class{"fieldset p-4 rounded-box shadow h-full flex flex-col"}},
         legend{{_class{"fieldset-legend"}}, title},
         dv{{_class{"flex flex-row mb-2 p-0 gap-2 items-center"}},
-            ctx.on_change(input{{_id{toggle_id}, _type{"checkbox"}, _class{"checkbox"}}}, [toggle_id, &selections](std::string_view){
-                bool checked = web::get_property(toggle_id, "checked") == "true";
-                web::log("toggle {}", checked);
+            ctx.on_change(input{{_id{toggle_id}, _type{"checkbox"}, _class{"checkbox"}}}, [toggle_id, &selections](webpp::event){
+                bool checked = webpp::get_element_by_id(toggle_id)->template get_property<bool>("checked").value_or(false);
                 for(auto& [key, value] : selections) {
                     value = checked;
                     saved_selections[key] = checked;
-                    web::eval("document.getElementById('select_{}_entry_{}_checkbox').checked = {}; ''", identifier.sv(), key, checked);
+                    webpp::get_element_by_id(std::format("select_{}_entry_{}_checkbox", identifier.sv(), key))->set_property("checked", checked);
                 }
                 save_selections(identifier.sv(), saved_selections);
             }),
             label{{_class{"input w-full flex flex-col"}},
                 ctx.on_input(input{{_id{search_id}, _type{"search"}, _class{"grow basis-[3rem] md:basis-[3.5rem]"}, _placeholder{"Search..."}}},
-                    [search_id, attributes](std::string_view) {
-                        auto search = web::get_property(search_id, "value").value_or("");
+                    [search_id, attributes](webpp::event) {
+                        auto search = webpp::get_element_by_id(search_id)->template get_property<std::string>("value").value_or("");
                         std::transform(search.begin(), search.end(), search.begin(), [](char c){return std::tolower(c);});
 
                         for(const auto& [attr, e] : attributes) {
@@ -64,9 +63,9 @@ auto selection_detail(std::string_view title,
 
                             auto id = std::format("select_{}_entry_{}", identifier.sv(), attr);
                             if(name.find(search) != std::string::npos) {
-                                web::remove_class(id, "hidden");
+                                webpp::get_element_by_id(id)->remove_class("hidden");
                             } else {
-                                web::add_class(id, "hidden");
+                                webpp::get_element_by_id(id)->add_class("hidden");
                             }
                         }
                     })
@@ -81,8 +80,8 @@ auto selection_detail(std::string_view title,
                 auto checkbox_id = std::format("select_{}_entry_{}_checkbox", identifier.sv(), key);
 
                 auto checkbox = ctx.on_change(input{{_id{checkbox_id}, _type{"checkbox"}, _class{"checkbox"}, _ariaLabel{name}, _value{name}}},
-                    [checkbox_id, key, &selections](std::string_view event){
-                        bool checked = web::get_property(checkbox_id, "checked") == "true";
+                    [checkbox_id, key, &selections](webpp::event){
+                        bool checked = webpp::get_element_by_id(checkbox_id)->template get_property<bool>("checked").value_or(false);
                         selections[key] = checked;
                         saved_selections[key] = checked; // maintain those two seperately, so saved_selections can contain values not present in selections
                         save_selections(identifier.sv(), saved_selections);

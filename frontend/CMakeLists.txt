@@ -21,6 +21,9 @@ set(CMAKE_CXX_COMPILER_TARGET ${TARGET_TRIPLE})
 set(CMAKE_EXECUTABLE_SUFFIX ".wasm")
 set(CMAKE_LINK_DEPENDS_USE_LINKER OFF)
 
+FetchContent_Declare(webpp
+  GIT_REPOSITORY https://github.com/JnCrMx/webpp.git
+  GIT_TAG main)
 FetchContent_Declare(webxx
   GIT_REPOSITORY https://github.com/rthrfrd/webxx.git
   GIT_TAG v0.9.2)
@@ -30,7 +33,7 @@ FetchContent_Declare(glaze
   GIT_SHALLOW TRUE)
 
 add_compile_options(-fno-rtti -fno-exceptions -ftemplate-backtrace-limit=0)
-FetchContent_MakeAvailable(webxx glaze)
+FetchContent_MakeAvailable(webxx glaze webpp)
 
 add_library(stdModule STATIC)
 target_sources(stdModule PUBLIC FILE_SET CXX_MODULES BASE_DIRS /usr/lib/llvm-19/share/libc++/v1/
@@ -48,8 +51,6 @@ set(SOURCES
   src/assets.cpp
 )
 set(MODULE_SOURCES
-  src/web.cppm
-  src/web_coro.cppm
   src/assets.cppm
   src/components/_components.cppm
   src/components/resource_modal.cppm
@@ -65,7 +66,7 @@ set(MODULE_SOURCES
 add_executable(mainpage ${SOURCES})
 target_sources(mainpage PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_SOURCES})
 target_compile_features(mainpage PRIVATE cxx_std_26)
-target_link_libraries(mainpage PRIVATE common stdModule webxxModule glazeModule)
+target_link_libraries(mainpage PRIVATE common stdModule webxxModule glazeModule webpp::webpp)
 target_link_options(mainpage PRIVATE -Wl,--no-entry)
 target_link_options(mainpage PRIVATE -nostartfiles)
 target_compile_options(mainpage PRIVATE --embed-dir=${CMAKE_CURRENT_SOURCE_DIR} -Wno-c23-extensions)
@@ -89,3 +90,11 @@ add_custom_command(
   COMMAND wasm-strip $<TARGET_FILE:mainpage> -o ${CMAKE_CURRENT_BINARY_DIR}/mainpage.opt.wasm
 )
 add_custom_target(mainpage_opt ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/mainpage.opt.wasm)
+
+FetchContent_GetProperties(webpp)
+add_custom_command(
+    COMMAND ${CMAKE_COMMAND} -E copy ${webpp_SOURCE_DIR}/webpp.js ${CMAKE_CURRENT_BINARY_DIR}/webpp.js
+    DEPENDS ${webpp_SOURCE_DIR}/webpp.js
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/webpp.js
+)
+add_custom_target(copy_webpp_js ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/webpp.js)

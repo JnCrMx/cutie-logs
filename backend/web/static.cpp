@@ -30,11 +30,15 @@ constexpr char mainpage_wasm[] = {
         #embed "mainpage.wasm"
     #endif
 };
+constexpr char webpp_js[] = {
+    #embed "webpp.js"
+};
 
 constexpr std::array entries = {
     entry{"/style.css", {style_css, sizeof(style_css)}, "text/css"},
     entry{"/", {mainpage_html, sizeof(mainpage_html)}, "text/html", "/mainpage.html"},
     entry{"/mainpage.wasm", {mainpage_wasm, sizeof(mainpage_wasm)}, "application/wasm"},
+    entry{"/webpp.js", {webpp_js, sizeof(webpp_js)}, "application/javascript"},
 };
 
 void Server::setup_static_routes() {

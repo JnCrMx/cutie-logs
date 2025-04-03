@@ -1,8 +1,7 @@
 export module frontend.pages:table;
 
 import std;
-import web;
-import web_coro;
+import webpp;
 import webxx;
 import glaze;
 
@@ -47,7 +46,7 @@ export class table : public page {
             return resources_selector+"0";
         }
 
-        web::coro::coroutine<void> run_query() {
+        webpp::coroutine<void> run_query() {
             std::string attributes_selector = build_attributes_selector(selected_attributes);
             std::string scopes_selector = build_scopes_selector(selected_scopes);
             std::string resources_selector = build_resources_selector(selected_resources);
@@ -56,11 +55,11 @@ export class table : public page {
             auto url = std::format("/api/v1/logs?limit={}&attributes={}&scopes={}&resources={}",
                 limit, attributes_selector, scopes_selector, resources_selector);
             auto logs =
-                glz::read_beve<common::logs_response>(co_await web::coro::fetch(url))
+                glz::read_beve<common::logs_response>(co_await webpp::coro::fetch(url).then(std::mem_fn(&webpp::response::co_bytes)))
                 .value_or(common::logs_response{});
 
-            web::remove_class("run_button_icon", "hidden");
-            web::add_class("run_button_loading", "hidden");
+            webpp::get_element_by_id("run_button_icon")->remove_class("hidden");
+            webpp::get_element_by_id("run_button_loading")->add_class("hidden");
 
             using namespace Webxx;
             std::set<std::string> attributes_set;
@@ -114,7 +113,7 @@ export class table : public page {
                     };
                 })
             };
-            web::set_html("table", Webxx::render(view));
+            webpp::get_element_by_id("table")->inner_html(Webxx::render(view));
 
             co_return;
         };
@@ -122,12 +121,15 @@ export class table : public page {
         void update_attributes() {
             std::transform(attributes->attributes.begin(), attributes->attributes.end(), std::inserter(selected_attributes, selected_attributes.end()),
                 [](const auto& attr) { return std::pair{attr.first, false}; }); // all attributes are deselected by default
-            web::set_html("attributes", Webxx::render(components::selection<"attributes">("Select Attributes", attributes->attributes, selected_attributes, attributes->total_logs, true)));
+            webpp::get_element_by_id("attributes")->inner_html(Webxx::render(
+                components::selection<"attributes">("Select Attributes",
+                    attributes->attributes, selected_attributes, attributes->total_logs, true)));
         }
         void update_scopes() {
             std::transform(scopes->scopes.begin(), scopes->scopes.end(), std::inserter(selected_scopes, selected_scopes.end()),
                 [](const auto& scope) { return std::pair{scope.first, true}; }); // all scopes are selected by default
-            web::set_html("scopes", Webxx::render(components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, 1, false)));
+            webpp::get_element_by_id("scopes")->inner_html(Webxx::render(
+                components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, 1, false)));
         }
 
         std::string resource_name(unsigned int id, const common::log_resource& resource) {
@@ -149,8 +151,8 @@ export class table : public page {
             }
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
                 [](const auto& res) { return std::pair{res.first, false}; }); // all resources are deselected by default
-            web::set_html("resources", Webxx::render(components::selection_detail<"resources">(
-                "Filter Resources", transformed_resources, selected_resources, 1, false, "resource")));
+            webpp::get_element_by_id("resources")->inner_html(Webxx::render(
+                components::selection_detail<"resources">("Filter Resources", transformed_resources, selected_resources, 1, false, "resource")));
         }
 
         r<common::logs_attributes_response>& attributes;
@@ -194,10 +196,10 @@ export class table : public page {
                             span{{_id{"run_button_loading"}, _class{"loading loading-spinner hidden"}}},
                             span{{_id{"run_button_icon"}}, assets::icons::run},
                             "Query"
-                        }, [this](std::string_view) {
-                            web::add_class("run_button_icon", "hidden");
-                            web::remove_class("run_button_loading", "hidden");
-                            web::coro::submit(run_query());
+                        }, [this](webpp::event) {
+                            webpp::get_element_by_id("run_button_icon")->add_class("hidden");
+                            webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
+                            webpp::coro::submit(run_query());
                         })
                     },
                     dv{{_id{"table"}, _class{"mt-4 overflow-x-auto"}}},

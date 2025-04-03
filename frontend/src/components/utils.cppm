@@ -1,7 +1,7 @@
 export module frontend.components:utils;
 
 import std;
-import web;
+import webpp;
 import webxx;
 
 namespace Webxx {
@@ -31,19 +31,24 @@ namespace frontend {
 
 export class event_context {
     public:
-        auto on_click(auto el, web::event_callback&& cb) {
+        using event_callback = std::function<void(webpp::event)>;
+
+        auto on_click(auto el, event_callback&& cb) {
             return on_event<Webxx::_onClick>(std::move(el), std::move(cb));
         }
-        auto on_input(auto el, web::event_callback&& cb) {
+        auto on_input(auto el, event_callback&& cb) {
             return on_event<Webxx::_onInput>(std::move(el), std::move(cb));
         }
-        auto on_change(auto el, web::event_callback&& cb) {
+        auto on_change(auto el, event_callback&& cb) {
             return on_event<Webxx::_onChange>(std::move(el), std::move(cb));
         }
 
         template<typename EventAttribute>
-        auto on_event(auto el, web::event_callback&& cb) {
-            auto& data = callbacks.emplace_back(std::make_unique<web::callback_data>(std::move(cb), false));
+        auto on_event(auto el, event_callback&& cb) {
+            using js_handle = std::decay_t<decltype(std::declval<webpp::event>().handle())>;
+            auto& data = callbacks.emplace_back(std::make_unique<webpp::callback_data>([cb = std::move(cb)](js_handle handle, std::string_view){
+                cb(webpp::event{handle});
+            }, false));
             el.data.attributes.push_back(Webxx::_dataCallback{std::format("{}", reinterpret_cast<std::uintptr_t>(data.get()))});
             el.data.attributes.push_back(EventAttribute{"handleEvent(this, event);"});
             return el;
@@ -53,7 +58,7 @@ export class event_context {
             callbacks.clear();
         }
     private:
-        std::vector<std::unique_ptr<web::callback_data>> callbacks;
+        std::vector<std::unique_ptr<webpp::callback_data>> callbacks;
 };
 
 export template<typename T>

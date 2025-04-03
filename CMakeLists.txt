@@ -41,6 +41,7 @@ endfunction()
 AddExternalProjectFileDependency(frontend frontend_files
     mainpage.html
     style.css
+    webpp.js
     mainpage.wasm
     mainpage.opt.wasm
 )

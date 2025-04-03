@@ -1,8 +1,7 @@
 export module frontend.pages:logs;
 
 import std;
-import web;
-import web_coro;
+import webpp;
 import webxx;
 import glaze;
 
@@ -24,24 +23,28 @@ export class logs : public page {
             return fieldset{{_class{"fieldset p-4 rounded-box shadow h-full flex flex-col"}},
                 legend{{_class{"fieldset-legend"}}, "Display Options"},
                 ctx.on_input(textarea{{_id{"stencil_textarea"}, _class{"textarea w-full min-h-[2.5rem]"}, _rows{"1"}, _placeholder{"Log line stencil. Use {...} to insert values."}},},
-                    [this](std::string_view) {
-                        web::coro::submit_next([this]() -> web::coro::coroutine<void> {
-                            stencil_format = *web::get_property("stencil_textarea", "value");
-                            web::eval("localStorage.setItem('stencil', '{}'); ''", stencil_format);
+                    [this](webpp::event) {
+                        webpp::coro::submit([this]() -> webpp::coroutine<void> {
+                            co_await webpp::coro::next_tick();
+
+                            auto textarea = *webpp::get_element_by_id("stencil_textarea");
+                            auto validator = *webpp::get_element_by_id("stencil_validator");
+                            stencil_format = textarea["value"].as<std::string>().value_or("");
+                            webpp::eval("localStorage.setItem('stencil', '{}');", stencil_format);
                             if(auto r = common::stencil(stencil_format, *example_entry)) {
-                                web::set_html("stencil_validator", *r);
-                                web::remove_class("stencil_validator", "text-error");
-                                web::remove_class("stencil_validator", "font-bold");
+                                validator.inner_text(*r);
+                                validator.remove_class("text-error");
+                                validator.remove_class("font-bold");
 
-                                web::add_class("stencil_textarea", "textarea-success");
-                                web::remove_class("stencil_textarea", "textarea-error");
+                                textarea.remove_class("textarea-error");
+                                textarea.add_class("textarea-success");
                             } else {
-                                web::set_html("stencil_validator", "Stencil invalid: \"{}\"", r.error());
-                                web::add_class("stencil_validator", "text-error");
-                                web::add_class("stencil_validator", "font-bold");
+                                validator.inner_text(std::format("Stencil invalid: \"{}\"", r.error()));
+                                validator.add_class("text-error");
+                                validator.add_class("font-bold");
 
-                                web::add_class("stencil_textarea", "textarea-error");
-                                web::remove_class("stencil_textarea", "textarea-success");
+                                textarea.remove_class("textarea-success");
+                                textarea.add_class("textarea-error");
                             }
                             co_return;
                         }());
@@ -82,7 +85,7 @@ export class logs : public page {
             return resources_selector+"0";
         }
 
-        web::coro::coroutine<void> run_query() {
+        webpp::coroutine<void> run_query() {
             std::string attributes_selector = build_attributes_selector(selected_attributes);
             std::string scopes_selector = build_scopes_selector(selected_scopes);
             std::string resources_selector = build_resources_selector(selected_resources);
@@ -91,11 +94,11 @@ export class logs : public page {
             auto url = std::format("/api/v1/logs?limit={}&attributes={}&scopes={}&resources={}",
                 limit, attributes_selector, scopes_selector, resources_selector);
             auto logs =
-                glz::read_beve<common::logs_response>(co_await web::coro::fetch(url))
+                glz::read_beve<common::logs_response>(co_await webpp::coro::fetch(url).then(std::mem_fn(&webpp::response::co_bytes)))
                 .value_or(common::logs_response{});
 
-            web::remove_class("run_button_icon", "hidden");
-            web::add_class("run_button_loading", "hidden");
+            webpp::get_element_by_id("run_button_icon")->remove_class("hidden");
+            webpp::get_element_by_id("run_button_loading")->add_class("hidden");
 
             using namespace Webxx;
             auto list = ul{{_class{"list rounded-box shadow p-4 gap-1"}},
@@ -107,39 +110,43 @@ export class logs : public page {
                     };
                 })
             };
-            web::set_html("logs", Webxx::render(list));
+            webpp::get_element_by_id("logs")->inner_html(Webxx::render(list));
 
             co_return;
         };
 
-        web::coro::coroutine<void> download_logs(unsigned int limit = 1000) {
+        webpp::coroutine<void> download_logs(unsigned int limit = 1000) {
             std::string attributes_selector = build_attributes_selector(selected_attributes);
             std::string scopes_selector = build_scopes_selector(selected_scopes);
             std::string resources_selector = build_resources_selector(selected_resources);
 
             auto url = std::format("/api/v1/logs/stencil?limit={}&attributes={}&scopes={}&resources={}&stencil={}",
                 limit, attributes_selector, scopes_selector, resources_selector, stencil_format);
-            web::eval("window.open('{}', '_blank');", url);
+            webpp::eval("window.open('{}', '_blank');", url);
 
             co_return;
         };
 
         void update_example_entry() {
-            stencil_format = web::eval("let stencil = localStorage.getItem('stencil'); if(stencil === null) {stencil = '';}; stencil");
-            web::set_property("stencil_textarea", "value", stencil_format);
+            stencil_format = webpp::eval("let stencil = localStorage.getItem('stencil'); if(stencil === null) {stencil = '';}; stencil")["result"]
+                .as<std::string>().value_or("");
+            webpp::get_element_by_id("stencil_textarea")->set_property("value", stencil_format);
             if(!stencil_format.empty()) {
-                web::eval("document.getElementById('stencil_textarea').dispatchEvent(new Event('input'));");
+                webpp::eval("document.getElementById('stencil_textarea').dispatchEvent(new Event('input'));");
             }
         }
         void update_attributes() {
             std::transform(attributes->attributes.begin(), attributes->attributes.end(), std::inserter(selected_attributes, selected_attributes.end()),
                 [](const auto& attr) { return std::pair{attr.first, false}; }); // all attributes are deselected by default
-            web::set_html("attributes", Webxx::render(components::selection<"attributes">("Select Attributes", attributes->attributes, selected_attributes, attributes->total_logs, true)));
+            webpp::get_element_by_id("attributes")->inner_html(Webxx::render(
+                components::selection<"attributes">("Select Attributes",
+                    attributes->attributes, selected_attributes, attributes->total_logs, true)));
         }
         void update_scopes() {
             std::transform(scopes->scopes.begin(), scopes->scopes.end(), std::inserter(selected_scopes, selected_scopes.end()),
                 [](const auto& scope) { return std::pair{scope.first, true}; }); // all scopes are selected by default
-            web::set_html("scopes", Webxx::render(components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, 1, false)));
+            webpp::get_element_by_id("scopes")->inner_html(Webxx::render(
+                components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, 1, false)));
         }
 
         std::string resource_name(unsigned int id, const common::log_resource& resource) {
@@ -161,8 +168,8 @@ export class logs : public page {
             }
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
                 [](const auto& res) { return std::pair{res.first, false}; }); // all resources are deselected by default
-            web::set_html("resources", Webxx::render(components::selection_detail<"resources">(
-                "Filter Resources", transformed_resources, selected_resources, 1, false, "resource")));
+            webpp::get_element_by_id("resources")->inner_html(Webxx::render(
+                components::selection_detail<"resources">("Filter Resources", transformed_resources, selected_resources, 1, false, "resource")));
         }
 
         r<common::log_entry>& example_entry;
@@ -211,18 +218,16 @@ export class logs : public page {
                                 span{{_id{"run_button_loading"}, _class{"loading loading-spinner hidden"}}},
                                 span{{_id{"run_button_icon"}}, assets::icons::run},
                                 "Query"
-                            }, [this](std::string_view) {
-                                web::add_class("run_button_icon", "hidden");
-                                web::remove_class("run_button_loading", "hidden");
-                                web::coro::submit(run_query());
+                            }, [this](webpp::event) {
+                                webpp::get_element_by_id("run_button_icon")->add_class("hidden");
+                                webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
+                                webpp::coro::submit(run_query());
                             }),
                             dv{{_class{"dropdown dropdown-hover dropdown-top md:dropdown-bottom dropdown-end"}},
-                                ctx.on_click(dv{{_class{"btn btn-primary"}, _role{"button"}, _tabindex{"0"}},
+                                dv{{_class{"btn btn-primary"}, _role{"button"}, _tabindex{"0"}},
                                     span{{_id{"download_button_icon"}}, assets::icons::download},
                                     "Download"
-                                }, [this](std::string_view) {
-                                    web::coro::submit(download_logs());
-                                }),
+                                },
                                 ul{{_class{"dropdown-content menu bg-base-300 rounded-box z-1 w-full p-1 shadow-sm"}},
                                     each(std::array{
                                         std::make_pair<std::string_view, unsigned int>("100 entries", 100),
@@ -234,13 +239,13 @@ export class logs : public page {
                                         constexpr unsigned int warning_limit = 2500;
                                         if(e.second > warning_limit) {
                                             return li{ctx.on_click(a{{_class{"btn btn-ghost btn-primary btn-sm justify-start text-warning"}}, assets::icons::warning, e.first},
-                                                [this, limit = e.second](std::string_view){
-                                                    web::coro::submit(download_logs(limit));
+                                                [this, limit = e.second](webpp::event){
+                                                    webpp::coro::submit(download_logs(limit));
                                                 })};
                                         } else {
                                             return li{ctx.on_click(a{{_class{"btn btn-ghost btn-primary btn-sm justify-start"}}, span{{_class{"size-5"}}}, e.first},
-                                                [this, limit = e.second](std::string_view){
-                                                    web::coro::submit(download_logs(limit));
+                                                [this, limit = e.second](webpp::event){
+                                                    webpp::coro::submit(download_logs(limit));
                                                 })};
                                         }
                                     })

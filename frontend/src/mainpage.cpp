@@ -1,6 +1,5 @@
 import std;
-import web;
-import web_coro;
+import webpp;
 import webxx;
 import glaze;
 
@@ -30,28 +29,26 @@ static pages::page* current_page = nullptr;
 
 Webxx::dv page_stats(const stats_data& data);
 
-auto refresh() -> web::coro::coroutine<void> {
-    web::add_class("refresh-button", "btn-disabled");
-    web::add_class("refresh-button", "*:animate-spin");
+auto refresh() -> webpp::coroutine<void> {
+    auto refresh_button = *webpp::get_element_by_id("refresh-button");
+    refresh_button.add_class("btn-disabled");
+    refresh_button.add_class("*:animate-spin");
 
-    attributes =
-        glz::read_beve<common::logs_attributes_response>(co_await web::coro::fetch("/api/v1/logs/attributes"))
-        .value_or(common::logs_attributes_response{});
-    scopes =
-        glz::read_beve<common::logs_scopes_response>(co_await web::coro::fetch("/api/v1/logs/scopes"))
-        .value_or(common::logs_scopes_response{});
-    resources =
-        glz::read_beve<common::logs_resources_response>(co_await web::coro::fetch("/api/v1/logs/resources"))
-        .value_or(common::logs_resources_response{});
+    auto attributes_future = webpp::coro::fetch("/api/v1/logs/attributes").then(std::mem_fn(&webpp::response::co_bytes));
+    auto scopes_future = webpp::coro::fetch("/api/v1/logs/scopes").then(std::mem_fn(&webpp::response::co_bytes));
+    auto resources_future = webpp::coro::fetch("/api/v1/logs/resources").then(std::mem_fn(&webpp::response::co_bytes));
+    auto example_future = webpp::coro::fetch("/api/v1/logs?limit=1&attributes=*").then(std::mem_fn(&webpp::response::co_bytes));
+
+    attributes = glz::read_beve<common::logs_attributes_response>(co_await attributes_future).value_or(common::logs_attributes_response{});
+    scopes = glz::read_beve<common::logs_scopes_response>(co_await scopes_future).value_or(common::logs_scopes_response{});
+    resources = glz::read_beve<common::logs_resources_response>(co_await resources_future).value_or(common::logs_resources_response{});
 
     auto resource_modals = Webxx::each(resources->resources, [](auto& e){
         return components::resource_modal{std::get<0>(e), std::get<0>(std::get<1>(e))};
     });
-    web::set_html("modals-resources", Webxx::render(resource_modals));
+    webpp::get_element_by_id("modals-resources")->inner_html(Webxx::render(resource_modals));
 
-    auto example =
-        glz::read_beve<common::logs_response>(co_await web::coro::fetch("/api/v1/logs?limit=1&attributes=*"))
-        .value_or(common::logs_response{});
+    auto example = glz::read_beve<common::logs_response>(co_await example_future).value_or(common::logs_response{});
     if(!example.logs.empty()) {
         example_entry = example.logs.front();
     } else {
@@ -63,11 +60,12 @@ auto refresh() -> web::coro::coroutine<void> {
     stats.total_logs = attributes->total_logs;
     stats.total_scopes = scopes->scopes.size();
     stats.total_resources = resources->resources.size();
-    web::set_html("stats", Webxx::render(page_stats(stats)));
+    webpp::get_element_by_id("stats")->inner_html(Webxx::render(page_stats(stats)));
+    webpp::get_element_by_id("stats")->add_class("animate-pulse");
 
     // in theory we don't need this, because we rerender this area of the page ("stats") anyway
-    web::remove_class("refresh-button", "btn-disabled");
-    web::remove_class("refresh-button", "*:animate-spin");
+    refresh_button.remove_class("btn-disabled");
+    refresh_button.remove_class("*:animate-spin");
     co_return;
 }
 
@@ -94,8 +92,8 @@ Webxx::dv page_stats(const stats_data& data) {
             dv{{_class{"stat-value"}}, std::to_string(data.total_scopes)}
         },
         ctx.on_click(button{{_id{"refresh-button"}, _class{"btn btn-square size-20 p-2 m-2"}}, assets::icons::refresh},
-            [](std::string_view) {
-                web::coro::submit(refresh());
+            [](webpp::event) {
+                webpp::coro::submit(refresh());
             }
         )
     };
@@ -110,12 +108,12 @@ void switch_page(pages::page* page, std::string_view menu_id) {
         current_page->close();
     }
     for(auto id : {"menu_logs", "menu_table", "menu_analysis"}) {
-        web::remove_class(id, "menu-active");
+        webpp::get_element_by_id(id)->remove_class("menu-active");
     }
-    web::add_class(menu_id, "menu-active");
+    webpp::get_element_by_id(menu_id)->add_class("menu-active");
 
-    web::set_html("page", Webxx::render(page->render()));
-    web::set_timeout(std::chrono::milliseconds(0), [page](auto){page->open();});
+    webpp::get_element_by_id("page")->inner_html(Webxx::render(page->render()));
+    webpp::set_timeout(std::chrono::milliseconds(0), [page](){page->open();});
 }
 
 auto page(std::string_view current_theme) {
@@ -150,16 +148,19 @@ auto page(std::string_view current_theme) {
 
 [[clang::export_name("main")]]
 int main() {
-    std::string theme = web::eval("let theme = localStorage.getItem('theme'); if(theme === null) {theme = '';}; theme");
+    std::string theme = webpp::eval("let theme = localStorage.getItem('theme'); if(theme === null) {theme = '';}; theme")["result"]
+        .as<std::string>().value_or("");
     if(theme.empty()) {
         theme = "light";
-        web::eval("localStorage.setItem('theme', 'light'); ''");
+        webpp::eval("localStorage.setItem('theme', 'light'); ''");
     }
-    web::set_attribute("main", "data-theme", theme);
-    web::set_html("main", Webxx::render(page(theme)));
+
+    auto main = *webpp::get_element_by_id("main");
+    main.set_property("data-theme", theme);
+    main.inner_html(Webxx::render(page(theme)));
     switch_page(&logs_page, "menu_logs");
 
-    web::coro::submit(refresh());
+    webpp::coro::submit(refresh());
 
     return 0;
 }
