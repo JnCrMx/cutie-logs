@@ -29,7 +29,7 @@ FetchContent_Declare(argparse
   GIT_TAG        v3.2)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG v5.0.0
+  GIT_TAG        v5.0.0
   GIT_SHALLOW TRUE)
 
 set(PISTACHE_BUILD_TESTS OFF CACHE BOOL "Pistache: Build tests" FORCE)
@@ -82,7 +82,7 @@ target_link_libraries(server PRIVATE
   common protoModule
   pistacheModule gzipModule pqxxModule argparseModule spdlogModule glazeModule
   protobuf::libprotobuf)
-target_compile_options(server PRIVATE --embed-dir=${CMAKE_BINARY_DIR}/frontend/ -Wno-c23-extensions)
+target_compile_options(server PRIVATE --embed-dir=${CMAKE_BINARY_DIR}/frontend/ --embed-dir=${CMAKE_SOURCE_DIR} -Wno-c23-extensions)
 add_dependencies(server frontend_files)
 
 add_custom_command(
