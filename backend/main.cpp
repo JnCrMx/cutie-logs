@@ -1,4 +1,7 @@
 #include <concepts>
+#include <iostream>
+#include <optional>
+
 import pistache;
 import pqxx;
 import argparse;
@@ -8,9 +11,6 @@ import common;
 import backend.database;
 import backend.opentelemetry;
 import backend.web;
-
-#include <iostream>
-#include <optional>
 
 template<typename T = const char*>
 argparse::Argument& env_default(argparse::Argument& arg, std::string env_var) {
@@ -43,6 +43,9 @@ int main(int argc, char** argv) {
     env_default(program.add_argument("--web-dev-path"), "CUTIE_LOGS_WEB_DEV_PATH")
         .help("Path to serve static files from in development mode (env: CUTIE_LOGS_WEB_DEV_PATH)")
         .nargs(1).metavar("PATH");
+    env_default(program.add_argument("--skip-database-consistency"), "CUTIE_LOGS_SKIP_DATABASE_CONSISTENCY", false)
+        .help("Skip database consistency check (env: CUTIE_LOGS_SKIP_DATABASE_CONSISTENCY)")
+        .implicit_value(true);
     env_default(program.add_argument("--disable-web"), "CUTIE_LOGS_DISABLE_WEB", false)
         .help("Disable the web interface (env: CUTIE_LOGS_DISABLE_WEB)")
         .implicit_value(true);
@@ -64,7 +67,11 @@ int main(int argc, char** argv) {
 
     database::Database db(program.get<std::string>("--database"));
     db.run_migrations();
-    db.ensure_consistency();
+    if(!program.get<bool>("--skip-database-consistency")) {
+        db.ensure_consistency();
+    } else {
+        spdlog::warn("Skipping database consistency check");
+    }
     db.start_workers();
 
     web::Server web_server(db, Pistache::Address(program.get<std::string>("--web-address")));
