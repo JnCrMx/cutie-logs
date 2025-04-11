@@ -20,9 +20,8 @@
         instance.exports._initialize();
         instance.exports.main();
 
-        window.handleEvent = function(element, event) {
-            const ptr = Number(element.getAttribute("data-callback"));
-            functions.invoke_callback(ptr, functions.create_object_ref(event));
+        window.handleEvent = function(element, event, callback) {
+            functions.invoke_callback(callback, functions.create_object_ref(event));
         }
     </script>
     <main id="main">

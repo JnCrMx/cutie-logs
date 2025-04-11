@@ -46,21 +46,12 @@ export class table : public page {
             return resources_selector+"0";
         }
 
-        webpp::coroutine<void> run_query() {
-            std::string attributes_selector = build_attributes_selector(selected_attributes);
-            std::string scopes_selector = build_scopes_selector(selected_scopes);
-            std::string resources_selector = build_resources_selector(selected_resources);
-            constexpr unsigned int limit = 100;
+        unsigned int dragged_column = 0;
+        unsigned int dragged_position = 0;
+        common::logs_response logs;
+        std::vector<std::string> table_column_order;
 
-            auto url = std::format("/api/v1/logs?limit={}&attributes={}&scopes={}&resources={}",
-                limit, attributes_selector, scopes_selector, resources_selector);
-            auto logs =
-                glz::read_beve<common::logs_response>(co_await webpp::coro::fetch(url).then(std::mem_fn(&webpp::response::co_bytes)))
-                .value_or(common::logs_response{});
-
-            webpp::get_element_by_id("run_button_icon")->remove_class("hidden");
-            webpp::get_element_by_id("run_button_loading")->add_class("hidden");
-
+        Webxx::fragment render_table() {
             using namespace Webxx;
             std::set<std::string> attributes_set;
             for(const auto& [attr, selected] : selected_attributes) {
@@ -69,24 +60,90 @@ export class table : public page {
                 }
             }
 
-            bool body = false;
+            if(table_column_order.empty()) {
+                table_column_order = {":Timestamp", ":Resource", ":Scope", ":Severity"};
+            }
+            for(auto& a : attributes_set) {
+                if(std::find(table_column_order.begin(), table_column_order.end(), a) == table_column_order.end()) {
+                    table_column_order.push_back(a);
+                }
+            }
+
             for(const auto& entry : logs.logs) {
                 if(!entry.body.is_null() && (!entry.body.is_string() || !entry.body.get_string().empty())) {
-                    body = true;
+                    if(std::find(table_column_order.begin(), table_column_order.end(), "body") == table_column_order.end()) {
+                        table_column_order.push_back(":Body");
+                    }
                     break;
                 }
             }
 
             static event_context ctx;
             ctx.clear();
+
+            auto dragstart = [this](webpp::event e) {
+                auto el = *e.current_target().as<webpp::element>();
+                int column_pos = std::stoi(*el["dataset"]["columnPos"].as<std::string>());
+                dragged_column = column_pos;
+                dragged_position = column_pos;
+            };
+            auto dragover = [this](webpp::event e) {
+                auto el = *e.current_target().as<webpp::element>();
+                int x = *e["offsetX"].as<int>();
+                int w = el.offset_width();
+                int column_pos = std::stoi(*el["dataset"]["columnPos"].as<std::string>());
+
+                if(x > w / 2) {
+                    el.add_class("border-r-4");
+                    el.remove_class("border-l-4");
+                    dragged_position = column_pos + 1;
+                } else {
+                    el.add_class("border-l-4");
+                    el.remove_class("border-r-4");
+                    dragged_position = column_pos;
+                }
+            };
+            auto dragleave = [](webpp::event e) {
+                auto el = *e.current_target().as<webpp::element>();
+                el.remove_class("border-l-4");
+                el.remove_class("border-r-4");
+            };
+            auto dragend = [this](webpp::event e) {
+                if(dragged_position > dragged_column) {
+                    dragged_position--;
+                }
+                if(dragged_position == dragged_column) {
+                    return;
+                }
+
+                if(dragged_column < dragged_position) {
+                    std::rotate(table_column_order.begin() + dragged_column, table_column_order.begin() + dragged_column + 1, table_column_order.begin() + dragged_position + 1);
+                } else if(dragged_column > dragged_position) {
+                    std::rotate(table_column_order.begin() + dragged_position, table_column_order.begin() + dragged_column, table_column_order.begin() + dragged_column + 1);
+                }
+                webpp::set_timeout(std::chrono::milliseconds(0), [this](){
+                    webpp::get_element_by_id("table")->inner_html(Webxx::render(render_table()));
+                });
+            };
+
+            unsigned int column_pos = 0;
+            auto make_th = [&](std::string text) {
+                constexpr static char dataColumnPosAttr[] = "data-column-pos";
+                using _dataColumnPos = Webxx::attr<dataColumnPosAttr>;
+
+                if(text.starts_with(':')) {
+                    text = text.substr(1);
+                }
+
+                std::string_view heading_classes = "cursor-grab hover:bg-base-300 box-border";
+                return ctx.on_events<drag_start_event, drag_end_event, drag_over_event, drag_leave_event>(
+                        th{{_draggable{"true"}, _class{heading_classes}, _dataColumnPos{std::to_string(column_pos++)}}, text},
+                    dragstart, dragend, dragover, dragleave);
+            };
+
             auto view = Webxx::table{{_class{"table table-pin-rows bg-base-200"}},
                 thead{tr{
-                    th{"Timestamp"},
-                    th{"Resource"},
-                    th{"Scope"},
-                    th{"Severity"},
-                    each(attributes_set, [&](const std::string& attr) { return th{attr}; }),
-                    maybe(body, [](){return th{"Body"};}),
+                    each(table_column_order, [&](const std::string& attr) { return make_th(attr); })
                 }},
                 each(logs.logs, [&, this](const common::log_entry& entry) {
                     using sys_seconds_double = std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double>>;
@@ -94,26 +151,54 @@ export class table : public page {
                     auto timestamp = std::chrono::time_point_cast<std::chrono::sys_seconds::duration>(timestamp_double);
 
                     auto attributes = entry.attributes.is_object() ? entry.attributes.get_object() : glz::json_t::object_t{};
+                    auto e_timestamp = std::format("{:%Y-%m-%d %H:%M:%S}", timestamp);
+                    auto e_resource = a{{_class{"link"}, _onClick{std::format("document.getElementById('modal_resource_{}').showModal()", entry.resource)}},
+                        resource_name(entry.resource, std::get<0>(resources->resources[entry.resource]))};
+                    auto e_scope = entry.scope;
+                    auto e_severity = common::log_severity_names[std::to_underlying(entry.severity)];
+                    auto e_body = entry.body.is_string() ? entry.body.get_string() : entry.body.dump().value_or("error");
 
                     return tr{
-                        td{std::format("{:%Y-%m-%d %H:%M:%S}", timestamp)},
-                        td{
-                            a{{_class{"link"}, _onClick{std::format("document.getElementById('modal_resource_{}').showModal()", entry.resource)}},
-                                resource_name(entry.resource, std::get<0>(resources->resources[entry.resource]))},
-                        },
-                        td{entry.scope},
-                        td{common::log_severity_names[std::to_underlying(entry.severity)]},
-                        each(attributes_set, [&](const std::string& attr) {
+                        each(table_column_order, [&](const std::string& attr) {
+                            if(attr == ":Timestamp") {
+                                return td{e_timestamp};
+                            } else if(attr == ":Resource") {
+                                return td{e_resource};
+                            } else if(attr == ":Scope") {
+                                return td{e_scope};
+                            } else if(attr == ":Severity") {
+                                return td{e_severity};
+                            } else if(attr == ":Body") {
+                                return td{e_body};
+                            }
+
                             if(!attributes.contains(attr)) {
                                 return td{"&lt;missing&gt;"};
                             }
                             return td{attributes.at(attr).is_string() ? attributes.at(attr).get_string() : attributes.at(attr).dump().value_or("error")};
-                        }),
-                        maybe(body, [&](){return td{entry.body.is_string() ? entry.body.get_string() : entry.body.dump().value_or("error")};}),
+                        })
                     };
                 })
             };
-            webpp::get_element_by_id("table")->inner_html(Webxx::render(view));
+            return fragment{view};
+        }
+
+        webpp::coroutine<void> run_query() {
+            std::string attributes_selector = build_attributes_selector(selected_attributes);
+            std::string scopes_selector = build_scopes_selector(selected_scopes);
+            std::string resources_selector = build_resources_selector(selected_resources);
+            constexpr unsigned int limit = 100;
+
+            auto url = std::format("/api/v1/logs?limit={}&attributes={}&scopes={}&resources={}",
+                limit, attributes_selector, scopes_selector, resources_selector);
+            logs =
+                glz::read_beve<common::logs_response>(co_await webpp::coro::fetch(url).then(std::mem_fn(&webpp::response::co_bytes)))
+                .value_or(common::logs_response{});
+
+            webpp::get_element_by_id("run_button_icon")->remove_class("hidden");
+            webpp::get_element_by_id("run_button_loading")->add_class("hidden");
+
+            webpp::get_element_by_id("table")->inner_html(Webxx::render(render_table()));
 
             co_return;
         };
