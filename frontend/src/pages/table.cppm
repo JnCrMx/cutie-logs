@@ -51,7 +51,7 @@ export class table : public page {
         common::logs_response logs;
         std::vector<std::string> table_column_order;
 
-        Webxx::fragment render_table() {
+        Webxx::fragment make_table() {
             using namespace Webxx;
             std::set<std::string> attributes_set;
             for(const auto& [attr, selected] : selected_attributes) {
@@ -121,9 +121,8 @@ export class table : public page {
                 } else if(dragged_column > dragged_position) {
                     std::rotate(table_column_order.begin() + dragged_position, table_column_order.begin() + dragged_column, table_column_order.begin() + dragged_column + 1);
                 }
-                webpp::set_timeout(std::chrono::milliseconds(0), [this](){
-                    webpp::get_element_by_id("table")->inner_html(Webxx::render(render_table()));
-                });
+                webpp::set_timeout(std::chrono::milliseconds(0), std::bind(&table::render_table, this));
+                webpp::get_element_by_id("reset_table_button")->remove_class("btn-disabled");
             };
 
             unsigned int column_pos = 0;
@@ -182,6 +181,9 @@ export class table : public page {
             };
             return fragment{view};
         }
+        void render_table() {
+            webpp::get_element_by_id("table")->inner_html(Webxx::render(make_table()));
+        }
 
         webpp::coroutine<void> run_query() {
             std::string attributes_selector = build_attributes_selector(selected_attributes);
@@ -198,7 +200,7 @@ export class table : public page {
             webpp::get_element_by_id("run_button_icon")->remove_class("hidden");
             webpp::get_element_by_id("run_button_loading")->add_class("hidden");
 
-            webpp::get_element_by_id("table")->inner_html(Webxx::render(render_table()));
+            render_table();
 
             co_return;
         };
@@ -285,7 +287,15 @@ export class table : public page {
                             webpp::get_element_by_id("run_button_icon")->add_class("hidden");
                             webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
                             webpp::coro::submit(run_query());
-                        })
+                        }),
+                        ctx.on_click(button{{_id{"reset_table_button"}, _class{"btn btn-secondary btn-disabled"}},
+                            assets::icons::reset,
+                            "Reset table"
+                        }, [this](webpp::event e) {
+                            table_column_order.clear();
+                            render_table();
+                            e.target().as<webpp::element>()->add_class("btn-disabled");
+                        }),
                     },
                     dv{{_id{"table"}, _class{"mt-4 overflow-x-auto"}}},
                 }

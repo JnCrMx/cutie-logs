@@ -12,6 +12,7 @@ export namespace assets {
         extern const std::string_view run;
         extern const std::string_view download;
         extern const std::string_view refresh;
+        extern const std::string_view reset;
 
         extern const std::string_view warning;
     }

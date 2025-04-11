@@ -39,6 +39,11 @@ namespace assets {
         };
         const std::string_view refresh{refresh_data, sizeof(refresh_data)};
 
+        constexpr char reset_data[] = {
+            #embed "assets/icons/reset.svg"
+        };
+        const std::string_view reset{reset_data, sizeof(reset_data)};
+
         constexpr char warning_data[] = {
             #embed "assets/icons/warning.svg"
         };

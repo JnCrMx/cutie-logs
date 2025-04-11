@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg class="size-[calc(var(--size-selector,.25rem)*6)]" fill="none" stroke="currentColor" stroke-width="2.5" version="1.1" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+ <g stroke-linecap="round">
+  <path d="m19.877 2.4032 0.04234 5.854m-0.0053-0.0096-5.8377 0.43897m6.8557 5.473a9 9 0 0 1-8.8633 7.4372 9 9 0 0 1-8.8633-7.4372 9 9 0 0 1 5.7851-10.02 9 9 0 0 1 10.872 3.9572"/>
+ </g>
+</svg>
