@@ -59,6 +59,8 @@ export class table : public page {
                     attributes_set.insert(attr);
                 }
             }
+            table_column_order.erase(std::remove_if(table_column_order.begin(), table_column_order.end(),
+                [&](const std::string& e){return !e.starts_with(":") && !attributes_set.contains(e);}), table_column_order.end());
 
             if(table_column_order.empty()) {
                 table_column_order = {":Timestamp", ":Resource", ":Scope", ":Severity"};
@@ -122,7 +124,6 @@ export class table : public page {
                     std::rotate(table_column_order.begin() + dragged_position, table_column_order.begin() + dragged_column, table_column_order.begin() + dragged_column + 1);
                 }
                 webpp::set_timeout(std::chrono::milliseconds(0), std::bind(&table::render_table, this));
-                webpp::get_element_by_id("reset_table_button")->remove_class("btn-disabled");
             };
 
             unsigned int column_pos = 0;
@@ -181,8 +182,58 @@ export class table : public page {
             };
             return fragment{view};
         }
+
+        bool check_default_table_order() {
+            if(table_column_order.empty()) {
+                return true;
+            }
+            if(table_column_order.size() < 4) {
+                return false;
+            }
+            if(table_column_order[0] != ":Timestamp") {
+                return false;
+            }
+            if(table_column_order[1] != ":Resource") {
+                return false;
+            }
+            if(table_column_order[2] != ":Scope") {
+                return false;
+            }
+            if(table_column_order[3] != ":Severity") {
+                return false;
+            }
+            std::set<std::string> attributes_set;
+            for(const auto& [attr, selected] : selected_attributes) {
+                if(selected) {
+                    attributes_set.insert(attr);
+                }
+            }
+            for(unsigned int i=4; i<table_column_order.size(); i++) {
+                auto it = std::find(attributes_set.begin(), attributes_set.end(), table_column_order[i]);
+                if(it == attributes_set.end()) {
+                    return false;
+                }
+                unsigned int j = std::distance(attributes_set.begin(), it);
+                if(j != i-4) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         void render_table() {
             webpp::get_element_by_id("table")->inner_html(Webxx::render(make_table()));
+
+            if(check_default_table_order()) {
+                webpp::get_element_by_id("reset_table_button")->add_class("btn-disabled");
+
+                webpp::eval("localStorage.removeItem('table_columns');"); // remove the saved order (and thereby set it to default)
+            } else {
+                webpp::get_element_by_id("reset_table_button")->remove_class("btn-disabled");
+
+                auto order = glz::write_json(table_column_order).value_or("[]");
+                webpp::eval("localStorage.setItem('table_columns', '{}');", order);
+            }
         }
 
         webpp::coroutine<void> run_query() {
@@ -264,6 +315,10 @@ export class table : public page {
             update_attributes();
             update_scopes();
             update_resources();
+
+            auto saved_order = webpp::eval("let saved = localStorage.getItem('table_columns'); if(saved === null) {{saved = '[]';}}; saved")
+                ["result"].as<std::string>().value_or("[]");
+            table_column_order = glz::read_json<std::vector<std::string>>(saved_order).value_or(std::vector<std::string>{});
         }
 
         Webxx::fragment render() override {
@@ -294,7 +349,6 @@ export class table : public page {
                         }, [this](webpp::event e) {
                             table_column_order.clear();
                             render_table();
-                            e.target().as<webpp::element>()->add_class("btn-disabled");
                         }),
                     },
                     dv{{_id{"table"}, _class{"mt-4 overflow-x-auto"}}},
