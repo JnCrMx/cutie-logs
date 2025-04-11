@@ -25,6 +25,13 @@ static r<common::logs_resources_response> resources;
 static pages::logs logs_page(example_entry, attributes, scopes, resources);
 static pages::table table_page(attributes, scopes, resources);
 
+using page_tuple = std::tuple<std::string_view, std::string_view, std::string_view, pages::page*>;
+static std::array all_pages = {
+    page_tuple{"logs", "Text View", assets::icons::text_view, &logs_page},
+    page_tuple{"table", "Table View", assets::icons::table_view, &table_page},
+//    page_tuple{"analysis", "Analysis", assets::icons::analysis, &logs_page},
+};
+
 static pages::page* current_page = nullptr;
 
 Webxx::dv page_stats(const stats_data& data);
@@ -100,7 +107,7 @@ Webxx::dv page_stats(const stats_data& data) {
     };
 }
 
-void switch_page(pages::page* page, std::string_view menu_id) {
+void switch_page(pages::page* page, std::string_view id) {
     if(current_page == page) {
         return;
     }
@@ -108,13 +115,18 @@ void switch_page(pages::page* page, std::string_view menu_id) {
     if(current_page) {
         current_page->close();
     }
-    for(auto id : {"menu_logs", "menu_table", "menu_analysis"}) {
-        webpp::get_element_by_id(id)->remove_class("menu-active");
+    for(auto [page_id, name, icon, page_ptr] : all_pages) {
+        std::string menu_id = "menu_" + std::string{page_id};
+        webpp::get_element_by_id(menu_id)->remove_class("menu-active");
     }
+    std::string menu_id = "menu_" + std::string{id};
     webpp::get_element_by_id(menu_id)->add_class("menu-active");
 
     webpp::get_element_by_id("page")->inner_html(Webxx::render(page->render()));
     webpp::set_timeout(std::chrono::milliseconds(0), [page](){page->open();});
+
+    webpp::eval("document.location.hash = '#{}';", id);
+    webpp::eval("localStorage.setItem('page', '{}');", id);
 }
 
 auto page(std::string_view current_theme) {
@@ -130,9 +142,11 @@ auto page(std::string_view current_theme) {
                     dv{{_class{"text-1xl font-bold ml-2"}}, "version ", common::project_version},
                 },
                 ul{{_class{"menu bg-base-300 md:menu-horizontal rounded-box w-full md:w-auto"}},
-                    li{ctx.on_click(a{{_id{"menu_logs"}}, assets::icons::text_view, "Text View"}, [](auto){switch_page(&logs_page, "menu_logs");})},
-                    li{ctx.on_click(a{{_id{"menu_table"}}, assets::icons::table_view, "Table View"}, [](auto){switch_page(&table_page, "menu_table");})},
-                    li{ctx.on_click(a{{_id{"menu_analysis"}}, assets::icons::analysis, "Analysis"}, [](auto){switch_page(&logs_page, "menu_analysis");})},
+                    each(all_pages, [](auto& page) {
+                        auto [id, name, icon, page_ptr] = page;
+                        std::string menu_id = "menu_" + std::string{id};
+                        return li{ctx.on_click(a{{_id{menu_id}}, icon, name}, [page_ptr, id](auto){switch_page(page_ptr, id);})};
+                    }),
                 }
             },
             dv{{_id{"stats"}, _class{"ml-2 mr-2 grow flex flex-row justify-center items-center"}}, page_stats({})},
@@ -147,6 +161,44 @@ auto page(std::string_view current_theme) {
     };
 }
 
+bool try_switch_page(std::string_view id) {
+    for(auto [page_id, name, icon, page_ptr] : all_pages) {
+        if(page_id == id) {
+            switch_page(page_ptr, id);
+            return true;
+        }
+    }
+    return false;
+}
+
+void auto_select_page() {
+    std::string page = webpp::eval("let page = document.location.hash; if(page === null) {page = '';}; page")["result"]
+        .as<std::string>().value_or("");
+    if(!page.empty()) {
+        page = page.substr(1);
+    }
+    if(page == "none") {
+        return;
+    }
+    if(try_switch_page(page)) {
+        return;
+    }
+
+    page = webpp::eval("let page = localStorage.getItem('page'); if(page === null) {page = '';}; page")["result"]
+        .as<std::string>().value_or("");
+    if(page == "none") {
+        return;
+    }
+    if(try_switch_page(page)) {
+        return;
+    }
+
+    if(!all_pages.empty()) {
+        auto [page_id, name, icon, page_ptr] = all_pages.front();
+        switch_page(page_ptr, page_id);
+    }
+}
+
 [[clang::export_name("main")]]
 int main() {
     std::string theme = webpp::eval("let theme = localStorage.getItem('theme'); if(theme === null) {theme = '';}; theme")["result"]
@@ -159,7 +211,8 @@ int main() {
     auto main = *webpp::get_element_by_id("main");
     main.set_property("data-theme", theme);
     main.inner_html(Webxx::render(page(theme)));
-    switch_page(&logs_page, "menu_logs");
+
+    auto_select_page();
 
     webpp::coro::submit(refresh());
 

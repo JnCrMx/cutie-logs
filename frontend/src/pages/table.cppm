@@ -71,7 +71,7 @@ export class table : public page {
 
             bool body = false;
             for(const auto& entry : logs.logs) {
-                if(!entry.body.is_null()) {
+                if(!entry.body.is_null() && (!entry.body.is_string() || !entry.body.get_string().empty())) {
                     body = true;
                     break;
                 }
