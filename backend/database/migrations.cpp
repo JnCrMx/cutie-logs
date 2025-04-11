@@ -33,7 +33,7 @@ void Database::run_migrations() {
             logger->trace("Migration {:04} already applied", i);
         }
     }
-    txn.commit();
+    txn.commit(); // if one of the migrations fails, we probably want to rollback all of them
     logger->info("Migrations complete");
 }
 
