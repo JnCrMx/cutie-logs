@@ -33,6 +33,7 @@ auto refresh() -> webpp::coroutine<void> {
     auto refresh_button = *webpp::get_element_by_id("refresh-button");
     refresh_button.add_class("btn-disabled");
     refresh_button.add_class("*:animate-spin");
+    webpp::get_element_by_id("stats")->add_class("animate-pulse");
 
     auto attributes_future = webpp::coro::fetch("/api/v1/logs/attributes").then(std::mem_fn(&webpp::response::co_bytes));
     auto scopes_future = webpp::coro::fetch("/api/v1/logs/scopes").then(std::mem_fn(&webpp::response::co_bytes));
@@ -61,11 +62,11 @@ auto refresh() -> webpp::coroutine<void> {
     stats.total_scopes = scopes->scopes.size();
     stats.total_resources = resources->resources.size();
     webpp::get_element_by_id("stats")->inner_html(Webxx::render(page_stats(stats)));
-    webpp::get_element_by_id("stats")->add_class("animate-pulse");
 
     // in theory we don't need this, because we rerender this area of the page ("stats") anyway
     refresh_button.remove_class("btn-disabled");
     refresh_button.remove_class("*:animate-spin");
+    webpp::get_element_by_id("stats")->remove_class("animate-pulse");
     co_return;
 }
 
