@@ -33,7 +33,7 @@ namespace common {
         static constexpr bool value = false;
     };
 
-    template<typename T>
+    export template<typename T>
     concept trivially_formattable = std::formattable<T, char> && test_format<T>::value;
 
     template<typename T>
@@ -188,8 +188,10 @@ namespace common {
         if(first_key.empty()) {
             if constexpr (has_root<T>) {
                 first_key = T::root;
+            } else if (key.empty()) {
+                return eval_expression(obj, expression, functions);
             } else {
-                result = std::unexpected{std::format("empty key given and type \"{}\" does not have a root", glz::name_v<T>)};
+                return std::unexpected{std::format("\".\" given as key, but type \"{}\" does not have a root", glz::name_v<T>)};
             }
         }
 

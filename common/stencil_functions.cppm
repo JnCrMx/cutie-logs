@@ -40,6 +40,25 @@ export struct stencil_functions {
         }
         return x.get_boolean();
     };
+    std::add_pointer_t<glz::json_t(glz::json_t, std::string_view)> get_array_element = [](glz::json_t x, std::string_view index){
+        if(!x.is_array()) {
+            return glz::json_t{};
+        }
+        int i = parse_int(index);
+        if(i < 0 || i >= x.size()) {
+            return glz::json_t{};
+        }
+        return x.get_array()[i];
+    };
+    std::add_pointer_t<glz::json_t(glz::json_t, std::string_view)> get_object_element = [](glz::json_t x, std::string_view key){
+        if(!x.is_object()) {
+            return glz::json_t{};
+        }
+        if(!x.contains(key)) {
+            return glz::json_t{};
+        }
+        return x[key];
+    };
 
     std::add_pointer_t<double(double, std::string_view)> add = [](double x, std::string_view y){
         return x + parse_int(y);
@@ -116,6 +135,10 @@ export struct stencil_functions {
             result += x;
         }
         return result;
+    };
+    std::add_pointer_t<std::string(std::string)> reverse = [](std::string x){
+        std::reverse(x.begin(), x.end());
+        return x;
     };
 
     using sys_seconds_double = std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double>>;
