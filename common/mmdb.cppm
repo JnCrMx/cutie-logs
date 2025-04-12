@@ -237,18 +237,41 @@ export class mmdb {
             m_tree_size = ((m_record_size * 2) / 8) * m_node_count;
             m_data_begin = m_tree_size + 16;
 
+            if(m_data_begin >= m_data.size()) {
+                m_valid = false;
+                m_error = "Invalid data offset";
+                return;
+            }
+            if(m_record_size != 24 && m_record_size != 28 && m_record_size != 32) {
+                m_valid = false;
+                m_error = "Invalid record size";
+                return;
+            }
+
             m_valid = true;
         }
 
         std::pair<uint32_t, uint32_t> get_node(std::size_t index) {
             std::size_t offset = index * ((m_record_size * 2) / 8);
             if(m_record_size == 24) {
-                uint32_t a = read_uint32(offset, 3);
-                uint32_t b = read_uint32(offset, 3);
+                uint32_t a = *read_uint32(offset, 3);
+                uint32_t b = *read_uint32(offset, 3);
                 return {a, b};
+            } else if(m_record_size == 28) {
+                uint32_t a = *read_uint32(offset, 3);
+                uint32_t middle = m_data[offset++];
+                uint32_t b = *read_uint32(offset, 3);
+                uint32_t upper_a = ((middle & 0b11110000) >> 4);
+                uint32_t upper_b =  (middle & 0b00011111);
+
+                a = upper_a << 24 | a;
+                b = upper_b << 24 | b;
+                return {a, b};
+            } else if(m_record_size == 32) {
+                uint32_t a = *read_uint32(offset, 4);
+                uint32_t b = *read_uint32(offset, 4);
             }
-            __builtin_trap();
-            return {};
+            return {m_node_count, m_node_count};
         }
 
         template<typename T>
@@ -257,30 +280,42 @@ export class mmdb {
                 return std::unexpected(m_error);
             }
 
-            auto [a, b] = get_node(node);
-            if(ip & (T{1} << (sizeof(T) * 8 - 1))) {
-                node = b;
-            } else {
-                node = a;
-            }
+            while(ip) {
+                auto [a, b] = get_node(node);
+                if(ip & (T{1} << (sizeof(T) * 8 - 1))) {
+                    node = b;
+                } else {
+                    node = a;
+                }
 
-            if(node == m_node_count) {
-                return std::unexpected("Not found");
-            } else if(node > m_node_count + 16) {
-                std::size_t offset = (node - m_node_count) + m_tree_size;
-                return read_type(offset, m_data_begin);
-            } else if(node > m_node_count) {
-                return std::unexpected("Invalid node");
+                if(node == m_node_count) {
+                    return std::unexpected("Not found");
+                } else if(node > m_node_count + 16) {
+                    std::size_t offset = (node - m_node_count) + m_tree_size;
+                    return read_type(offset, m_data_begin);
+                } else if(node > m_node_count) {
+                    return std::unexpected("Invalid node");
+                }
+                ip <<= 1;
             }
-            return lookup<T>(ip << 1, node);
+            return std::unexpected("Invalid IP");
         }
 
+        #define CHECK_INDEX(len) \
+            if((index + (len - 1)) >= m_data.size()) { /* index is already at the first byte of the new value */ \
+                return std::unexpected("Index out of bounds"); \
+            }
+
         std::expected<data, std::string> read_type(std::size_t& index, std::size_t base) {
+            CHECK_INDEX(1);
             unsigned char control = static_cast<unsigned char>(m_data[index++]);
             int type = (control & 0b11100000) >> 5;
             if(type == 1) {
-                std::size_t ptr = read_pointer(index, control);
-                std::size_t target = base + ptr;
+                auto ptr = read_pointer(index, control);
+                if(!ptr) {
+                    return std::unexpected(ptr.error());
+                }
+                std::size_t target = base + *ptr;
                 if(target >= m_data.size()) {
                     return std::unexpected("Pointer out of bounds");
                 }
@@ -288,16 +323,20 @@ export class mmdb {
             }
 
             if(type == 0) {
+                CHECK_INDEX(1);
                 type = static_cast<unsigned char>(m_data[index++]) + 7;
             }
 
             unsigned int size = (control & 0b00011111);
             if(size == 29) {
+                CHECK_INDEX(1);
                 size = 29 + m_data[index++];
             } else if(size == 30) {
+                CHECK_INDEX(2);
                 size = 285 + (m_data[index+1] << 8) + m_data[index + 2];
                 index += 2;
             } else if(size == 31) {
+                CHECK_INDEX(3);
                 size = 65821 + (m_data[index + 1] << 16) + (m_data[index + 2] << 8) + m_data[index + 3];
                 index += 3;
             }
@@ -338,18 +377,21 @@ export class mmdb {
             }
             return {};
         }
-        std::size_t read_pointer(std::size_t& index, unsigned char ctrl) {
+        std::expected<std::size_t, std::string> read_pointer(std::size_t& index, unsigned char ctrl) {
             int size = (ctrl & 0b00011000) >> 3;
             uint32_t v = ctrl & 0b00000111;
             if(size == 0) {
+                CHECK_INDEX(1);
                 uint8_t next = m_data[index++];
                 return (v << 8) | next;
             } else if(size == 1) {
+                CHECK_INDEX(2);
                 uint8_t a = m_data[index++];
                 uint8_t b = m_data[index++];
                 uint32_t value = (a << 8) | b;
                 return ((v << 16) | value) + 2048;
             } else if(size == 2) {
+                CHECK_INDEX(3);
                 uint8_t a = m_data[index++];
                 uint8_t b = m_data[index++];
                 uint8_t c = m_data[index++];
@@ -360,13 +402,19 @@ export class mmdb {
             }
             return 0;
         }
-        double read_double(std::size_t& index) {
-            uint64_t v = read_uint64(index, 8);
-            return std::bit_cast<double>(v);
+        std::expected<double, std::string> read_double(std::size_t& index) {
+            auto v = read_uint64(index, 8);
+            if(!v) {
+                return std::unexpected(v.error());
+            }
+            return std::bit_cast<double>(*v);
         }
-        float read_float(std::size_t& index) {
-            uint32_t v = read_uint32(index, 4);
-            return std::bit_cast<float>(v);
+        std::expected<float, std::string> read_float(std::size_t& index) {
+            auto v = read_uint32(index, 4);
+            if(!v) {
+                return std::unexpected(v.error());
+            }
+            return std::bit_cast<float>(*v);
         }
         std::expected<map, std::string> read_map(std::size_t& index, std::size_t len, std::size_t base) {
             std::unordered_map<std::string, data> m;
@@ -395,7 +443,8 @@ export class mmdb {
             }
             return array;
         }
-        std::string read_string(std::size_t& index, std::size_t len) {
+        std::expected<std::string, std::string> read_string(std::size_t& index, std::size_t len) {
+            CHECK_INDEX(len);
             std::string str;
             str.reserve(len);
             for (std::size_t i = 0; i < len; ++i) {
@@ -403,7 +452,8 @@ export class mmdb {
             }
             return str;
         }
-        bytes read_bytes(std::size_t& index, std::size_t len) {
+        std::expected<bytes, std::string> read_bytes(std::size_t& index, std::size_t len) {
+            CHECK_INDEX(len);
             std::vector<char> bytes;
             bytes.reserve(len);
             for (std::size_t i = 0; i < len; ++i) {
@@ -411,7 +461,8 @@ export class mmdb {
             }
             return bytes;
         }
-        uint16_t read_uint16(std::size_t& index, std::size_t len) {
+        std::expected<uint16_t, std::string> read_uint16(std::size_t& index, std::size_t len) {
+            CHECK_INDEX(len);
             uint16_t value = 0;
             for (int i = 0; i < len; ++i) {
                 value <<= 8;
@@ -419,7 +470,8 @@ export class mmdb {
             }
             return value;
         }
-        uint32_t read_uint32(std::size_t& index, std::size_t len) {
+        std::expected<uint32_t, std::string> read_uint32(std::size_t& index, std::size_t len) {
+            CHECK_INDEX(len);
             uint32_t value = 0;
             for (int i = 0; i < len; ++i) {
                 value <<= 8;
@@ -427,7 +479,8 @@ export class mmdb {
             }
             return value;
         }
-        int32_t read_int32(std::size_t& index, std::size_t len) {
+        std::expected<int32_t, std::string> read_int32(std::size_t& index, std::size_t len) {
+            CHECK_INDEX(len);
             int32_t value = 0;
             for (int i = 0; i < len; ++i) {
                 value <<= 8;
@@ -435,7 +488,8 @@ export class mmdb {
             }
             return value;
         }
-        uint64_t read_uint64(std::size_t& index, std::size_t len) {
+        std::expected<uint64_t, std::string> read_uint64(std::size_t& index, std::size_t len) {
+            CHECK_INDEX(len);
             uint64_t value = 0;
             for (int i = 0; i < len; ++i) {
                 value <<= 8;
@@ -443,7 +497,8 @@ export class mmdb {
             }
             return value;
         }
-        __uint128_t read_uint128(std::size_t& index, std::size_t len) {
+        std::expected<__uint128_t, std::string> read_uint128(std::size_t& index, std::size_t len) {
+            CHECK_INDEX(len);
             __uint128_t value = 0;
             for (int i = 0; i < len; ++i) {
                 value <<= 8;
