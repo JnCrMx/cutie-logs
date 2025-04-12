@@ -1,5 +1,6 @@
 module;
 #include <array>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -9,6 +10,14 @@ export module common:structs;
 import glaze;
 
 export namespace common {
+    struct shared_settings {
+        struct {
+            std::optional<std::string> country_url;
+            std::optional<std::string> asn_url;
+            std::optional<std::string> city_url;
+        } geoip;
+    };
+
     struct log_resource {
         glz::json_t attributes;
         double created_at;

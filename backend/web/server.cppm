@@ -9,6 +9,7 @@ import pistache;
 import spdlog;
 import backend.utils;
 import backend.database;
+import common;
 
 namespace backend::web {
     export class Server {
@@ -22,8 +23,8 @@ namespace backend::web {
                     .flags(Pistache::Tcp::Options::ReuseAddr);
             }
 
-            Server(database::Database& db, Pistache::Address address = default_address(), Pistache::Http::Endpoint::Options options = default_options())
-                : db(db), address(address), server(address), router(), logger(spdlog::default_logger()->clone("web"))
+            Server(database::Database& db, common::shared_settings& settings, Pistache::Address address = default_address(), Pistache::Http::Endpoint::Options options = default_options())
+                : db(db), settings(settings), address(address), server(address), router(), logger(spdlog::default_logger()->clone("web"))
             {
                 server.init(options);
 
@@ -54,6 +55,7 @@ namespace backend::web {
             Pistache::Rest::Router router;
             database::Database& db;
 
+            common::shared_settings& settings;
             std::optional<std::filesystem::path> static_dev_path;
     };
 }

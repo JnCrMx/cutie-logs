@@ -102,8 +102,72 @@ export class mmdb {
             }
         };
 
+        mmdb() {
+            m_valid = false;
+            m_error = "Empty MMDB";
+        }
         mmdb(std::vector<char> data) : m_data(std::move(data)) {
             parse_header();
+        }
+        mmdb(const mmdb& other) : m_data(other.m_data),
+                             m_metadata(other.m_metadata),
+                             m_valid(other.m_valid),
+                             m_error(other.m_error),
+                             m_record_size(other.m_record_size),
+                             m_node_count(other.m_node_count),
+                             m_tree_size(other.m_tree_size),
+                             m_data_begin(other.m_data_begin),
+                             m_ip_version(other.m_ip_version)
+        {
+        }
+        mmdb(mmdb&& other) : m_data(std::move(other.m_data)),
+                             m_metadata(std::move(other.m_metadata)),
+                             m_valid(other.m_valid),
+                             m_error(std::move(other.m_error)),
+                             m_record_size(other.m_record_size),
+                             m_node_count(other.m_node_count),
+                             m_tree_size(other.m_tree_size),
+                             m_data_begin(other.m_data_begin),
+                             m_ip_version(other.m_ip_version)
+        {
+            other.m_valid = false;
+            other.m_error = "Moved MMDB";
+        }
+
+        mmdb& operator=(const mmdb& other) {
+            if (this == &other) {
+                return *this;
+            }
+            m_data = other.m_data;
+            m_metadata = other.m_metadata;
+            m_valid = other.m_valid;
+            m_error = other.m_error;
+            m_record_size = other.m_record_size;
+            m_node_count = other.m_node_count;
+            m_tree_size = other.m_tree_size;
+            m_data_begin = other.m_data_begin;
+            m_ip_version = other.m_ip_version;
+
+            return *this;
+        }
+        mmdb& operator=(mmdb&& other) {
+            if (this == &other) {
+                return *this;
+            }
+
+            m_data = std::move(other.m_data);
+            m_metadata = std::move(other.m_metadata);
+            m_valid = other.m_valid;
+            m_error = std::move(other.m_error);
+            m_record_size = other.m_record_size;
+            m_node_count = other.m_node_count;
+            m_tree_size = other.m_tree_size;
+            m_data_begin = other.m_data_begin;
+            m_ip_version = other.m_ip_version;
+
+            other.m_valid = false;
+            other.m_error = "Moved MMDB";
+            return *this;
         }
 
         const map& get_metadata() const {
@@ -119,7 +183,10 @@ export class mmdb {
             return m_ip_version;
         }
         std::expected<data, std::string> lookup_v6(__uint128_t ip) {
-            return lookup_v6(ip, 0);
+            if(m_ip_version == ip_version::v4) {
+                return std::unexpected("Invalid IP version");
+            }
+            return lookup<__uint128_t>(ip, 0);
         }
         std::expected<data, std::string> lookup_v4(uint32_t ip) {
             if(m_ip_version == ip_version::v6) {
@@ -127,13 +194,12 @@ export class mmdb {
                 ip_v6 |= (__uint128_t(0xFFFF) << 32);
                 return lookup_v6(ip_v6);
             }
-            // TODO
-            return {};
+            return lookup<uint32_t>(ip, 0);
         }
     private:
         std::vector<char> m_data;
         map m_metadata;
-        bool m_valid = true;
+        bool m_valid = false;
         std::string m_error;
         std::size_t m_record_size{};
         std::size_t m_node_count{};
@@ -147,6 +213,8 @@ export class mmdb {
             };
             auto res = std::ranges::search(m_data.rbegin(), m_data.rend(), magic.rbegin(), magic.rend());
             if(res.empty()) {
+                m_valid = false;
+                m_error = "Invalid MMDB file";
                 return;
             }
             auto pos = m_data.size() - std::distance(m_data.rbegin(), res.begin());
@@ -168,6 +236,8 @@ export class mmdb {
             m_node_count = std::get<uint32_t>(m_metadata["node_count"]);
             m_tree_size = ((m_record_size * 2) / 8) * m_node_count;
             m_data_begin = m_tree_size + 16;
+
+            m_valid = true;
         }
 
         std::pair<uint32_t, uint32_t> get_node(std::size_t index) {
@@ -181,9 +251,14 @@ export class mmdb {
             return {};
         }
 
-        std::expected<data, std::string> lookup_v6(__uint128_t ip, std::size_t node) {
+        template<typename T>
+        std::expected<data, std::string> lookup(T ip, std::size_t node) {
+            if(!m_valid) {
+                return std::unexpected(m_error);
+            }
+
             auto [a, b] = get_node(node);
-            if(ip & (__uint128_t(1)<<127)) {
+            if(ip & (T{1} << (sizeof(T) * 8 - 1))) {
                 node = b;
             } else {
                 node = a;
@@ -197,7 +272,7 @@ export class mmdb {
             } else if(node > m_node_count) {
                 return std::unexpected("Invalid node");
             }
-            return lookup_v6(ip << 1, node);
+            return lookup<T>(ip << 1, node);
         }
 
         std::expected<data, std::string> read_type(std::size_t& index, std::size_t base) {

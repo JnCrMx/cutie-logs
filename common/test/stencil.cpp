@@ -27,7 +27,8 @@ struct functions {
 
 int main() {
     int a = 5;
-    std::cout << *common::eval_expression(a, "add_5 | to_string | from_string | add(13) | to_string | test2", functions{})
+    functions fn{};
+    std::cout << *common::eval_expression(a, "add_5 | to_string | from_string | add(13) | to_string | test2", fn, fn)
         .or_else([](auto&& err) -> std::expected<std::string, std::string> {
             return std::string{"error: "} + err;
         }) << std::endl;

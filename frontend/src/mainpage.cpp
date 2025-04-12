@@ -22,7 +22,17 @@ static r<common::logs_attributes_response> attributes;
 static r<common::logs_scopes_response> scopes;
 static r<common::logs_resources_response> resources;
 
-static pages::logs logs_page(example_entry, attributes, scopes, resources);
+static common::shared_settings settings;
+static common::mmdb geoip_country;
+static common::mmdb geoip_asn;
+static common::mmdb geoip_city;
+static std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs = {
+    {"country", &geoip_country},
+    {"asn", &geoip_asn},
+    {"city", &geoip_city},
+};
+
+static pages::logs logs_page(example_entry, attributes, scopes, resources, mmdbs);
 static pages::table table_page(attributes, scopes, resources);
 
 using page_tuple = std::tuple<std::string_view, std::string_view, std::string_view, pages::page*>;
@@ -199,6 +209,34 @@ void auto_select_page() {
     }
 }
 
+auto load_mmdb(common::mmdb& target, std::string_view url) -> webpp::coroutine<void> {
+    auto data = co_await webpp::coro::fetch(url)
+        .then(std::mem_fn(&webpp::response::co_bytes));
+    target = common::mmdb{std::move(data)};
+    if(geoip_country.is_valid()) {
+        common::mmdb::data d = target.get_metadata();
+        auto json = glz::write_json(d.to_json()).value_or("error");
+        webpp::log("Loaded GeoIP database: {}", json);
+    } else {
+        webpp::log("Failed to load GeoIP database: {}", target.get_error());
+    }
+}
+auto load_settings() -> webpp::coroutine<void> {
+    auto data = co_await webpp::coro::fetch("/api/v1/settings")
+        .then(std::mem_fn(&webpp::response::co_bytes));
+    settings = glz::read_beve<common::shared_settings>(data).value_or(common::shared_settings{});
+
+    if(settings.geoip.country_url) {
+        webpp::coro::submit(load_mmdb(geoip_country, *settings.geoip.country_url));
+    }
+    if(settings.geoip.asn_url) {
+        webpp::coro::submit(load_mmdb(geoip_asn, *settings.geoip.asn_url));
+    }
+    if(settings.geoip.city_url) {
+        webpp::coro::submit(load_mmdb(geoip_city, *settings.geoip.city_url));
+    }
+}
+
 [[clang::export_name("main")]]
 int main() {
     std::string theme = webpp::eval("let theme = localStorage.getItem('theme'); if(theme === null) {theme = '';}; theme")["result"]
@@ -214,6 +252,7 @@ int main() {
 
     auto_select_page();
 
+    webpp::coro::submit(load_settings());
     webpp::coro::submit(refresh());
 
     return 0;

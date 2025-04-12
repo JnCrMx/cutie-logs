@@ -126,6 +126,11 @@ void Server::setup_api_routes() {
         response.send(Pistache::Http::Code::Ok, common::project_version.data(), common::project_version.size());
         return Pistache::Rest::Route::Result::Ok;
     });
+    router.get("/api/v1/settings", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        auto beve = *glz::write_beve(settings);
+        response.send(Pistache::Http::Code::Ok, beve.data(), beve.size(), mime::application_octet);
+        return Pistache::Rest::Route::Result::Ok;
+    });
     router.get("/api/v1/logs", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         auto filter = request.query().get("filter").transform(url_decode).value_or("");
         auto attributes = request.query().get("attributes").transform(url_decode).value_or("");

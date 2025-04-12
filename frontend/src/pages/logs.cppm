@@ -31,7 +31,7 @@ export class logs : public page {
                             auto validator = *webpp::get_element_by_id("stencil_validator");
                             stencil_format = textarea["value"].as<std::string>().value_or("");
                             webpp::eval("localStorage.setItem('stencil', '{}');", stencil_format);
-                            if(auto r = common::stencil(stencil_format, *example_entry)) {
+                            if(auto r = common::stencil(stencil_format, *example_entry, stencil_functions)) {
                                 validator.inner_text(*r);
                                 validator.remove_class("text-error");
                                 validator.remove_class("font-bold");
@@ -103,7 +103,7 @@ export class logs : public page {
             using namespace Webxx;
             auto list = ul{{_class{"list rounded-box shadow p-4 gap-1"}},
                 each(logs.logs, [&](const auto& entry) {
-                    auto r = common::stencil(stencil_format, entry);
+                    auto r = common::stencil(stencil_format, entry, stencil_functions);
                     return li{{_class{"list-item"}},
                         code{{_class{r ? "whitespace-pre" : "whitespace-pre text-error font-bold"}},
                             *r.or_else([](auto err) -> decltype(r) { return std::format("Stencil invalid: \"{}\"", err); })}
@@ -176,13 +176,15 @@ export class logs : public page {
         r<common::logs_attributes_response>& attributes;
         r<common::logs_scopes_response>& scopes;
         r<common::logs_resources_response>& resources;
+        common::advanced_stencil_functions stencil_functions;
 
         std::string stencil_format;
         std::unordered_map<std::string, bool> selected_attributes, selected_resources, selected_scopes;
         std::unordered_map<std::string, std::tuple<std::string, unsigned int>> transformed_resources;
     public:
-        logs(r<common::log_entry>& example_entry, r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes, r<common::logs_resources_response>& resources)
-            : example_entry{example_entry}, attributes{attributes}, scopes{scopes}, resources{resources}
+        logs(r<common::log_entry>& example_entry, r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes, r<common::logs_resources_response>& resources,
+            std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs)
+            : example_entry{example_entry}, attributes{attributes}, scopes{scopes}, resources{resources}, stencil_functions{std::move(mmdbs)}
         {
             example_entry.add_callback([this](auto&) { if(is_open) update_example_entry(); });
             attributes.add_callback([this](auto&) { if(is_open) update_attributes(); });

@@ -55,9 +55,9 @@ int main(int argc, char** argv) {
     }
     std::cout << *test << std::endl;
 
-    common::advanced_stencil_functions functions{.m_mmdb = &mmdb};
+    common::advanced_stencil_functions functions{.m_mmdbs = {{"asn", &mmdb}}};
     test_struct s{.ip = "146.52.112.204"};
-    auto test2 = common::stencil("{ip} -> {ip | lookup | at(autonomous_system_organization) }", s, functions);
+    auto test2 = common::stencil("{ip} -> {ip | lookup | get(asn.autonomous_system_organization) }", s, functions);
 
     if(!test2) {
         std::cerr << "Failed to stencil: " << test2.error() << std::endl;

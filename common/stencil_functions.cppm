@@ -4,6 +4,7 @@ module;
 #include <cmath>
 #include <format>
 #include <functional>
+#include <ranges>
 #include <string_view>
 #include <string>
 #include <type_traits>
@@ -48,6 +49,35 @@ uint32_t parse_ipv4(std::string_view x) {
     return result;
 }
 
+glz::json_t get_path(glz::json_t x, std::string_view path) {
+    if(path.empty()) {
+        return x;
+    }
+    glz::json_t y;
+    for(auto part : path | std::views::split('.')) {
+        std::string_view sv{part};
+        if(x.is_array()) {
+            int index = parse_int(sv);
+            if(index < 0) {
+                index = x.size() + index;
+            }
+            if(index < 0 || index >= x.size()) {
+                return glz::json_t{};
+            }
+            y = x.get_array()[index];
+        } else if(x.is_object()) {
+            if(!x.contains(sv)) {
+                return glz::json_t{};
+            }
+            y = x[sv];
+        } else {
+            return glz::json_t{};
+        }
+        x = y;
+    }
+    return x;
+}
+
 export struct stencil_functions {
     std::add_pointer_t<double(glz::json_t)> get_number = [](glz::json_t x){
         if(!x.is_number()) {
@@ -86,6 +116,9 @@ export struct stencil_functions {
         } else {
             return glz::json_t{};
         }
+    };
+    std::add_pointer_t<glz::json_t(glz::json_t, std::string_view)> get = [](glz::json_t x, std::string_view arg){
+        return get_path(x, arg);
     };
 
     std::add_pointer_t<double(double, std::string_view)> add = [](double x, std::string_view y){
@@ -198,32 +231,32 @@ export struct stencil_functions {
 };
 
 export struct advanced_stencil_functions {
-    mmdb* m_mmdb;
+    std::vector<std::pair<std::string_view, mmdb*>> m_mmdbs;
 
     stencil_functions base{};
 
     struct {
-        mmdb* m_mmdb;
+        std::vector<std::pair<std::string_view, mmdb*>> m_mmdbs;
 
         glz::json_t operator()(uint32_t x) const {
-            if(!m_mmdb) {
-                return glz::json_t{};
+            glz::json_t result = glz::json_t::object_t{};
+            for(auto& [mmdb_name, mmdb] : m_mmdbs) {
+                auto res = mmdb->lookup_v4(x);
+                if(res) {
+                    result[mmdb_name] = res->to_json();
+                }
             }
-            auto res = m_mmdb->lookup_v4(x);
-            if(!res) {
-                return glz::json_t{};
-            }
-            return res->to_json();
+            return result;
         }
         glz::json_t operator()(__uint128_t x) const {
-            if(!m_mmdb) {
-                return glz::json_t{};
+            glz::json_t result = glz::json_t::object_t{};
+            for(auto& [mmdb_name, mmdb] : m_mmdbs) {
+                auto res = mmdb->lookup_v6(x);
+                if(res) {
+                    result[mmdb_name] = res->to_json();
+                }
             }
-            auto res = m_mmdb->lookup_v6(x);
-            if(!res) {
-                return glz::json_t{};
-            }
-            return res->to_json();
+            return result;
         }
         glz::json_t operator()(std::string x) const {
             if(x.contains(":")) {
@@ -233,7 +266,7 @@ export struct advanced_stencil_functions {
             }
             return glz::json_t{};
         }
-    } lookup{m_mmdb};
+    } lookup{m_mmdbs};
 };
 
 }
