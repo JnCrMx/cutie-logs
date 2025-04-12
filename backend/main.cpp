@@ -88,10 +88,10 @@ int main(int argc, char** argv) {
     program.add_argument("--geoip-city-url")
         .help("URL to download GeoLite2-City database from (env: CUTIE_LOGS_GEOIP_CITY_URL)")
         .nargs(1).metavar("URL");
-    program.add_argument("--database", "--database-url")
+    auto& db_arg = program.add_argument("--database", "--database-url")
         .help("Database connection string (env: CUTIE_LOGS_DATABASE_URL)")
-        .required()
         .nargs(1).metavar("CONNECTION_STRING");
+    if(!std::getenv("CUTIE_LOGS_DATABASE_URL")) { db_arg.required(); }
 
     try {
         program.parse_args(argc, argv);
