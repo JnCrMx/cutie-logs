@@ -8,6 +8,10 @@
 import common;
 import glaze;
 
+struct test_struct {
+    std::string ip;
+};
+
 int main(int argc, char** argv) {
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <path>" << std::endl;
@@ -50,4 +54,14 @@ int main(int argc, char** argv) {
         return 1;
     }
     std::cout << *test << std::endl;
+
+    common::advanced_stencil_functions functions{.m_mmdb = &mmdb};
+    test_struct s{.ip = "146.52.112.204"};
+    auto test2 = common::stencil("{ip} -> {ip | lookup | at(autonomous_system_organization) }", s, functions);
+
+    if(!test2) {
+        std::cerr << "Failed to stencil: " << test2.error() << std::endl;
+        return 1;
+    }
+    std::cout << *test2 << std::endl;
 }

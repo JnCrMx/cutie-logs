@@ -5,6 +5,7 @@ export module common;
 
 export import :structs;
 export import :stencil;
+export import :stencil_functions;
 export import :mmdb;
 
 export namespace common {

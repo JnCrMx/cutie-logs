@@ -105,7 +105,16 @@ namespace common {
     }
 
     export template<typename T>
-    std::expected<std::string, std::string> eval_expression(T&& value, std::string_view expression, glz::reflectable auto functions) {
+    concept has_base = requires(T t) {
+        { t.base } -> glz::reflectable;
+    };
+    export template<typename T>
+    concept has_base_function = requires(T t) {
+        { t.base() } -> glz::reflectable;
+    };
+
+    export template<typename T>
+    std::expected<std::string, std::string> eval_expression(T&& value, std::string_view expression, glz::reflectable auto functions, glz::reflectable auto functions_root) {
         if(expression.empty()) {
             return format_if_possible(value);
         }
@@ -129,9 +138,11 @@ namespace common {
         auto keys = get_keys(functions);
         unsigned int index = 0;
         std::expected<std::string, std::string> result = std::unexpected(std::format("cannot find function \"{}\"", first_expression));
+        bool found_one = false;
         for_each_field(functions, [&](auto&& field) {
             using decayed = std::decay_t<decltype(field)>;
             if(keys[index] == first_expression) {
+                found_one = true;
                 if constexpr (std::is_invocable_v<decltype(field), T&&>) {
                     if(arg) {
                         result = std::unexpected(std::format("function \"{}\" does not take arguments", first_expression));
@@ -142,7 +153,7 @@ namespace common {
                     if(second_expression.empty()) {
                         result = format_if_possible(x);
                     } else {
-                        result = eval_expression(x, second_expression, functions);
+                        result = eval_expression(x, second_expression, functions_root, functions_root);
                     }
                 } else if constexpr (std::is_invocable_v<decltype(field), T&&, std::string_view>) {
                     if(!arg) {
@@ -153,7 +164,7 @@ namespace common {
                     if(second_expression.empty()) {
                         result = format_if_possible(x);
                     } else {
-                        result = eval_expression(x, second_expression, functions);
+                        result = eval_expression(x, second_expression, functions_root, functions_root);
                     }
                 } else {
                     result = std::unexpected(std::format("cannot call function \"{}\" with argument of type \"{}\"",
@@ -162,6 +173,14 @@ namespace common {
             }
             index++;
         });
+        if(!found_one) {
+            if constexpr (has_base_function<decltype(functions)>) {
+                return eval_expression(value, expression, functions.base(), functions_root);
+            } else if constexpr (has_base<decltype(functions)>) {
+                return eval_expression(value, expression, functions.base, functions_root);
+            }
+        }
+
         return result;
     }
 
@@ -189,7 +208,7 @@ namespace common {
             if constexpr (has_root<T>) {
                 first_key = T::root;
             } else if (key.empty()) {
-                return eval_expression(obj, expression, functions);
+                return eval_expression(obj, expression, functions, functions);
             } else {
                 return std::unexpected{std::format("\".\" given as key, but type \"{}\" does not have a root", glz::name_v<T>)};
             }
@@ -202,12 +221,12 @@ namespace common {
             if(keys[index] == first_key) {
                 if constexpr (can_get_field<decayed>) {
                     if(second_key.empty()) {
-                        result = eval_expression(field, expression, functions);
+                        result = eval_expression(field, expression, functions, functions);
                     } else {
                         result = get_field(field, second_key, functions, expression);
                     }
                 } else {
-                    result = eval_expression(field, expression, functions);
+                    result = eval_expression(field, expression, functions, functions);
                 }
             }
             index++;

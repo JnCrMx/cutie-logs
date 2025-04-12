@@ -3,13 +3,15 @@ module;
 #include <chrono>
 #include <cmath>
 #include <format>
-#include <string>
+#include <functional>
 #include <string_view>
+#include <string>
 #include <type_traits>
 
 export module common:stencil_functions;
 
 import glaze;
+import :mmdb;
 
 namespace common {
 
@@ -19,6 +21,31 @@ double parse_int(std::string_view x) {
         return 0;
     }
     return i;
+}
+
+uint32_t parse_ipv4(std::string_view x) {
+    uint32_t result = 0;
+    int count = 0;
+    for(auto& c : x) {
+        if(c == '.') {
+            ++count;
+        }
+    }
+    if(count != 3) {
+        return 0;
+    }
+    std::string_view s = x;
+    for(int i = 0; i < 4; ++i) {
+        auto pos = s.find('.');
+        if(pos == std::string_view::npos) {
+            pos = s.size();
+        }
+        auto part = s.substr(0, pos);
+        int part_int = parse_int(part);
+        result = (result << 8) | (part_int & 0xFF);
+        s.remove_prefix(pos + 1);
+    }
+    return result;
 }
 
 export struct stencil_functions {
@@ -40,24 +67,25 @@ export struct stencil_functions {
         }
         return x.get_boolean();
     };
-    std::add_pointer_t<glz::json_t(glz::json_t, std::string_view)> get_array_element = [](glz::json_t x, std::string_view index){
-        if(!x.is_array()) {
+
+    std::add_pointer_t<glz::json_t(glz::json_t, std::string_view)> at = [](glz::json_t x, std::string_view arg){
+        if(x.is_array()) {
+            int index = parse_int(arg);
+            if(index < 0) {
+                index = x.size() + index;
+            }
+            if(index < 0 || index >= x.size()) {
+                return glz::json_t{};
+            }
+            return x.get_array()[index];
+        } else if(x.is_object()) {
+            if(!x.contains(arg)) {
+                return glz::json_t{};
+            }
+            return x[arg];
+        } else {
             return glz::json_t{};
         }
-        int i = parse_int(index);
-        if(i < 0 || i >= x.size()) {
-            return glz::json_t{};
-        }
-        return x.get_array()[i];
-    };
-    std::add_pointer_t<glz::json_t(glz::json_t, std::string_view)> get_object_element = [](glz::json_t x, std::string_view key){
-        if(!x.is_object()) {
-            return glz::json_t{};
-        }
-        if(!x.contains(key)) {
-            return glz::json_t{};
-        }
-        return x[key];
     };
 
     std::add_pointer_t<double(double, std::string_view)> add = [](double x, std::string_view y){
@@ -88,6 +116,9 @@ export struct stencil_functions {
         }
         std::string operator()(const glz::json_t& x) const {
             return x.dump().value_or("null");
+        }
+        std::string operator()(uint32_t x) const {
+            return std::to_string(x);
         }
     } to_string{};
     std::add_pointer_t<std::string(std::string)> to_upper = [](std::string x){
@@ -160,6 +191,49 @@ export struct stencil_functions {
     std::add_pointer_t<std::string(sys_seconds_double)> strftime = [](sys_seconds_double x){
         return std::format("{:%d/%b/%Y:%H:%M:%S %z}", std::chrono::time_point_cast<std::chrono::seconds>(x));
     };
+
+    std::add_pointer_t<uint32_t(std::string)> parse_ipv4 = [](std::string x) -> uint32_t {
+        return ::common::parse_ipv4(x);
+    };
+};
+
+export struct advanced_stencil_functions {
+    mmdb* m_mmdb;
+
+    stencil_functions base{};
+
+    struct {
+        mmdb* m_mmdb;
+
+        glz::json_t operator()(uint32_t x) const {
+            if(!m_mmdb) {
+                return glz::json_t{};
+            }
+            auto res = m_mmdb->lookup_v4(x);
+            if(!res) {
+                return glz::json_t{};
+            }
+            return res->to_json();
+        }
+        glz::json_t operator()(__uint128_t x) const {
+            if(!m_mmdb) {
+                return glz::json_t{};
+            }
+            auto res = m_mmdb->lookup_v6(x);
+            if(!res) {
+                return glz::json_t{};
+            }
+            return res->to_json();
+        }
+        glz::json_t operator()(std::string x) const {
+            if(x.contains(":")) {
+                return glz::json_t{};
+            } else if(x.contains(".")) {
+                return (*this)(parse_ipv4(x));
+            }
+            return glz::json_t{};
+        }
+    } lookup{m_mmdb};
 };
 
 }
