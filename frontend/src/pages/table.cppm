@@ -50,35 +50,11 @@ export class table : public page {
         unsigned int dragged_position = 0;
         common::logs_response logs;
         std::vector<std::string> table_column_order;
+        std::map<std::string, std::string> table_custom_columns;
 
         Webxx::fragment make_table() {
             using namespace Webxx;
-            std::set<std::string> attributes_set;
-            for(const auto& [attr, selected] : selected_attributes) {
-                if(selected) {
-                    attributes_set.insert(attr);
-                }
-            }
-            table_column_order.erase(std::remove_if(table_column_order.begin(), table_column_order.end(),
-                [&](const std::string& e){return !e.starts_with(":") && !attributes_set.contains(e);}), table_column_order.end());
-
-            if(table_column_order.empty()) {
-                table_column_order = {":Timestamp", ":Resource", ":Scope", ":Severity"};
-            }
-            for(auto& a : attributes_set) {
-                if(std::find(table_column_order.begin(), table_column_order.end(), a) == table_column_order.end()) {
-                    table_column_order.push_back(a);
-                }
-            }
-
-            for(const auto& entry : logs.logs) {
-                if(!entry.body.is_null() && (!entry.body.is_string() || !entry.body.get_string().empty())) {
-                    if(std::find(table_column_order.begin(), table_column_order.end(), "body") == table_column_order.end()) {
-                        table_column_order.push_back(":Body");
-                    }
-                    break;
-                }
-            }
+            table_column_order = make_table_order(table_column_order);
 
             static event_context ctx;
             ctx.clear();
@@ -131,7 +107,7 @@ export class table : public page {
                 constexpr static char dataColumnPosAttr[] = "data-column-pos";
                 using _dataColumnPos = Webxx::attr<dataColumnPosAttr>;
 
-                if(text.starts_with(':')) {
+                if(text.starts_with(':') || text.starts_with("^")) {
                     text = text.substr(1);
                 }
 
@@ -171,9 +147,21 @@ export class table : public page {
                             } else if(attr == ":Body") {
                                 return td{e_body};
                             }
+                            if(attr.starts_with("^")) {
+                                auto name = attr.substr(1);
+                                if(table_custom_columns.contains(name)) {
+                                    const auto& stencil = table_custom_columns.at(name);
+                                    auto r = common::stencil(stencil, entry, stencil_functions);
+                                    if(r) {
+                                        return td{*r};
+                                    } else {
+                                        return td{{_class{"text-error"}}, std::format("error: {}", r.error())};
+                                    }
+                                }
+                            }
 
                             if(!attributes.contains(attr)) {
-                                return td{"&lt;missing&gt;"};
+                                return td{{_class{"text-error"}}, "missing"};
                             }
                             return td{attributes.at(attr).is_string() ? attributes.at(attr).get_string() : attributes.at(attr).dump().value_or("error")};
                         })
@@ -183,48 +171,51 @@ export class table : public page {
             return fragment{view};
         }
 
-        bool check_default_table_order() {
-            if(table_column_order.empty()) {
-                return true;
-            }
-            if(table_column_order.size() < 4) {
-                return false;
-            }
-            if(table_column_order[0] != ":Timestamp") {
-                return false;
-            }
-            if(table_column_order[1] != ":Resource") {
-                return false;
-            }
-            if(table_column_order[2] != ":Scope") {
-                return false;
-            }
-            if(table_column_order[3] != ":Severity") {
-                return false;
-            }
+        std::vector<std::string> make_table_order(std::vector<std::string> initial = {}) const {
+            std::vector<std::string>& order = initial;
+
             std::set<std::string> attributes_set;
             for(const auto& [attr, selected] : selected_attributes) {
                 if(selected) {
                     attributes_set.insert(attr);
                 }
             }
-            for(unsigned int i=4; i<table_column_order.size(); i++) {
-                auto it = std::find(attributes_set.begin(), attributes_set.end(), table_column_order[i]);
-                if(it == attributes_set.end()) {
-                    return false;
-                }
-                unsigned int j = std::distance(attributes_set.begin(), it);
-                if(j != i-4) {
-                    return false;
+            order.erase(std::remove_if(order.begin(), order.end(),
+                [&](const std::string& e){
+                    if(e.starts_with(":")) return false;
+                    if(e.starts_with("^")) return !table_custom_columns.contains(e.substr(1));
+                    return !attributes_set.contains(e);
+                }), order.end());
+
+            if(order.empty()) {
+                order = {":Timestamp", ":Resource", ":Scope", ":Severity"};
+            }
+            for(const auto& a : attributes_set) {
+                if(std::find(order.begin(), order.end(), a) == order.end()) {
+                    order.push_back(a);
                 }
             }
-            return true;
+            for(auto& [name, stencil] : table_custom_columns) {
+                std::string n = "^"+name;
+                if(std::find(order.begin(), order.end(), n) == order.end()) {
+                    order.push_back(n);
+                }
+            }
+            for(const auto& entry : logs.logs) {
+                if(!entry.body.is_null() && (!entry.body.is_string() || !entry.body.get_string().empty())) {
+                    if(std::find(order.begin(), order.end(), "body") == order.end()) {
+                        order.push_back(":Body");
+                    }
+                    break;
+                }
+            }
+            return order;
         }
 
         void render_table() {
             webpp::get_element_by_id("table")->inner_html(Webxx::render(make_table()));
 
-            if(check_default_table_order()) {
+            if(table_column_order == make_table_order()) {
                 webpp::get_element_by_id("reset_table_button")->add_class("btn-disabled");
 
                 webpp::eval("localStorage.removeItem('table_columns');"); // remove the saved order (and thereby set it to default)
@@ -293,16 +284,19 @@ export class table : public page {
                 components::selection_detail<"resources">("Filter Resources", transformed_resources, selected_resources, 1, false, "resource")));
         }
 
+        r<common::log_entry>& example_entry;
         r<common::logs_attributes_response>& attributes;
         r<common::logs_scopes_response>& scopes;
         r<common::logs_resources_response>& resources;
+        common::advanced_stencil_functions stencil_functions;
 
         std::string stencil_format;
         std::unordered_map<std::string, bool> selected_attributes, selected_resources, selected_scopes;
         std::unordered_map<std::string, std::tuple<std::string, unsigned int>> transformed_resources;
     public:
-        table(r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes, r<common::logs_resources_response>& resources)
-            : attributes{attributes}, scopes{scopes}, resources{resources}
+        table(r<common::log_entry>& example_entry, r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes, r<common::logs_resources_response>& resources,
+            std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs)
+            : example_entry{example_entry}, attributes{attributes}, scopes{scopes}, resources{resources}, stencil_functions{std::move(mmdbs)}
         {
             attributes.add_callback([this](auto&) { if(is_open) update_attributes(); });
             scopes.add_callback([this](auto&) { if(is_open) update_scopes(); });
@@ -319,6 +313,106 @@ export class table : public page {
             auto saved_order = webpp::eval("let saved = localStorage.getItem('table_columns'); if(saved === null) {{saved = '[]';}}; saved")
                 ["result"].as<std::string>().value_or("[]");
             table_column_order = glz::read_json<std::vector<std::string>>(saved_order).value_or(std::vector<std::string>{});
+
+            auto saved_custom_columns = webpp::eval("let saved = localStorage.getItem('table_custom_columns'); if(saved === null) {{saved = '{}';}}; saved")
+                ["result"].as<std::string>().value_or("{}");
+            table_custom_columns = glz::read_json<std::map<std::string, std::string>>(saved_custom_columns).value_or(std::map<std::string, std::string>{});
+        }
+
+        Webxx::dialog dialog_add_custom_column(event_context& ctx) {
+            using namespace Webxx;
+            return dialog{{_id{"dialog_add_custom_column"}, _class{"modal"}},
+                dv{{_class{"modal-box w-3xl max-w-3xl"}},
+                    form{{_method{"dialog"}},
+                        button{{_class{"btn btn-sm btn-circle btn-ghost absolute right-2 top-2"}}, "x"}
+                    },
+                    h3{{_class{"text-lg font-bold"}}, "Add custom column"},
+                    fieldset{{_class{"fieldset w-full"}},
+                        label{{_class{"fieldset-label"}}, "Column name"},
+                        ctx.on_input(input{{_id{"column_name"}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"}}},
+                            [this](webpp::event e){
+                                auto name = *e.target().as<webpp::element>()->get_property<std::string>("value");
+                                bool valid = !name.empty() && !table_custom_columns.contains(name);
+                                if(valid) {
+                                    webpp::get_element_by_id("column_add")->remove_class("btn-disabled");
+                                    webpp::eval("document.getElementById('column_name').setCustomValidity('');");
+                                } else {
+                                    webpp::get_element_by_id("column_add")->add_class("btn-disabled");
+                                    webpp::eval("document.getElementById('column_name').setCustomValidity('Column name must be non-empty and unique.');");
+                                }
+                            }
+                        ),
+                        dv{{_id{"column_name_validator"}, _class{"validator-hint"}}, "Column name must be non-empty and unique."},
+
+                        label{{_class{"fieldset-label"}}, "Stencil"},
+                        ctx.on_input(textarea{{_id{"column_stencil"}, _class{"textarea w-full min-h-[2.5rem]"}, _rows{"1"}, _placeholder{"Column stencil. Use {...} to insert values."}}},
+                            [this](webpp::event) {
+                                webpp::coro::submit([this]() -> webpp::coroutine<void> {
+                                    co_await webpp::coro::next_tick();
+
+                                    auto textarea = *webpp::get_element_by_id("column_stencil");
+                                    auto validator = *webpp::get_element_by_id("column_stencil_validator");
+                                    stencil_format = textarea["value"].as<std::string>().value_or("");
+                                    if(auto r = common::stencil(stencil_format, *example_entry, stencil_functions)) {
+                                        validator.inner_text(*r);
+                                        validator.remove_class("text-error");
+                                        validator.remove_class("font-bold");
+
+                                        textarea.remove_class("textarea-error");
+                                        textarea.add_class("textarea-success");
+                                    } else {
+                                        validator.inner_text(std::format("Stencil invalid: \"{}\"", r.error()));
+                                        validator.add_class("text-error");
+                                        validator.add_class("font-bold");
+
+                                        textarea.remove_class("textarea-success");
+                                        textarea.add_class("textarea-error");
+                                    }
+                                    co_return;
+                                }());
+                            }
+                        ),
+
+                        label{{_class{"fieldset-label"}}, "Preview"},
+                        textarea{{_id{"column_stencil_validator"}, _class{"textarea w-full min-h-[2.5rem]"}, _rows{"1"}, _readonly{}}},
+
+                        ctx.on_click(button{{_id{"column_add"}, _class{"btn btn-neutral mt-4 w-fit btn-disabled"}},
+                            assets::icons::add, "Add column"},
+                            [this](webpp::event e) {
+                                auto el_name = *webpp::get_element_by_id("column_name");
+                                auto el_stencil = *webpp::get_element_by_id("column_stencil");
+                                auto el_validator = *webpp::get_element_by_id("column_stencil_validator");
+
+                                auto name = *el_name.get_property<std::string>("value");
+                                auto stencil = *el_stencil.get_property<std::string>("value");
+
+                                webpp::eval("document.getElementById('dialog_add_custom_column').close();");
+                                el_name.set_property("value", "");
+                                webpp::eval("document.getElementById('column_name').setCustomValidity('');");
+
+                                el_stencil.set_property("value", "");
+                                el_stencil.remove_class("textarea-success");
+                                el_stencil.remove_class("textarea-error");
+
+                                el_validator.inner_text("");
+                                el_validator.remove_class("text-error");
+                                el_validator.remove_class("font-bold");
+                                webpp::get_element_by_id("column_add")->add_class("btn-disabled");
+
+                                table_custom_columns[name] = stencil;
+                                auto json = glz::write_json(table_custom_columns).value_or("{}");
+                                auto escaped = glz::write_json(json).value_or("\"{}\"");
+                                webpp::eval("localStorage.setItem('table_custom_columns', {});", escaped);
+
+                                render_table();
+                            }
+                        ),
+                    }
+                },
+                form{{_method{"dialog"}, _class{"modal-backdrop"}},
+                    button{"close"}
+                },
+            };
         }
 
         Webxx::fragment render() override {
@@ -350,8 +444,14 @@ export class table : public page {
                             table_column_order.clear();
                             render_table();
                         }),
+                        button{{_id{"add_custom_column_button"}, _class{"btn btn-secondary"},
+                                _onClick("document.getElementById('dialog_add_custom_column').showModal()")},
+                            assets::icons::add,
+                            "Add custom column"
+                        },
                     },
                     dv{{_id{"table"}, _class{"mt-4 overflow-x-auto"}}},
+                    dialog_add_custom_column(ctx),
                 }
             };
         }

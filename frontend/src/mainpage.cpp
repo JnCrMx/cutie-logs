@@ -33,7 +33,7 @@ static std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs = {
 };
 
 static pages::logs logs_page(example_entry, attributes, scopes, resources, mmdbs);
-static pages::table table_page(attributes, scopes, resources);
+static pages::table table_page(example_entry, attributes, scopes, resources, mmdbs);
 
 using page_tuple = std::tuple<std::string_view, std::string_view, std::string_view, pages::page*>;
 static std::array all_pages = {

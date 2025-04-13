@@ -48,5 +48,10 @@ namespace assets {
             #embed "assets/icons/warning.svg"
         };
         const std::string_view warning{warning_data, sizeof(warning_data)};
+
+        constexpr char add_data[] = {
+            #embed "assets/icons/add.svg"
+        };
+        const std::string_view add{add_data, sizeof(add_data)};
     }
 }
