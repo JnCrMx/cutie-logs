@@ -1,6 +1,7 @@
 module;
 #include <chrono>
 #include <memory>
+#include <unordered_set>
 
 export module backend.opentelemetry;
 
@@ -118,13 +119,29 @@ namespace backend::opentelemetry {
 
                     db.queue_work([this, address = request.address(), req = std::move(req), response = std::move(response)](pqxx::connection& conn) mutable {
                         try {
+                            using timestamp_t = std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>;
+                            std::unordered_set<decltype(std::declval<timestamp_t>().time_since_epoch().count())> seen_timestamps;
+                            static uint64_t timestamp_fix_offset = 0;
+
                             for(auto& resourceLog : req.resource_logs()) {
                                 unsigned int resource = db.ensure_resource(conn, to_json(resourceLog.resource().attributes()));
                                 for(auto& scopeLog : resourceLog.scope_logs()) {
                                     for(auto& log : scopeLog.log_records()) {
+                                        std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> ts{std::chrono::nanoseconds(log.time_unix_nano())};
+                                        // check if ts includes anything below seconds
+                                        if(ts == std::chrono::floor<std::chrono::seconds>(ts)) {
+                                            auto fixed_ts = ts + (std::chrono::microseconds(timestamp_fix_offset++) % std::chrono::seconds(1));
+                                            logger->warn("{} | Adjusted second-precision timestamp from {} to {}", address, ts.time_since_epoch().count(), fixed_ts.time_since_epoch().count());
+                                            ts = fixed_ts;
+                                        }
+
+                                        while(seen_timestamps.contains(ts.time_since_epoch().count())) {
+                                            ts += std::chrono::microseconds(1);
+                                        }
+                                        seen_timestamps.insert(ts.time_since_epoch().count());
+
                                         glz::json_t::object_t attributes = to_json(log.attributes());
                                         common::log_severity severity = static_cast<common::log_severity>(log.severity_number());
-                                        std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> ts{std::chrono::nanoseconds(log.time_unix_nano())};
                                         db.insert_log(conn, resource, ts, scopeLog.scope().name(), severity, attributes, to_json(log.body()));
                                     }
                                 }

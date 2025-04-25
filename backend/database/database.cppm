@@ -124,7 +124,7 @@ export class Database {
                 throw;
             }
         };
-        void insert_log(pqxx::connection& conn, unsigned int resource, std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>& timestamp,
+        void insert_log(pqxx::connection& conn, unsigned int resource, std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> timestamp,
             const std::string& scope, common::log_severity severity, const glz::json_t& attributes, const glz::json_t& body, unsigned int tries = 3)
         {
             try {
@@ -167,6 +167,13 @@ export class Database {
                 }
                 logger->error("Deadlock detected in insert_log, giving up");
                 throw;
+            } catch (const pqxx::unique_violation& c) {
+                if(tries > 0) {
+                    logger->warn("Unique violation detected in insert_log, retrying with timestamp + 1 us");
+                    insert_log(conn, resource, timestamp + std::chrono::microseconds(1), scope, severity, attributes, body, tries - 1);
+                    return;
+                }
+                logger->error("Unique violation detected in insert_log, giving up");
             }
         }
     private:
