@@ -83,7 +83,31 @@ namespace backend::opentelemetry {
             Pistache::Rest::Route::Result handle_log(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
                 try {
                     logger->trace("{} | Received a POST request to /v1/logs", request.address());
-                    std::string body = gzip::decompress(request.body().data(), request.body().size());
+
+                    if(request.body().empty()) {
+                        logger->warn("{} | Empty request body", request.address());
+                        response.send(Pistache::Http::Code::Bad_Request, "Empty request body");
+                        return Pistache::Rest::Route::Result::Failure;
+                    }
+                    if(request.headers().get<Pistache::Http::Header::ContentType>()->mime().raw() != "application/x-protobuf") {
+                        logger->warn("{} | Invalid Content-Type header", request.address());
+                        response.send(Pistache::Http::Code::Unsupported_Media_Type, "Invalid Content-Type header");
+                        return Pistache::Rest::Route::Result::Failure;
+                    }
+
+                    std::string body;
+                    if(request.headers().has<Pistache::Http::Header::ContentEncoding>()) {
+                        auto encoding = request.headers().get<Pistache::Http::Header::ContentEncoding>();
+                        if(encoding->encoding() == Pistache::Http::Header::Encoding::Gzip) {
+                            body = gzip::decompress(request.body().data(), request.body().size());
+                        } else {
+                            logger->warn("{} | Unsupported Content-Encoding: {}", request.address(), Pistache::Http::Header::encodingString(encoding->encoding()));
+                            response.send(Pistache::Http::Code::Unsupported_Media_Type, "Unsupported Content-Encoding");
+                            return Pistache::Rest::Route::Result::Failure;
+                        }
+                    } else {
+                        body = request.body();
+                    }
 
                     ::opentelemetry::proto::collector::logs::v1::ExportLogsServiceRequest req;
                     if(!req.ParseFromString(body)) {

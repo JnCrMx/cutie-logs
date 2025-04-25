@@ -30,6 +30,9 @@ export namespace Pistache {
             using Pistache::Http::Header::Collection;
             using Pistache::Http::Header::Registrar;
 
+            using Pistache::Http::Header::Encoding;
+            using Pistache::Http::Header::encodingString;
+
             using Pistache::Http::Header::Authorization;
             using Pistache::Http::Header::AccessControlAllowMethods;
             using Pistache::Http::Header::AccessControlAllowHeaders;
