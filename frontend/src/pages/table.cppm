@@ -203,7 +203,7 @@ export class table : public page {
             }
             for(const auto& entry : logs.logs) {
                 if(!entry.body.is_null() && (!entry.body.is_string() || !entry.body.get_string().empty())) {
-                    if(std::find(order.begin(), order.end(), "body") == order.end()) {
+                    if(std::find(order.begin(), order.end(), ":Body") == order.end()) {
                         order.push_back(":Body");
                     }
                     break;
