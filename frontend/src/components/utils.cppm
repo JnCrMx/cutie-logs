@@ -3,6 +3,7 @@ export module frontend.components:utils;
 import std;
 import webpp;
 import webxx;
+import glaze;
 
 namespace Webxx {
     constexpr static char customDataTipAttr[] = "data-tip";
@@ -157,5 +158,87 @@ struct event_data {
     }
 };
 export template<typename T> using r = event_data<T>;
+
+export class profile_data {
+    public:
+        profile_data()
+        {
+            std::string profiles_json = *webpp::eval("let profiles = localStorage.getItem('profiles'); if(profiles === null) {{profiles = '{}';}}; profiles").get_property<std::string>("result");
+            profiles = glz::read_json<decltype(profiles)>(profiles_json).value_or(decltype(profiles){});
+            current_profile = *webpp::eval("let p = localStorage.getItem('current_profile'); if(p === null) {p = 'default';}; p").get_property<std::string>("result");
+            if(!profiles.contains(current_profile)) {
+                profiles[current_profile] = {};
+            }
+
+            webpp::log("Loaded profiles: {}", glz::write_json(profiles).value_or("{}"));
+            webpp::log("Current profile: {}", current_profile);
+        }
+
+        void switch_profile(std::string name) {
+            this->current_profile = std::move(name);
+            if(!profiles.contains(current_profile)) {
+                profiles[current_profile] = {};
+            }
+            for(auto& cb : callbacks) {
+                cb(*this);
+            }
+            save();
+        }
+        void delete_profile(const std::string& name) {
+            if(profiles.contains(name)) {
+                profiles.erase(name);
+            }
+            if(current_profile == name) {
+                current_profile = "default";
+            }
+            save();
+        }
+        void rename_profile(const std::string& old_name, const std::string& new_name) {
+            if(profiles.contains(old_name)) {
+                profiles[new_name] = std::move(profiles[old_name]);
+                profiles.erase(old_name);
+            }
+            if(current_profile == old_name) {
+                current_profile = new_name;
+            }
+            save();
+        }
+
+        const std::string& get_current_profile() const {
+            return current_profile;
+        }
+        void add_callback(std::function<void(profile_data&)> cb) {
+            callbacks.push_back(std::move(cb));
+        }
+
+        std::optional<std::string> get_data(const std::string& key) const {
+            const auto& data = profiles.at(current_profile);
+            auto it = data.find(key);
+            if (it != data.end()) {
+                return it->second;
+            }
+            return std::nullopt;
+        }
+        void set_data(const std::string& key, const std::string& value) {
+            profiles[current_profile][key] = value;
+            save();
+        }
+        void remove_data(const std::string& key) {
+            profiles[current_profile].erase(key);
+            save();
+        }
+    private:
+        void save() {
+            std::string profiles_json = glz::write_json(profiles).value_or("{}");
+            webpp::eval("window.localStorage.setItem('profiles', {});", glz::write_json(profiles_json).value_or("\"{}\"")); // for escaping
+            webpp::eval("window.localStorage.setItem('current_profile', '{}');", current_profile);
+        }
+
+        using data = std::unordered_map<std::string, std::string>;
+
+        std::string current_profile;
+        std::unordered_map<std::string, data> profiles;
+        std::vector<std::function<void(profile_data&)>> callbacks;
+};
 
 }

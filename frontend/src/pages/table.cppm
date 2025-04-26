@@ -218,12 +218,12 @@ export class table : public page {
             if(table_column_order == make_table_order()) {
                 webpp::get_element_by_id("reset_table_button")->add_class("btn-disabled");
 
-                webpp::eval("localStorage.removeItem('table_columns');"); // remove the saved order (and thereby set it to default)
+                profile.remove_data("table_columns"); // remove the saved order (and thereby set it to default)
             } else {
                 webpp::get_element_by_id("reset_table_button")->remove_class("btn-disabled");
 
                 auto order = glz::write_json(table_column_order).value_or("[]");
-                webpp::eval("localStorage.setItem('table_columns', '{}');", order);
+                profile.set_data("table_columns", order);
             }
         }
 
@@ -252,13 +252,13 @@ export class table : public page {
                 [](const auto& attr) { return std::pair{attr.first, false}; }); // all attributes are deselected by default
             webpp::get_element_by_id("attributes")->inner_html(Webxx::render(
                 components::selection<"attributes">("Select Attributes",
-                    attributes->attributes, selected_attributes, attributes->total_logs, true)));
+                    attributes->attributes, selected_attributes, &profile, attributes->total_logs, true)));
         }
         void update_scopes() {
             std::transform(scopes->scopes.begin(), scopes->scopes.end(), std::inserter(selected_scopes, selected_scopes.end()),
                 [](const auto& scope) { return std::pair{scope.first, true}; }); // all scopes are selected by default
             webpp::get_element_by_id("scopes")->inner_html(Webxx::render(
-                components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, 1, false)));
+                components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, &profile, 1, false)));
         }
 
         std::string resource_name(unsigned int id, const common::log_resource& resource) {
@@ -281,9 +281,10 @@ export class table : public page {
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
                 [](const auto& res) { return std::pair{res.first, false}; }); // all resources are deselected by default
             webpp::get_element_by_id("resources")->inner_html(Webxx::render(
-                components::selection_detail<"resources">("Filter Resources", transformed_resources, selected_resources, 1, false, "resource")));
+                components::selection_detail<"resources">("Filter Resources", transformed_resources, selected_resources, &profile, 1, false, "resource")));
         }
 
+        profile_data& profile;
         r<common::log_entry>& example_entry;
         r<common::logs_attributes_response>& attributes;
         r<common::logs_scopes_response>& scopes;
@@ -294,9 +295,9 @@ export class table : public page {
         std::unordered_map<std::string, bool> selected_attributes, selected_resources, selected_scopes;
         std::unordered_map<std::string, std::tuple<std::string, unsigned int>> transformed_resources;
     public:
-        table(r<common::log_entry>& example_entry, r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes, r<common::logs_resources_response>& resources,
+        table(profile_data& profile, r<common::log_entry>& example_entry, r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes, r<common::logs_resources_response>& resources,
             std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs)
-            : example_entry{example_entry}, attributes{attributes}, scopes{scopes}, resources{resources}, stencil_functions{std::move(mmdbs)}
+            : profile(profile), example_entry{example_entry}, attributes{attributes}, scopes{scopes}, resources{resources}, stencil_functions{std::move(mmdbs)}
         {
             attributes.add_callback([this](auto&) { if(is_open) update_attributes(); });
             scopes.add_callback([this](auto&) { if(is_open) update_scopes(); });
@@ -310,12 +311,10 @@ export class table : public page {
             update_scopes();
             update_resources();
 
-            auto saved_order = webpp::eval("let saved = localStorage.getItem('table_columns'); if(saved === null) {{saved = '[]';}}; saved")
-                ["result"].as<std::string>().value_or("[]");
+            auto saved_order = profile.get_data("table_columns").value_or("[]");
             table_column_order = glz::read_json<std::vector<std::string>>(saved_order).value_or(std::vector<std::string>{});
 
-            auto saved_custom_columns = webpp::eval("let saved = localStorage.getItem('table_custom_columns'); if(saved === null) {{saved = '{}';}}; saved")
-                ["result"].as<std::string>().value_or("{}");
+            auto saved_custom_columns = profile.get_data("table_custom_columns").value_or("{}");
             table_custom_columns = glz::read_json<std::map<std::string, std::string>>(saved_custom_columns).value_or(std::map<std::string, std::string>{});
         }
 
@@ -401,8 +400,7 @@ export class table : public page {
 
                                 table_custom_columns[name] = stencil;
                                 auto json = glz::write_json(table_custom_columns).value_or("{}");
-                                auto escaped = glz::write_json(json).value_or("\"{}\"");
-                                webpp::eval("localStorage.setItem('table_custom_columns', {});", escaped);
+                                profile.set_data("table_custom_columns", json);
 
                                 render_table();
                             }
@@ -423,9 +421,9 @@ export class table : public page {
             return Webxx::fragment {
                 dv{{_class{"flex flex-col m-0 p-0"}},
                     dv{{_class{"flex flex-col md:flex-row gap-4"}},
-                        dv{{_id{"attributes"}, _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"attributes">("Select Attributes", attributes->attributes, selected_attributes, attributes->total_logs, true)},
-                        dv{{_id{"resources"},  _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"resources">("Filter Resources", {}, selected_resources)},
-                        dv{{_id{"scopes"},     _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, 1, false)},
+                        dv{{_id{"attributes"}, _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"attributes">("Select Attributes", attributes->attributes, selected_attributes, &profile, attributes->total_logs, true)},
+                        dv{{_id{"resources"},  _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"resources">("Filter Resources", {}, selected_resources, &profile)},
+                        dv{{_id{"scopes"},     _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, &profile, 1, false)},
                     },
                     dv{{_class{"flex flex-row gap-4 mt-4 justify-center"}},
                         ctx.on_click(button{{_class{"btn btn-primary"}},

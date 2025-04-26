@@ -30,7 +30,7 @@ export class logs : public page {
                             auto textarea = *webpp::get_element_by_id("stencil_textarea");
                             auto validator = *webpp::get_element_by_id("stencil_validator");
                             stencil_format = textarea["value"].as<std::string>().value_or("");
-                            webpp::eval("localStorage.setItem('stencil', '{}');", stencil_format);
+                            profile.set_data("stencil", stencil_format);
                             if(auto r = common::stencil(stencil_format, *example_entry, stencil_functions)) {
                                 validator.inner_text(*r);
                                 validator.remove_class("text-error");
@@ -127,9 +127,8 @@ export class logs : public page {
             co_return;
         };
 
-        void update_example_entry() {
-            stencil_format = webpp::eval("let stencil = localStorage.getItem('stencil'); if(stencil === null) {stencil = '';}; stencil")["result"]
-                .as<std::string>().value_or("");
+        void update_stencil() {
+            stencil_format = profile.get_data("stencil").value_or(std::string{common::default_stencil});
             webpp::get_element_by_id("stencil_textarea")->set_property("value", stencil_format);
             if(!stencil_format.empty()) {
                 webpp::eval("document.getElementById('stencil_textarea').dispatchEvent(new Event('input'));");
@@ -140,13 +139,13 @@ export class logs : public page {
                 [](const auto& attr) { return std::pair{attr.first, false}; }); // all attributes are deselected by default
             webpp::get_element_by_id("attributes")->inner_html(Webxx::render(
                 components::selection<"attributes">("Select Attributes",
-                    attributes->attributes, selected_attributes, attributes->total_logs, true)));
+                    attributes->attributes, selected_attributes, &profile, attributes->total_logs, true)));
         }
         void update_scopes() {
             std::transform(scopes->scopes.begin(), scopes->scopes.end(), std::inserter(selected_scopes, selected_scopes.end()),
                 [](const auto& scope) { return std::pair{scope.first, true}; }); // all scopes are selected by default
             webpp::get_element_by_id("scopes")->inner_html(Webxx::render(
-                components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, 1, false)));
+                components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, &profile, 1, false)));
         }
 
         std::string resource_name(unsigned int id, const common::log_resource& resource) {
@@ -169,9 +168,10 @@ export class logs : public page {
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
                 [](const auto& res) { return std::pair{res.first, false}; }); // all resources are deselected by default
             webpp::get_element_by_id("resources")->inner_html(Webxx::render(
-                components::selection_detail<"resources">("Filter Resources", transformed_resources, selected_resources, 1, false, "resource")));
+                components::selection_detail<"resources">("Filter Resources", transformed_resources, selected_resources, &profile, 1, false, "resource")));
         }
 
+        profile_data& profile;
         r<common::log_entry>& example_entry;
         r<common::logs_attributes_response>& attributes;
         r<common::logs_scopes_response>& scopes;
@@ -182,11 +182,12 @@ export class logs : public page {
         std::unordered_map<std::string, bool> selected_attributes, selected_resources, selected_scopes;
         std::unordered_map<std::string, std::tuple<std::string, unsigned int>> transformed_resources;
     public:
-        logs(r<common::log_entry>& example_entry, r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes, r<common::logs_resources_response>& resources,
+        logs(profile_data& profile, r<common::log_entry>& example_entry, r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes, r<common::logs_resources_response>& resources,
             std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs)
-            : example_entry{example_entry}, attributes{attributes}, scopes{scopes}, resources{resources}, stencil_functions{std::move(mmdbs)}
+            : profile(profile), example_entry{example_entry}, attributes{attributes}, scopes{scopes}, resources{resources}, stencil_functions{std::move(mmdbs)}
         {
-            example_entry.add_callback([this](auto&) { if(is_open) update_example_entry(); });
+            profile.add_callback([this](auto&) { if(is_open) update_stencil(); });
+            example_entry.add_callback([this](auto&) { if(is_open) update_stencil(); });
             attributes.add_callback([this](auto&) { if(is_open) update_attributes(); });
             scopes.add_callback([this](auto&) { if(is_open) update_scopes(); });
             resources.add_callback([this](auto&) { if(is_open) update_resources(); });
@@ -195,7 +196,7 @@ export class logs : public page {
         void open() override {
             page::open();
 
-            update_example_entry();
+            update_stencil();
             update_attributes();
             update_scopes();
             update_resources();
@@ -209,9 +210,9 @@ export class logs : public page {
             return Webxx::fragment {
                 dv{{_class{"flex flex-col m-0 p-0"}},
                     dv{{_class{"flex flex-col md:flex-row gap-4"}},
-                        dv{{_id{"attributes"}, _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"attributes">("Select Attributes", attributes->attributes, selected_attributes, attributes->total_logs, true)},
-                        dv{{_id{"resources"},  _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"resources">("Filter Resources", {}, selected_resources)},
-                        dv{{_id{"scopes"},     _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, 1, false)},
+                        dv{{_id{"attributes"}, _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"attributes">("Select Attributes", attributes->attributes, selected_attributes, &profile, attributes->total_logs, true)},
+                        dv{{_id{"resources"},  _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"resources">("Filter Resources", {}, selected_resources, &profile)},
+                        dv{{_id{"scopes"},     _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, &profile, 1, false)},
                     },
                     dv{{_class{"flex flex-col md:flex-row gap-4 items-center"}},
                         dv{{_id{"display"}, _class{"grow w-full"}}, page_display_options()},

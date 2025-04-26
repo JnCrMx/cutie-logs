@@ -31,9 +31,10 @@ static std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs = {
     {"asn", &geoip_asn},
     {"city", &geoip_city},
 };
+static profile_data profile;
 
-static pages::logs logs_page(example_entry, attributes, scopes, resources, mmdbs);
-static pages::table table_page(example_entry, attributes, scopes, resources, mmdbs);
+static pages::logs logs_page(profile, example_entry, attributes, scopes, resources, mmdbs);
+static pages::table table_page(profile, example_entry, attributes, scopes, resources, mmdbs);
 
 using page_tuple = std::tuple<std::string_view, std::string_view, std::string_view, pages::page*>;
 static std::array all_pages = {
@@ -136,7 +137,7 @@ void switch_page(pages::page* page, std::string_view id) {
     webpp::set_timeout(std::chrono::milliseconds(0), [page](){page->open();});
 
     webpp::eval("document.location.hash = '#{}';", id);
-    webpp::eval("localStorage.setItem('page', '{}');", id);
+    profile.set_data("current_page", std::string{id});
 }
 
 auto page(std::string_view current_theme) {
@@ -194,8 +195,7 @@ void auto_select_page() {
         return;
     }
 
-    page = webpp::eval("let page = localStorage.getItem('page'); if(page === null) {page = '';}; page")["result"]
-        .as<std::string>().value_or("");
+    page = profile.get_data("current_page").value_or("");
     if(page == "none") {
         return;
     }
