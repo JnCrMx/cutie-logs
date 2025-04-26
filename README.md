@@ -15,6 +15,26 @@ The project is written mostly in modern C++ (even the web UI thanks so WebAssemb
 compiles into a single executable only requiring a few system dependencies which are
 available as Ubuntu packages.
 
+## Features
+- displaying and downloading logs as text with customizable formats using powerful stencils
+- displaying logs in a dynamic adjustable table with support for custom columns
+- support for multiple resources (with included information) and scopes
+- type-safe "stencil functions" for transforming attributes available on frontend and backend, for example:
+  - basic string manipulation
+  - basic mathematical functions
+  - JSON support
+  - padding & trimming text
+  - transforming timestamps into different formats
+  - looking up IP addresses in MaxMind's GeoLite2 databases
+- profiles for easily working with different log formats and attributes for different resources and scopes
+
+### Planned Features
+- rule-based automatic cleanup of old logs
+- server-side custom columns (calculated & created before a log line is written to the database)
+- server-side rules for redacting information before a log line is written to the database
+- aggregation and analysis of logs
+- rule-based alerts (i.e. send an email when an error log of a specifc server arrives)
+
 ## Warnings
 
 The project is currently in heavy development and does **not have a stable release** yet.
