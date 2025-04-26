@@ -15,5 +15,8 @@ export namespace assets {
         extern const std::string_view reset;
         extern const std::string_view warning;
         extern const std::string_view add;
+        extern const std::string_view remove;
+        extern const std::string_view delete_;
+        extern const std::string_view edit;
     }
 }

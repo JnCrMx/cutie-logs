@@ -126,6 +126,8 @@ void switch_page(pages::page* page, std::string_view id) {
     if(current_page) {
         current_page->close();
     }
+    current_page = page;
+
     for(auto [page_id, name, icon, page_ptr] : all_pages) {
         std::string menu_id = "menu_" + std::string{page_id};
         webpp::get_element_by_id(menu_id)->remove_class("menu-active");
@@ -138,6 +140,207 @@ void switch_page(pages::page* page, std::string_view id) {
 
     webpp::eval("document.location.hash = '#{}';", id);
     profile.set_data("current_page", std::string{id});
+}
+
+template<glz::string_literal identifier>
+Webxx::dv profile_selector() {
+    using namespace Webxx;
+
+    static event_context ctx;
+    ctx.clear();
+
+    std::set<std::string> profiles_list;
+    for(auto& p : profile.get_profiles()) {
+        profiles_list.insert(p);
+    }
+    bool is_default = profile.get_current_profile() == "default";
+    auto button_classes = is_default ? "btn btn-square btn-disabled" : "btn btn-square";
+
+    return dv{{_class{"flex flex-row items-center gap-1"}},
+        ctx.on_change(select{{_id{std::format("profile_selector_{}", identifier.sv())}, _class{"select select-lg grow"}},
+            each(profiles_list, [](auto& p) {
+                if(p == profile.get_current_profile()) {
+                    return option{{_selected{}}, p};
+                }
+                return option{p};
+            }),
+            option{{_class{"italic"}}, "Create New Profile..."},
+        }, [profiles_list](webpp::event e) {
+            int selected = e.target().get_property<int>("selectedIndex").value_or(0);
+            if(selected < profiles_list.size()) {
+                std::string selected_profile = *std::next(profiles_list.begin(), selected);
+                profile.switch_profile(selected_profile);
+
+                webpp::get_element_by_id("profile_selector_mobile_container")->inner_html(Webxx::render(profile_selector<"mobile">()));
+                webpp::get_element_by_id("profile_selector_desktop_container")->inner_html(Webxx::render(profile_selector<"desktop">()));
+            } else {
+                webpp::get_element_by_id("profile_name")->set_property("value", "");
+                webpp::get_element_by_id("profile_add")->add_class("btn-disabled");
+                webpp::eval("document.getElementById('dialog_add_profile').showModal();");
+                e.prevent_default();
+                e.target().set_property("selectedIndex", static_cast<int>(std::distance(profiles_list.begin(),
+                    std::find(profiles_list.begin(), profiles_list.end(), profile.get_current_profile()))));
+            }
+        }),
+        dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Rename profile"}},
+            ctx.on_click(button{{_class{button_classes}}, assets::icons::edit}, [](webpp::event e) {
+                webpp::get_element_by_id("dialog_rename_profile_title")->inner_html("Rename profile \"" + profile.get_current_profile()+"\"");
+                webpp::get_element_by_id("new_profile_name")->set_property("value", profile.get_current_profile());
+                webpp::get_element_by_id("profile_rename")->add_class("btn-disabled");
+                webpp::eval("document.getElementById('dialog_rename_profile').showModal();");
+            }),
+        },
+        dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Delete profile"}},
+            ctx.on_click(button{{_class{button_classes}}, assets::icons::delete_}, [](webpp::event e) {
+                webpp::get_element_by_id("dialog_delete_profile_title")->inner_html("Delete profile \"" + profile.get_current_profile()+"\"");
+                webpp::get_element_by_id("delete_profile_name")->set_property("placeholder", profile.get_current_profile());
+                webpp::get_element_by_id("delete_profile_name")->set_property("value", "");
+                webpp::get_element_by_id("profile_delete")->add_class("btn-disabled");
+                webpp::eval("document.getElementById('dialog_delete_profile').showModal();");
+            }),
+        }
+    };
+}
+
+Webxx::dialog dialog_add_profile(event_context& ctx) {
+    using namespace Webxx;
+
+    return dialog{{_id{"dialog_add_profile"}, _class{"modal"}},
+        dv{{_class{"modal-box"}},
+            form{{_method{"dialog"}},
+                button{{_class{"btn btn-sm btn-circle btn-ghost absolute right-2 top-2"}}, "x"}
+            },
+            h3{{_class{"text-lg font-bold"}}, "Add profile"},
+            fieldset{{_class{"fieldset w-full"}},
+                label{{_class{"fieldset-label"}}, "Profile name"},
+                ctx.on_input(input{{_id{"profile_name"}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"}}},
+                    [](webpp::event e){
+                        auto name = *e.target().as<webpp::element>()->get_property<std::string>("value");
+                        bool valid = !name.empty() && !std::ranges::contains(profile.get_profiles(), name);
+                        if(valid) {
+                            webpp::get_element_by_id("profile_add")->remove_class("btn-disabled");
+                            webpp::eval("document.getElementById('profile_name').setCustomValidity('');");
+                        } else {
+                            webpp::get_element_by_id("profile_add")->add_class("btn-disabled");
+                            webpp::eval("document.getElementById('profile_name').setCustomValidity('Profile name must be non-empty and unique.');");
+                        }
+                    }
+                ),
+                dv{{_id{"profile_name_validator"}, _class{"validator-hint"}}, "Profile name must be non-empty and unique."},
+
+                ctx.on_click(button{{_id{"profile_add"}, _class{"btn btn-success mt-4 w-fit btn-disabled"}},
+                    assets::icons::add, "Add profile"},
+                    [](webpp::event e) {
+                        webpp::eval("document.getElementById('dialog_add_profile').close();");
+
+                        auto name = *webpp::get_element_by_id("profile_name")->get_property<std::string>("value");
+                        if(name.empty()) {
+                            return;
+                        }
+                        profile.switch_profile(name);
+
+                        webpp::get_element_by_id("profile_selector_mobile_container")->inner_html(Webxx::render(profile_selector<"mobile">()));
+                        webpp::get_element_by_id("profile_selector_desktop_container")->inner_html(Webxx::render(profile_selector<"desktop">()));
+                    }
+                ),
+            }
+        },
+        form{{_method{"dialog"}, _class{"modal-backdrop"}},
+            button{"close"}
+        },
+    };
+}
+Webxx::dialog dialog_rename_profile(event_context& ctx) {
+    using namespace Webxx;
+
+    return dialog{{_id{"dialog_rename_profile"}, _class{"modal"}},
+        dv{{_class{"modal-box"}},
+            form{{_method{"dialog"}},
+                button{{_class{"btn btn-sm btn-circle btn-ghost absolute right-2 top-2"}}, "x"}
+            },
+            h3{{_id{"dialog_rename_profile_title"}, _class{"text-lg font-bold"}}, "Rename profile"},
+            fieldset{{_class{"fieldset w-full"}},
+                label{{_class{"fieldset-label"}}, "New name"},
+                ctx.on_input(input{{_id{"new_profile_name"}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"}}},
+                    [](webpp::event e){
+                        auto name = *e.target().as<webpp::element>()->get_property<std::string>("value");
+                        bool valid = !name.empty() && !std::ranges::contains(profile.get_profiles(), name);
+                        if(valid) {
+                            webpp::get_element_by_id("profile_rename")->remove_class("btn-disabled");
+                            webpp::eval("document.getElementById('new_profile_name').setCustomValidity('');");
+                        } else {
+                            webpp::get_element_by_id("profile_rename")->add_class("btn-disabled");
+                            webpp::eval("document.getElementById('new_profile_name').setCustomValidity('Profile name must be non-empty and unique.');");
+                        }
+                    }
+                ),
+                dv{{_id{"new_profile_name_validator"}, _class{"validator-hint"}}, "Profile name must be non-empty and unique."},
+
+                ctx.on_click(button{{_id{"profile_rename"}, _class{"btn btn-warning mt-4 w-fit btn-disabled"}},
+                    assets::icons::edit, "Rename profile"},
+                    [](webpp::event e) {
+                        webpp::eval("document.getElementById('dialog_rename_profile').close();");
+
+                        auto name = *webpp::get_element_by_id("new_profile_name")->get_property<std::string>("value");
+                        if(name.empty()) {
+                            return;
+                        }
+                        profile.rename_profile(profile.get_current_profile(), name);
+
+                        webpp::get_element_by_id("profile_selector_mobile_container")->inner_html(Webxx::render(profile_selector<"mobile">()));
+                        webpp::get_element_by_id("profile_selector_desktop_container")->inner_html(Webxx::render(profile_selector<"desktop">()));
+                    }
+                ),
+            }
+        },
+        form{{_method{"dialog"}, _class{"modal-backdrop"}},
+            button{"close"}
+        },
+    };
+}
+Webxx::dialog dialog_delete_profile(event_context& ctx) {
+    using namespace Webxx;
+
+    return dialog{{_id{"dialog_delete_profile"}, _class{"modal"}},
+        dv{{_class{"modal-box"}},
+            form{{_method{"dialog"}},
+                button{{_class{"btn btn-sm btn-circle btn-ghost absolute right-2 top-2"}}, "x"}
+            },
+            h3{{_id{"dialog_delete_profile_title"}, _class{"text-lg font-bold"}}, "Delete profile"},
+            fieldset{{_class{"fieldset w-full"}},
+                label{{_class{"text-base"}}, "Please type the name of the profile to confirm deletion."},
+                ctx.on_input(input{{_id{"delete_profile_name"}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"}}},
+                    [](webpp::event e){
+                        auto name = *e.target().as<webpp::element>()->get_property<std::string>("value");
+                        bool valid = !name.empty() && name == profile.get_current_profile();
+                        if(valid) {
+                            webpp::get_element_by_id("profile_delete")->remove_class("btn-disabled");
+                            webpp::eval("document.getElementById('delete_profile_name').setCustomValidity('');");
+                        } else {
+                            webpp::get_element_by_id("profile_delete")->add_class("btn-disabled");
+                            webpp::eval("document.getElementById('delete_profile_name').setCustomValidity('Profile name must match.');");
+                        }
+                    }
+                ),
+                dv{{_id{"profile_delete_name_validator"}, _class{"validator-hint"}}, "Profile name must match."},
+
+                ctx.on_click(button{{_id{"profile_delete"}, _class{"btn btn-error mt-4 w-fit btn-disabled"}},
+                    assets::icons::delete_, "Delete profile"},
+                    [](webpp::event e) {
+                        webpp::eval("document.getElementById('dialog_delete_profile').close();");
+
+                        profile.delete_profile(profile.get_current_profile());
+
+                        webpp::get_element_by_id("profile_selector_mobile_container")->inner_html(Webxx::render(profile_selector<"mobile">()));
+                        webpp::get_element_by_id("profile_selector_desktop_container")->inner_html(Webxx::render(profile_selector<"desktop">()));
+                    }
+                ),
+            }
+        },
+        form{{_method{"dialog"}, _class{"modal-backdrop"}},
+            button{"close"}
+        },
+    };
 }
 
 auto page(std::string_view current_theme) {
@@ -158,16 +361,21 @@ auto page(std::string_view current_theme) {
                         std::string menu_id = "menu_" + std::string{id};
                         return li{ctx.on_click(a{{_id{menu_id}}, icon, name}, [page_ptr, id](auto){switch_page(page_ptr, id);})};
                     }),
-                }
+                },
+                dv{{_id{"profile_selector_mobile_container"}, _class{"md:hidden *:w-full"}}, profile_selector<"mobile">()},
             },
             dv{{_id{"stats"}, _class{"ml-2 mr-2 grow flex flex-row justify-center items-center"}}, page_stats({})},
-            dv{{_class{"flex items-center mr-4"}},
+            dv{{_class{"flex items-center mr-4 gap-8"}},
+                dv{{_id{"profile_selector_desktop_container"}, _class{"hidden md:flex"}}, profile_selector<"desktop">()},
                 components::theme_button{ctx, current_theme}
             }
         },
         dv{{_class{"w-full mx-auto my-2 px-4 md:w-auto md:mx-[10vw]"}, {_id{"page"}}}},
         dv{{_id{"modals"}},
-            dv{{_id{"modals-resources"}}}
+            dv{{_id{"modals-resources"}}},
+            dialog_add_profile(ctx),
+            dialog_rename_profile(ctx),
+            dialog_delete_profile(ctx),
         },
     };
 }

@@ -24,9 +24,11 @@ auto selection_detail(std::string_view title,
     ctx.clear();
 
     auto search_id = std::format("select_{}_search", identifier.sv());
-    auto saved = profile ? profile->get_data(std::format("select_{}_selections", identifier.sv())).value_or("{}") : "{}";
+    std::string saved = profile ? profile->get_data(std::format("select_{}_selections", identifier.sv())).value_or("{}") : "{}";
     using selection_map = std::unordered_map<std::string, bool>;
-    static auto saved_selections = glz::read_json<selection_map>(saved).value_or(selection_map{});
+    static selection_map saved_selections;
+
+    saved_selections = glz::read_json<selection_map>(saved).value_or(selection_map{});
     for(const auto& [s, v] : saved_selections) {
         if(selections.contains(s))
             selections[s] = v;

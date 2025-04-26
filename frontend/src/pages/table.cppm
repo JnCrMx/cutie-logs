@@ -248,6 +248,7 @@ export class table : public page {
         };
 
         void update_attributes() {
+            selected_attributes.clear();
             std::transform(attributes->attributes.begin(), attributes->attributes.end(), std::inserter(selected_attributes, selected_attributes.end()),
                 [](const auto& attr) { return std::pair{attr.first, false}; }); // all attributes are deselected by default
             webpp::get_element_by_id("attributes")->inner_html(Webxx::render(
@@ -255,6 +256,7 @@ export class table : public page {
                     attributes->attributes, selected_attributes, &profile, attributes->total_logs, true)));
         }
         void update_scopes() {
+            selected_scopes.clear();
             std::transform(scopes->scopes.begin(), scopes->scopes.end(), std::inserter(selected_scopes, selected_scopes.end()),
                 [](const auto& scope) { return std::pair{scope.first, true}; }); // all scopes are selected by default
             webpp::get_element_by_id("scopes")->inner_html(Webxx::render(
@@ -278,6 +280,7 @@ export class table : public page {
             for(const auto& [id, e] : resources->resources) {
                 transformed_resources[std::to_string(id)] = {resource_name(id, std::get<0>(e)), std::get<1>(e)};
             }
+            selected_resources.clear();
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
                 [](const auto& res) { return std::pair{res.first, false}; }); // all resources are deselected by default
             webpp::get_element_by_id("resources")->inner_html(Webxx::render(
@@ -299,6 +302,7 @@ export class table : public page {
             std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs)
             : profile(profile), example_entry{example_entry}, attributes{attributes}, scopes{scopes}, resources{resources}, stencil_functions{std::move(mmdbs)}
         {
+            profile.add_callback([this](auto&) { if(is_open) { open(); }});
             attributes.add_callback([this](auto&) { if(is_open) update_attributes(); });
             scopes.add_callback([this](auto&) { if(is_open) update_scopes(); });
             resources.add_callback([this](auto&) { if(is_open) update_resources(); });

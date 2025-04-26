@@ -169,8 +169,6 @@ export class profile_data {
             if(!profiles.contains(current_profile)) {
                 profiles[current_profile] = {};
             }
-
-            webpp::log("Loaded profiles: {}", glz::write_json(profiles).value_or("{}"));
             webpp::log("Current profile: {}", current_profile);
         }
 
@@ -194,6 +192,10 @@ export class profile_data {
             save();
         }
         void rename_profile(const std::string& old_name, const std::string& new_name) {
+            if(old_name == new_name) {
+                return;
+            }
+
             if(profiles.contains(old_name)) {
                 profiles[new_name] = std::move(profiles[old_name]);
                 profiles.erase(old_name);
@@ -206,6 +208,9 @@ export class profile_data {
 
         const std::string& get_current_profile() const {
             return current_profile;
+        }
+        auto get_profiles() const {
+            return profiles | std::views::keys;
         }
         void add_callback(std::function<void(profile_data&)> cb) {
             callbacks.push_back(std::move(cb));

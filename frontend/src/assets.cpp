@@ -53,5 +53,20 @@ namespace assets {
             #embed "assets/icons/add.svg"
         };
         const std::string_view add{add_data, sizeof(add_data)};
+
+        constexpr char remove_data[] = {
+            #embed "assets/icons/remove.svg"
+        };
+        const std::string_view remove{remove_data, sizeof(remove_data)};
+
+        constexpr char delete_data[] = {
+            #embed "assets/icons/delete.svg"
+        };
+        const std::string_view delete_{delete_data, sizeof(delete_data)};
+
+        constexpr char edit_data[] = {
+            #embed "assets/icons/edit.svg"
+        };
+        const std::string_view edit{edit_data, sizeof(edit_data)};
     }
 }
