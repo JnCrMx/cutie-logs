@@ -4,7 +4,8 @@
 storing them in a PostgreSQL database and providing a simple web interface for querying
 and analysing them.
 
-![Screenshot of the Log Viewer](screenshots/log_viewer.png)
+<img src="screenshots/text_view.png" width="480">
+<img src="screenshots/table_view.png" width="480">
 
 The goal of this project is to be very lightweight and it is meant mostly for small
 deployments (e.g. my K8s cluster made out of SBCs), for which will OpenTelemetry stacks
