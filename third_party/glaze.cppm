@@ -21,6 +21,10 @@ export namespace glz {
     using glz::read;
     using glz::meta;
     using glz::opts;
+    using glz::read_supported;
+    using glz::write_supported;
+    using glz::JSON;
+    using glz::BEVE;
 
     using glz::reflect;
     using glz::reflectable;

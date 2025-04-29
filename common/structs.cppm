@@ -1,8 +1,10 @@
 module;
 #include <array>
+#include <chrono>
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 export module common:structs;
@@ -10,6 +12,15 @@ export module common:structs;
 import glaze;
 
 export namespace common {
+    template<typename T>
+    concept serializable_beve = glz::read_supported<T, glz::BEVE> && glz::write_supported<T, glz::BEVE>;
+
+    template<typename T>
+    concept serializable_json = glz::read_supported<T, glz::JSON> && glz::write_supported<T, glz::JSON>;
+
+    template<typename T>
+    concept serializable = serializable_beve<T> && serializable_json<T>;
+
     struct shared_settings {
         struct {
             std::optional<std::string> country_url;
@@ -17,11 +28,13 @@ export namespace common {
             std::optional<std::string> city_url;
         } geoip;
     };
+    static_assert(serializable<shared_settings>);
 
     struct log_resource {
         glz::json_t attributes;
         double created_at;
     };
+    static_assert(serializable<log_resource>);
 
     enum class log_severity {
         UNSPECIFIED = 0,
@@ -51,6 +64,7 @@ export namespace common {
         glz::json_t attributes;
         glz::json_t body;
     };
+    static_assert(serializable<log_entry>);
 
     struct log_entry_with_resource {
         log_resource* resource;
@@ -58,19 +72,57 @@ export namespace common {
 
         static constexpr auto root = "log";
     };
+    static_assert(serializable<log_entry_with_resource>);
 
     struct logs_response {
         std::vector<common::log_entry> logs;
     };
+    static_assert(serializable<logs_response>);
+
     struct logs_attributes_response {
         unsigned int total_logs;
         std::unordered_map<std::string, unsigned int> attributes;
     };
+    static_assert(serializable<logs_attributes_response>);
+
     struct logs_scopes_response {
         unsigned int total_logs;
         std::unordered_map<std::string, unsigned int> scopes;
     };
+    static_assert(serializable<logs_scopes_response>);
+
     struct logs_resources_response {
         std::unordered_map<unsigned int, std::tuple<log_resource, unsigned int>> resources;
     };
+    static_assert(serializable<logs_resources_response>);
+
+    template<typename T>
+    struct filter_pair {
+        T include;
+        T exclude;
+    };
+
+    struct cleanup_rule {
+        unsigned int id;
+        std::string name;
+        std::string description;
+        bool enabled;
+        std::chrono::seconds execution_interval;
+
+        std::chrono::seconds minimum_age;
+        filter_pair<std::unordered_set<unsigned int>> resources;
+        filter_pair<std::unordered_set<std::string>> scopes;
+        filter_pair<std::unordered_set<log_severity>> severities;
+        filter_pair<std::unordered_set<std::string>> attributes;
+        filter_pair<glz::json_t> attribute_values;
+
+        std::chrono::sys_seconds created_at;
+        std::chrono::sys_seconds updated_at;
+    };
+    static_assert(serializable<cleanup_rule>);
+
+    struct cleanup_rule_response {
+        std::unordered_map<unsigned int, cleanup_rule> rules;
+    };
+    static_assert(serializable<cleanup_rule_response>);
 }

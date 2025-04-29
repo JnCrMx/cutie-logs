@@ -10,6 +10,8 @@ CREATE TABLE cleanup_rules (
     exclude_resources INTEGER[],
     include_scopes TEXT[],
     exclude_scopes TEXT[],
+    include_severities log_severity[],
+    exclude_severities log_severity[],
     include_attributes TEXT[],
     exclude_attributes TEXT[],
     include_attribute_values JSONB CHECK (jsonb_typeof(include_attribute_values) = 'object'),

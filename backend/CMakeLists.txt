@@ -29,7 +29,7 @@ FetchContent_Declare(argparse
   GIT_TAG        v3.2)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG        v5.0.0
+  GIT_TAG        v5.1.0
   GIT_SHALLOW TRUE)
 
 set(PISTACHE_BUILD_TESTS OFF CACHE BOOL "Pistache: Build tests" FORCE)
