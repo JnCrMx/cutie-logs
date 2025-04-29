@@ -194,12 +194,12 @@ void Server::setup_api_routes() {
     router.get("/api/v1/logs/attributes", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         db.queue_work([this, response = std::move(response)](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
-            auto result = txn.exec("SELECT attribute, count FROM log_attributes;");
+            auto result = txn.exec(pqxx::prepped{"get_attributes"});
             common::logs_attributes_response res;
             for(const auto& row : result) {
                 res.attributes[row["attribute"].as<std::string>()] = row["count"].as<int>();
             }
-            res.total_logs = txn.exec("SELECT COUNT(*) FROM logs;").one_field().as<unsigned int>();
+            res.total_logs = txn.exec(pqxx::prepped{"get_count"}).one_field().as<unsigned int>();
 
             auto beve = *glz::write_beve(res);
             response.send(Pistache::Http::Code::Ok, beve.data(), beve.size(), mime::application_octet);
@@ -209,12 +209,12 @@ void Server::setup_api_routes() {
     router.get("/api/v1/logs/scopes", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         db.queue_work([this, response = std::move(response)](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
-            auto result = txn.exec("SELECT scope, COUNT(*) as count FROM logs GROUP BY scope;");
+            auto result = txn.exec(pqxx::prepped{"get_scopes"});
             common::logs_scopes_response res;
             for(const auto& row : result) {
                 res.scopes[row["scope"].as<std::string>()] = row["count"].as<int>();
             }
-            res.total_logs = txn.exec("SELECT COUNT(*) FROM logs;").one_field().as<unsigned int>();
+            res.total_logs = txn.exec(pqxx::prepped{"get_count"}).one_field().as<unsigned int>();
 
             auto beve = *glz::write_beve(res);
             response.send(Pistache::Http::Code::Ok, beve.data(), beve.size(), mime::application_octet);
@@ -224,7 +224,7 @@ void Server::setup_api_routes() {
     router.get("/api/v1/logs/resources", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         db.queue_work([this, response = std::move(response)](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
-            auto result = txn.exec("select res.id AS id, extract(epoch from res.created_at) AS created_at, res.attributes AS attributes, COUNT(*) AS count from log_resources res, logs WHERE id = resource GROUP BY id;");
+            auto result = txn.exec(pqxx::prepped{"get_resources"});
             common::logs_resources_response res;
             for(const auto& row : result) {
                 unsigned int id = row["id"].as<unsigned int>();

@@ -198,6 +198,15 @@ export class Database {
                 "ON CONFLICT (attributes) DO UPDATE SET "
                 "attributes = EXCLUDED.attributes "
                 "RETURNING id");
+            conn.prepare("get_count",
+                "SELECT COUNT(*) FROM logs");
+            conn.prepare("get_resources",
+                "SELECT res.id AS id, extract(epoch from res.created_at) AS created_at, res.attributes AS attributes, COUNT(*) AS count "
+                "FROM log_resources res, logs WHERE id = resource GROUP BY id");
+            conn.prepare("get_attributes",
+                "SELECT attribute, count FROM log_attributes");
+            conn.prepare("get_scopes",
+                "SELECT scope, COUNT(*) as count FROM logs GROUP BY scope");
         }
 
         void worker(unsigned int id, pqxx::connection& conn, std::stop_token st) {
