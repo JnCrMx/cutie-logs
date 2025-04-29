@@ -15,8 +15,8 @@ FetchContent_Declare(opentelemetry-proto
   GIT_REPOSITORY https://github.com/open-telemetry/opentelemetry-proto.git
   GIT_TAG        v1.5.0)
 FetchContent_Declare(pistache
-  GIT_REPOSITORY https://github.com/pistacheio/pistache.git
-  GIT_TAG        master)
+  GIT_REPOSITORY https://github.com/JnCrMx/pistache.git
+  GIT_TAG        cmake-optional-rapidjson)
 FetchContent_Declare(gzip-hpp
   GIT_REPOSITORY https://github.com/mapbox/gzip-hpp.git
   GIT_TAG        master
@@ -33,6 +33,7 @@ FetchContent_Declare(glaze
   GIT_SHALLOW TRUE)
 
 set(PISTACHE_BUILD_TESTS OFF CACHE BOOL "Pistache: Build tests" FORCE)
+set(PISTACHE_USE_RAPIDJSON OFF CACHE BOOL "Pistache: Use RapidJSON" FORCE)
 set(SKIP_BUILD_TEST ON CACHE BOOL "" FORCE)
 set(BUILD_TEST OFF CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
