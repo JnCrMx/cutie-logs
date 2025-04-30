@@ -2,7 +2,7 @@ module frontend.assets;
 
 import std;
 
-namespace assets {
+namespace frontend::assets {
     namespace icons {
         constexpr char text_view_data[] = {
             #embed "assets/icons/text-view.svg"

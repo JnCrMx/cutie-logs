@@ -60,6 +60,42 @@ namespace pqxx {
         }
     };
 
+    export template<> std::string const type_name<common::filter_type>{"filter_type"};
+    export template<> struct nullness<common::filter_type> : pqxx::no_null<common::filter_type> {};
+    export template<> struct string_traits<common::filter_type> {
+        static constexpr bool converts_to_string{true};
+        static constexpr bool converts_from_string{true};
+
+        static constexpr zview to_buf(char *begin, char *end, common::filter_type const &value) {
+            if(std::to_underlying(value) >= common::filter_type_names.size()) {
+                throw pqxx::conversion_error{std::format("Could not convert {} to filter_type", std::to_underlying(value))};
+            }
+            return common::filter_type_names[static_cast<std::underlying_type_t<common::filter_type>>(value)];
+        }
+        static char *into_buf(char *begin, char *end, common::filter_type const &value) {
+            if(std::to_underlying(value) >= common::filter_type_names.size()) {
+                throw pqxx::conversion_error{std::format("Could not convert {} to filter_type", std::to_underlying(value))};
+            }
+            const char* str = common::filter_type_names[static_cast<std::underlying_type_t<common::filter_type>>(value)];
+            auto size = std::char_traits<char>::length(str)+1;
+            if(static_cast<std::size_t>(end - begin) < size) {
+                throw pqxx::conversion_error{std::format("Buffer too small for filter_type")};
+            }
+            return std::copy(str, str + size, begin);
+        }
+        constexpr static std::size_t size_buffer(common::filter_type const &value) noexcept {
+            return sizeof("include");
+        }
+        static common::filter_type from_string(std::string_view text) {
+            for(std::underlying_type_t<common::filter_type> i{}; i < common::filter_type_names.size(); i++) {
+                if(text == common::filter_type_names[i]) {
+                    return static_cast<common::filter_type>(i);
+                }
+            }
+            throw pqxx::conversion_error{std::format("Could not convert {} to filter_type", text)};
+        }
+    };
+
     export template<> std::string const type_name<glz::json_t>{"glz::json_t"};
     export template<> struct nullness<glz::json_t> : pqxx::no_null<glz::json_t> {};
     export template<> struct string_traits<glz::json_t> {
@@ -207,6 +243,17 @@ export class Database {
                 "SELECT attribute, count FROM log_attributes");
             conn.prepare("get_scopes",
                 "SELECT scope, COUNT(*) as count FROM logs GROUP BY scope");
+            conn.prepare("get_cleanup_rules",
+                "SELECT id, name, description, enabled, extract(epoch from execution_interval) AS execution_interval_s, "
+                "extract(epoch from filter_minimum_age) AS filter_minimum_age_s, "
+                "filter_resources, filter_resources_type, "
+                "filter_scopes, filter_scopes_type, "
+                "filter_severities, filter_severities_type, "
+                "filter_attributes_include, filter_attributes_exclude, "
+                "filter_attribute_values_include, filter_attribute_values_exclude, "
+                "extract(epoch from created_at) AS created_at_s, extract(epoch from updated_at) AS updated_at_s, "
+                "extract(epoch from last_execution) AS last_execution_s "
+                "FROM cleanup_rules");
         }
 
         void worker(unsigned int id, pqxx::connection& conn, std::stop_token st) {

@@ -20,6 +20,8 @@ export namespace pqxx {
     using pqxx::nullness;
     using pqxx::type_name;
 
+    using pqxx::array;
+
     using pqxx::conversion_error;
     using pqxx::data_exception;
     using pqxx::deadlock_detected;

@@ -23,6 +23,10 @@ export namespace glz {
     using glz::opts;
     using glz::read_supported;
     using glz::write_supported;
+    using glz::from;
+    using glz::to;
+    using glz::parse;
+    using glz::serialize;
     using glz::JSON;
     using glz::BEVE;
 

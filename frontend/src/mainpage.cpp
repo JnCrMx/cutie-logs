@@ -7,6 +7,7 @@ import common;
 import frontend.assets;
 import frontend.components;
 import frontend.pages;
+import frontend.utils;
 
 namespace frontend {
 
@@ -53,10 +54,10 @@ auto refresh() -> webpp::coroutine<void> {
     refresh_button.add_class("*:animate-spin");
     webpp::get_element_by_id("stats")->add_class("animate-pulse");
 
-    auto attributes_future = webpp::coro::fetch("/api/v1/logs/attributes").then(std::mem_fn(&webpp::response::co_bytes));
-    auto scopes_future = webpp::coro::fetch("/api/v1/logs/scopes").then(std::mem_fn(&webpp::response::co_bytes));
-    auto resources_future = webpp::coro::fetch("/api/v1/logs/resources").then(std::mem_fn(&webpp::response::co_bytes));
-    auto example_future = webpp::coro::fetch("/api/v1/logs?limit=1&attributes=*").then(std::mem_fn(&webpp::response::co_bytes));
+    auto attributes_future = webpp::coro::fetch("/api/v1/logs/attributes", utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes));
+    auto scopes_future = webpp::coro::fetch("/api/v1/logs/scopes", utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes));
+    auto resources_future = webpp::coro::fetch("/api/v1/logs/resources", utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes));
+    auto example_future = webpp::coro::fetch("/api/v1/logs?limit=1&attributes=*", utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes));
 
     attributes = glz::read_beve<common::logs_attributes_response>(co_await attributes_future).value_or(common::logs_attributes_response{});
     scopes = glz::read_beve<common::logs_scopes_response>(co_await scopes_future).value_or(common::logs_scopes_response{});
@@ -430,7 +431,7 @@ auto load_mmdb(common::mmdb& target, std::string_view url) -> webpp::coroutine<v
     }
 }
 auto load_settings() -> webpp::coroutine<void> {
-    auto data = co_await webpp::coro::fetch("/api/v1/settings")
+    auto data = co_await webpp::coro::fetch("/api/v1/settings", utils::fetch_options)
         .then(std::mem_fn(&webpp::response::co_bytes));
     settings = glz::read_beve<common::shared_settings>(data).value_or(common::shared_settings{});
 

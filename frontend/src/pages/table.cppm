@@ -10,6 +10,7 @@ import :page;
 import common;
 import frontend.assets;
 import frontend.components;
+import frontend.utils;
 
 namespace frontend::pages {
 
@@ -236,7 +237,7 @@ export class table : public page {
             auto url = std::format("/api/v1/logs?limit={}&attributes={}&scopes={}&resources={}",
                 limit, attributes_selector, scopes_selector, resources_selector);
             logs =
-                glz::read_beve<common::logs_response>(co_await webpp::coro::fetch(url).then(std::mem_fn(&webpp::response::co_bytes)))
+                glz::read_beve<common::logs_response>(co_await webpp::coro::fetch(url, utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes)))
                 .value_or(common::logs_response{});
 
             webpp::get_element_by_id("run_button_icon")->remove_class("hidden");

@@ -52,6 +52,7 @@ set(SOURCES
 )
 set(MODULE_SOURCES
   src/assets.cppm
+  src/utils.cppm
   src/components/_components.cppm
   src/components/resource_modal.cppm
   src/components/selection.cppm
