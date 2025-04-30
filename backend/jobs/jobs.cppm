@@ -31,7 +31,6 @@ export class Jobs {
 
             while(!st.stop_requested()) {
                 try {
-                    logger->trace("Running cleanup jobs");
                     run_cleanup_jobs();
 
                     std::this_thread::sleep_for(job_interval);

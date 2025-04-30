@@ -8,9 +8,17 @@ import spdlog;
 namespace backend::database {
 
 void Database::ensure_consistency() {
-    logger->info("Ensuring database consistency, this may take a while...");
+    ensure_consistency(connections.front());
+}
 
-    pqxx::work txn(connections.front());
+void Database::ensure_consistency(pqxx::connection& conn) {
+    pqxx::work txn{conn};
+    ensure_consistency(txn);
+    txn.commit();
+}
+
+void Database::ensure_consistency(pqxx::transaction_base& txn) {
+    logger->info("Ensuring database consistency, this may take a while...");
 
     auto attributes_result = txn.exec("SELECT key, count(*) FROM(SELECT jsonb_object_keys(attributes) as key FROM logs) AS t GROUP BY key;");
     for(auto [attribute, count] : attributes_result.iter<std::string, unsigned int>()) {
@@ -45,8 +53,6 @@ void Database::ensure_consistency() {
             {attribute, count, count_null, count_number, count_string, count_boolean, count_array, count_object});
         logger->debug("Attribute {}: null={}, number={}, string={}, boolean={}, array={}, object={}", attribute, count_null, count_number, count_string, count_boolean, count_array, count_object);
     }
-    txn.commit();
-
     logger->info("Database consistency check complete");
 }
 

@@ -10,6 +10,8 @@ module;
 #include <string>
 #include <thread>
 #include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -113,6 +115,12 @@ namespace pqxx {
 
 namespace backend::database {
 
+export template<typename T>
+T parse_array(std::string_view sv, pqxx::connection& conn) {
+    pqxx::array<std::ranges::range_value_t<T>> arr{sv, conn};
+    return T{arr.cbegin(), arr.cend()};
+}
+
 export class Database {
     public:
         constexpr static unsigned int default_worker_count = 4;
@@ -130,6 +138,8 @@ export class Database {
 
         void run_migrations();
         void ensure_consistency();
+        void ensure_consistency(pqxx::connection& conn);
+        void ensure_consistency(pqxx::transaction_base& txn);
 
         void start_workers() {
             for(int i = 0; i < connections.size(); i++) {
@@ -212,6 +222,51 @@ export class Database {
                 logger->error("Unique violation detected in insert_log, giving up");
             }
         }
+
+        std::unordered_map<unsigned int, common::cleanup_rule> get_cleanup_rules(pqxx::transaction_base& txn) {
+            auto result = txn.exec(pqxx::prepped{"get_cleanup_rules"});
+            std::unordered_map<unsigned int, common::cleanup_rule> rules;
+
+            for(const auto& row : result) {
+                unsigned int id = row["id"].as<unsigned int>();
+                common::cleanup_rule& rule = rules[id];
+
+                rule.id = id;
+                rule.name = row["name"].as<std::string>();
+                rule.description = row["description"].as<std::string>();
+                rule.enabled = row["enabled"].as<bool>();
+                rule.execution_interval = std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::duration<double>{row["execution_interval_s"].as<double>()});
+
+                rule.filter_minimum_age = std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::duration<double>{row["filter_minimum_age_s"].as<double>()});
+                rule.filter_resources.values = parse_array<std::unordered_set<unsigned int>>(row["filter_resources"].as<std::string>(), txn.conn());
+                rule.filter_resources.type = row["filter_resources_type"].as<common::filter_type>();
+                rule.filter_scopes.values = parse_array<std::unordered_set<std::string>>(row["filter_scopes"].as<std::string>(), txn.conn());
+                rule.filter_scopes.type = row["filter_scopes_type"].as<common::filter_type>();
+                rule.filter_severities.values = parse_array<std::unordered_set<common::log_severity>>(row["filter_severities"].as<std::string>(), txn.conn());
+                rule.filter_severities.type = row["filter_severities_type"].as<common::filter_type>();
+                rule.filter_attributes.include = row["filter_attributes_include"].as<std::optional<std::string>>().transform([&txn](const auto& str) {
+                    return parse_array<std::unordered_set<std::string>>(str, txn.conn());
+                });
+                rule.filter_attributes.exclude = row["filter_attributes_exclude"].as<std::optional<std::string>>().transform([&txn](const auto& str) {
+                    return parse_array<std::unordered_set<std::string>>(str, txn.conn());
+                });
+                rule.filter_attribute_values.include = row["filter_attribute_values_include"].as<std::optional<glz::json_t>>();
+                rule.filter_attribute_values.exclude = row["filter_attribute_values_exclude"].as<std::optional<glz::json_t>>();
+
+                rule.created_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::duration<double>{row["created_at_s"].as<double>()})};
+                rule.updated_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::duration<double>{row["updated_at_s"].as<double>()})};
+                rule.last_execution = row["last_execution_s"].as<std::optional<double>>().transform([](const auto& d) {
+                    return std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
+                        std::chrono::duration<double>{d})};
+                });
+            }
+            return rules;
+        }
+
     private:
         void prepare_statements(pqxx::connection& conn) {
             conn.prepare("insert_log",
