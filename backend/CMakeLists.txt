@@ -66,6 +66,7 @@ set(SOURCES
   main.cpp
   database/consistency.cpp
   database/migrations.cpp
+  jobs/cleanup.cpp
   web/api.cpp
   web/static.cpp
 )
@@ -73,6 +74,7 @@ set(MODULE_SOURCES
   backend.cppm
   utils.cppm
   database/database.cppm
+  jobs/jobs.cppm
   opentelemetry/server.cppm
   web/server.cppm
 )

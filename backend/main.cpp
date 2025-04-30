@@ -10,6 +10,7 @@ import spdlog;
 
 import common;
 import backend.database;
+import backend.jobs;
 import backend.opentelemetry;
 import backend.web;
 
@@ -123,6 +124,9 @@ int main(int argc, char** argv) {
     if(auto city_url = env_present(program, "--geoip-city-url")) {
         settings.geoip.city_url = *city_url;
     }
+
+    jobs::Jobs job_runner(db);
+    job_runner.start();
 
     web::Server web_server(db, settings, Pistache::Address(env_get(program, "--web-address")));
     if(auto path = env_present(program, "--web-dev-path")) {
