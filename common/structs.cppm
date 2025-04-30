@@ -103,15 +103,9 @@ export namespace common {
     };
 
     template<typename T>
-    struct single_filter {
+    struct filter {
         filter_type type;
         T values;
-    };
-
-    template<typename T>
-    struct multi_filter {
-        std::optional<T> include;
-        std::optional<T> exclude;
     };
 
     struct cleanup_rule {
@@ -122,11 +116,11 @@ export namespace common {
         std::chrono::seconds execution_interval;
 
         std::chrono::seconds filter_minimum_age;
-        single_filter<std::unordered_set<unsigned int>> filter_resources;
-        single_filter<std::unordered_set<std::string>> filter_scopes;
-        single_filter<std::unordered_set<log_severity>> filter_severities;
-        multi_filter<std::unordered_set<std::string>> filter_attributes;
-        multi_filter<glz::json_t> filter_attribute_values;
+        filter<std::unordered_set<unsigned int>> filter_resources;
+        filter<std::unordered_set<std::string>> filter_scopes;
+        filter<std::unordered_set<log_severity>> filter_severities;
+        filter<std::unordered_set<std::string>> filter_attributes;
+        filter<glz::json_t> filter_attribute_values;
 
         std::chrono::sys_seconds created_at;
         std::chrono::sys_seconds updated_at;

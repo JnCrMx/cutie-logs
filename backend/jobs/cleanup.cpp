@@ -7,6 +7,7 @@ module;
 module backend.jobs;
 import spdlog;
 import pqxx;
+import glaze;
 
 import common;
 
@@ -51,7 +52,21 @@ std::string craft_cleanup_job_sql(const common::cleanup_rule& rule, pqxx::connec
         sql.pop_back(); // Remove the last comma
         sql += ")";
     }
-    // TODO: filter_attributes and filter_attribute_values
+    for(const auto& attr : rule.filter_attributes.values) {
+        if(rule.filter_attributes.type == common::filter_type::INCLUDE) {
+            sql += " AND attributes ? '" + conn.esc(attr) + "'";
+        } else {
+            sql += " AND NOT attributes ? '" + conn.esc(attr) + "'";
+        }
+    }
+    if(!rule.filter_attribute_values.values.empty()) {
+        std::string json = glz::write_json(rule.filter_attribute_values.values).value_or("null");
+        if(rule.filter_attribute_values.type == common::filter_type::INCLUDE) {
+            sql += " AND attributes @> '" + conn.esc(json) + "'::jsonb";
+        } else {
+            sql += " AND NOT attributes @> '" + conn.esc(json) + "'::jsonb";
+        }
+    }
     return sql;
 }
 

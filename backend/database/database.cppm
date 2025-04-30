@@ -246,14 +246,10 @@ export class Database {
                 rule.filter_scopes.type = row["filter_scopes_type"].as<common::filter_type>();
                 rule.filter_severities.values = parse_array<std::unordered_set<common::log_severity>>(row["filter_severities"].as<std::string>(), txn.conn());
                 rule.filter_severities.type = row["filter_severities_type"].as<common::filter_type>();
-                rule.filter_attributes.include = row["filter_attributes_include"].as<std::optional<std::string>>().transform([&txn](const auto& str) {
-                    return parse_array<std::unordered_set<std::string>>(str, txn.conn());
-                });
-                rule.filter_attributes.exclude = row["filter_attributes_exclude"].as<std::optional<std::string>>().transform([&txn](const auto& str) {
-                    return parse_array<std::unordered_set<std::string>>(str, txn.conn());
-                });
-                rule.filter_attribute_values.include = row["filter_attribute_values_include"].as<std::optional<glz::json_t>>();
-                rule.filter_attribute_values.exclude = row["filter_attribute_values_exclude"].as<std::optional<glz::json_t>>();
+                rule.filter_attributes.values = parse_array<std::unordered_set<std::string>>(row["filter_attributes"].as<std::string>(), txn.conn());
+                rule.filter_attributes.type = row["filter_attributes_type"].as<common::filter_type>();
+                rule.filter_attribute_values.values = row["filter_attribute_values"].as<glz::json_t>();
+                rule.filter_attribute_values.type = row["filter_attribute_values_type"].as<common::filter_type>();
 
                 rule.created_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::duration<double>{row["created_at_s"].as<double>()})};
@@ -304,8 +300,8 @@ export class Database {
                 "filter_resources, filter_resources_type, "
                 "filter_scopes, filter_scopes_type, "
                 "filter_severities, filter_severities_type, "
-                "filter_attributes_include, filter_attributes_exclude, "
-                "filter_attribute_values_include, filter_attribute_values_exclude, "
+                "filter_attributes, filter_attributes_type, "
+                "filter_attribute_values, filter_attribute_values_type, "
                 "extract(epoch from created_at) AS created_at_s, extract(epoch from updated_at) AS updated_at_s, "
                 "extract(epoch from last_execution) AS last_execution_s "
                 "FROM cleanup_rules");
