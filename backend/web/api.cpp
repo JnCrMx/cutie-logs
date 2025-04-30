@@ -1,5 +1,6 @@
 module;
 #include <algorithm>
+#include <chrono>
 #include <expected>
 #include <format>
 #include <ranges>
@@ -49,6 +50,13 @@ bool accepts(const Pistache::Http::Request& req, Pistache::Http::Mime::MediaType
     return std::ranges::find_if(accept, [&type](const auto& mime) {
         return mime_equals(mime, type);
     }) != accept.end();
+}
+bool isContentType(const Pistache::Http::Request& req, Pistache::Http::Mime::MediaType type) {
+    if(!req.headers().has<Pistache::Http::Header::ContentType>()) {
+        return false;
+    }
+    auto content_type = req.headers().get<Pistache::Http::Header::ContentType>()->mime();
+    return mime_equals(content_type, type);
 }
 
 template<typename T>
@@ -150,6 +158,19 @@ std::vector<common::log_entry> get_logs(pqxx::transaction_base& txn, const std::
         }
     }
     return logs;
+}
+
+std::expected<void, std::string> check_cleanup_rule(const common::cleanup_rule& rule) {
+    if(rule.name.empty()) {
+        return std::unexpected{"Field \"name\" cannot be empty"};
+    }
+    if(rule.execution_interval == std::chrono::seconds{0}) {
+        return std::unexpected{"Field \"execution_interval\" cannot be 0s"};
+    }
+    if(rule.filter_minimum_age == std::chrono::seconds{0}) {
+        return std::unexpected{"Field \"filter_minimum_age\" cannot be 0s"};
+    }
+    return {};
 }
 
 void Server::setup_api_routes() {
@@ -283,6 +304,75 @@ void Server::setup_api_routes() {
 
             common::cleanup_rules_response res{db.get_cleanup_rules(txn)};
             send_response(response, accepts_beve, res);
+        });
+        return Pistache::Rest::Route::Result::Ok;
+    });
+    router.put("/api/v1/settings/cleanup_rules", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        bool accepts_beve = accepts(request, mime::application_beve);
+
+        std::expected<common::cleanup_rule, glz::error_ctx> rule;
+        if(isContentType(request, mime::application_json)) {
+            rule = glz::read_json<common::cleanup_rule>(request.body());
+        } else if(isContentType(request, mime::application_beve)) {
+            rule = glz::read_beve<common::cleanup_rule>(request.body());
+        } else {
+            response.send(Pistache::Http::Code::Unsupported_Media_Type, "Unsupported media type");
+            return Pistache::Rest::Route::Result::Ok;
+        }
+        if(!rule) {
+            response.send(Pistache::Http::Code::Bad_Request, std::format("Invalid request body: {}", glz::format_error(rule.error())));
+            return Pistache::Rest::Route::Result::Ok;
+        }
+
+        if(auto res = check_cleanup_rule(*rule); !res) {
+            response.send(Pistache::Http::Code::Bad_Request, std::format("Invalid request body: {}", res.error()));
+            return Pistache::Rest::Route::Result::Ok;
+        }
+
+        db.queue_work([this, accepts_beve, rule = std::move(*rule), response = std::move(response)](pqxx::connection& conn) mutable {
+            pqxx::work txn{conn};
+
+            std::vector<unsigned int> filter_resources{rule.filter_resources.values.begin(), rule.filter_resources.values.end()};
+            std::vector<std::string> filter_scopes{rule.filter_scopes.values.begin(), rule.filter_scopes.values.end()};
+            std::vector<common::log_severity> filter_severities{rule.filter_severities.values.begin(), rule.filter_severities.values.end()};
+            std::vector<std::string> filter_attributes{rule.filter_attributes.values.begin(), rule.filter_attributes.values.end()};
+            std::string filter_attribute_values = glz::write_json(rule.filter_attribute_values.values).value_or("null");
+
+            try {
+                auto cleanup_rule = txn.exec(pqxx::prepped{"insert_cleanup_rule"},
+                    pqxx::params{
+                        rule.name, rule.description, rule.enabled, rule.execution_interval.count(),
+                        rule.filter_minimum_age.count(),
+                        filter_resources, rule.filter_resources.type,
+                        filter_scopes, rule.filter_scopes.type,
+                        filter_severities, rule.filter_severities.type,
+                        filter_attributes, rule.filter_attributes.type,
+                        filter_attribute_values, rule.filter_attribute_values.type
+                    }
+                );
+                txn.commit();
+
+                if(cleanup_rule.empty()) {
+                    response.send(Pistache::Http::Code::Internal_Server_Error, "Failed to insert cleanup rule");
+                    return;
+                }
+
+                auto row = cleanup_rule[0];
+                rule.id = row["id"].as<unsigned int>();
+                rule.created_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::duration<double>{row["created_at_s"].as<double>()})};
+                rule.updated_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::duration<double>{row["updated_at_s"].as<double>()})};
+                rule.last_execution = std::nullopt;
+
+                send_response(response, accepts_beve, rule);
+            } catch(const pqxx::unique_violation& e) {
+                response.send(Pistache::Http::Code::Conflict, std::format("Cleanup rule with name \"{}\" already exists", rule.name));
+                return;
+            } catch(const std::exception& e) {
+                response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
+                return;
+            }
         });
         return Pistache::Rest::Route::Result::Ok;
     });

@@ -120,7 +120,7 @@ export namespace common {
         filter<std::unordered_set<std::string>> filter_scopes;
         filter<std::unordered_set<log_severity>> filter_severities;
         filter<std::unordered_set<std::string>> filter_attributes;
-        filter<glz::json_t> filter_attribute_values;
+        filter<glz::json_t> filter_attribute_values = {{}, glz::json_t::object_t{}};
 
         std::chrono::sys_seconds created_at;
         std::chrono::sys_seconds updated_at;

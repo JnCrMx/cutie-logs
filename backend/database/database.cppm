@@ -305,6 +305,14 @@ export class Database {
                 "extract(epoch from created_at) AS created_at_s, extract(epoch from updated_at) AS updated_at_s, "
                 "extract(epoch from last_execution) AS last_execution_s "
                 "FROM cleanup_rules");
+            conn.prepare("insert_cleanup_rule",
+                "INSERT INTO cleanup_rules (name, description, enabled, execution_interval, filter_minimum_age, "
+                "filter_resources, filter_resources_type, filter_scopes, filter_scopes_type, "
+                "filter_severities, filter_severities_type, filter_attributes, filter_attributes_type, "
+                "filter_attribute_values, filter_attribute_values_type) "
+                "VALUES ($1, $2, $3, $4*'1 second'::interval, $5*'1 second'::interval, "
+                "$6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15) "
+                "RETURNING id, extract(epoch from created_at) AS created_at_s, extract(epoch from updated_at) AS updated_at_s");
         }
 
         void worker(unsigned int id, pqxx::connection& conn, std::stop_token st) {
