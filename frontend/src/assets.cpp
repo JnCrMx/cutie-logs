@@ -19,6 +19,11 @@ namespace frontend::assets {
         };
         const std::string_view analysis{analysis_data, sizeof(analysis_data)};
 
+        constexpr char settings_data[] = {
+            #embed "assets/icons/settings.svg"
+        };
+        const std::string_view settings{settings_data, sizeof(settings_data)};
+
         constexpr char themes_data[] = {
             #embed "assets/icons/themes.svg"
         };

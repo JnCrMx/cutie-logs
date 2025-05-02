@@ -36,12 +36,14 @@ static profile_data profile;
 
 static pages::logs logs_page(profile, example_entry, attributes, scopes, resources, mmdbs);
 static pages::table table_page(profile, example_entry, attributes, scopes, resources, mmdbs);
+static pages::settings settings_page(profile, example_entry, attributes, scopes, resources, mmdbs);
 
 using page_tuple = std::tuple<std::string_view, std::string_view, std::string_view, pages::page*>;
 static std::array all_pages = {
     page_tuple{"logs", "Text View", assets::icons::text_view, &logs_page},
     page_tuple{"table", "Table View", assets::icons::table_view, &table_page},
 //    page_tuple{"analysis", "Analysis", assets::icons::analysis, &logs_page},
+    page_tuple{"settings", "Settings", assets::icons::settings, &settings_page},
 };
 
 static pages::page* current_page = nullptr;
