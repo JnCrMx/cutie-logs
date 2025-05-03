@@ -430,7 +430,7 @@ export class table : public page {
                         dv{{_id{"resources"},  _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"resources">("Filter Resources", {}, selected_resources, &profile)},
                         dv{{_id{"scopes"},     _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, &profile, 1, false)},
                     },
-                    dv{{_class{"flex flex-row gap-4 mt-4 justify-center"}},
+                    dv{{_class{"flex flex-col md:flex-row gap-4 mt-4 justify-center"}},
                         ctx.on_click(button{{_class{"btn btn-primary"}},
                             span{{_id{"run_button_loading"}, _class{"loading loading-spinner hidden"}}},
                             span{{_id{"run_button_icon"}}, assets::icons::run},
