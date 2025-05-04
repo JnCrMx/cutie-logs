@@ -76,7 +76,7 @@ export class settings : public page {
 
                         label{{_class{"fieldset-label"}}, "Rule description"},
                         textarea{{_id{"rule_description"}, _class{"textarea w-full"}, _placeholder{"Description"}}, edit ? rule->description : ""},
-                        dv{{_class{"validator-hint"}}, "Just here for equal spacing."},
+                        dv{{_class{"validator-hint invisible"}}, "Just here for equal spacing."},
 
                         dv{{_class{"flex flex-row gap-16 w-full"}},
                             dv{{_class{"flex flex-col"}},
@@ -86,7 +86,7 @@ export class settings : public page {
                                         input{{_id{"rule_enabled"}, _type{"checkbox"}, _class{"toggle toggle-xl toggle-primary"}, _checked{}}} :
                                         input{{_id{"rule_enabled"}, _type{"checkbox"}, _class{"toggle toggle-xl toggle-primary"}}}
                                 },
-                                dv{{_class{"validator-hint"}}, "Just here for equal spacing."},
+                                dv{{_class{"validator-hint invisible"}}, "Just here for equal spacing."},
                             },
                             dv{{_class{"grow"}},
                                 label{{_class{"fieldset-label"}}, "Execution interval"},
