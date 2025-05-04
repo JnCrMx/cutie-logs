@@ -268,11 +268,12 @@ void Server::setup_api_routes() {
         db.queue_work([this, accepts_beve, response = std::move(response)](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
             auto result = txn.exec(pqxx::prepped{"get_scopes"});
-            common::logs_scopes_response res;
+            common::logs_scopes_response res{};
             for(const auto& row : result) {
-                res.scopes[row["scope"].as<std::string>()] = row["count"].as<int>();
+                int count = row["count"].as<int>();
+                res.scopes[row["scope"].as<std::string>()] = count;
+                res.total_logs += count; // we can avoid executing get_count query
             }
-            res.total_logs = txn.exec(pqxx::prepped{"get_count"}).one_field().as<unsigned int>();
 
             send_response(response, accepts_beve, res);
         });
