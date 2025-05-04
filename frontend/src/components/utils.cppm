@@ -54,6 +54,49 @@ export using drag_over_event = Webxx::_onDragOver;
 export using drag_enter_event = Webxx::_onDragEnter;
 export using drag_leave_event = Webxx::_onDragLeave;
 
+export namespace events {
+    template<typename EventAttribute>
+    auto on_event(auto el, webpp::callback_data* cb) {
+        el.data.attributes.push_back(EventAttribute{std::format("handleEvent(this, event, {});", reinterpret_cast<std::uintptr_t>(cb))});
+        return el;
+    }
+
+    auto on_click(auto el, webpp::callback_data* cb) {
+        return on_event<Webxx::_onClick>(el, cb);
+    }
+    auto on_input(auto el, webpp::callback_data* cb) {
+        return on_event<Webxx::_onInput>(el, cb);
+    }
+    auto on_change(auto el, webpp::callback_data* cb) {
+        return on_event<Webxx::_onChange>(el, cb);
+    }
+    auto on_drag_start(auto el, webpp::callback_data* cb) {
+        return on_event<Webxx::_onDragStart>(el, cb);
+    }
+    auto on_drag_end(auto el, webpp::callback_data* cb) {
+        return on_event<Webxx::_onDragEnd>(el, cb);
+    }
+    auto on_drag_over(auto el, webpp::callback_data* cb) {
+        return on_event<Webxx::_onDragOver>(el, cb);
+    }
+    auto on_drag_enter(auto el, webpp::callback_data* cb) {
+        return on_event<Webxx::_onDragEnter>(el, cb);
+    }
+    auto on_drag_leave(auto el, webpp::callback_data* cb) {
+        return on_event<Webxx::_onDragLeave>(el, cb);
+    }
+
+    template<typename Event>
+    auto on_events(auto el, std::function<void(webpp::event)> cb) {
+        return on_event<Event>(el, std::move(cb));
+    }
+
+    template<typename Event, typename... Events, typename... Funcs>
+    auto on_events(auto el, std::function<void(webpp::event)> cb, Funcs... more) {
+        return on_events<Events...>(on_event<Event>(el, std::move(cb)), std::move(more)...);
+    }
+}
+
 export class event_context {
     public:
         using event_callback = std::function<void(webpp::event)>;
@@ -89,8 +132,7 @@ export class event_context {
             auto& data = callbacks.emplace_back(std::make_unique<webpp::callback_data>([cb = std::move(cb)](js_handle handle, std::string_view){
                 cb(webpp::event{handle});
             }, false));
-            el.data.attributes.push_back(EventAttribute{std::format("handleEvent(this, event, {});", reinterpret_cast<std::uintptr_t>(data.get()))});
-            return el;
+            return events::on_event<EventAttribute>(el, data.get());
         }
 
         template<typename Event>
