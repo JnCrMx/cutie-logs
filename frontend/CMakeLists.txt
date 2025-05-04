@@ -29,7 +29,7 @@ FetchContent_Declare(webxx
   GIT_TAG v0.9.2)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG v5.1.0
+  GIT_TAG v5.1.2
   GIT_SHALLOW TRUE)
 
 add_compile_options(-fno-rtti -fno-exceptions -ftemplate-backtrace-limit=0)
@@ -54,6 +54,7 @@ set(MODULE_SOURCES
   src/assets.cppm
   src/utils.cppm
   src/components/_components.cppm
+  src/components/duration_picker.cppm
   src/components/resource_modal.cppm
   src/components/selection.cppm
   src/components/theme_button.cppm
