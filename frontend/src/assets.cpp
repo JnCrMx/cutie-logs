@@ -54,6 +54,11 @@ namespace frontend::assets {
         };
         const std::string_view warning{warning_data, sizeof(warning_data)};
 
+        constexpr char error_data[] = {
+            #embed "assets/icons/error.svg"
+        };
+        const std::string_view error{error_data, sizeof(error_data)};
+
         constexpr char add_data[] = {
             #embed "assets/icons/add.svg"
         };

@@ -58,24 +58,28 @@ export class settings : public page {
                     },
                     h3{{_class{"text-lg font-bold"}}, edit ? std::format("Edit cleanup rule \"{}\" ({})", rule->name, rule->id) : "Add cleanup rule"},
                     fieldset{{_class{"fieldset w-full"}},
+                        dv{{_id{"dialog_add_cleanup_rule_error"}, _role{"alert"}, _class{"alert alert-error alert-vertical sm:alert-horizontal hidden"}},
+                            assets::icons::error, dv{{_id{"dialog_add_cleanup_rule_error_text"}}}
+                        },
+
                         label{{_class{"fieldset-label"}}, "Rule name"},
-                        ctx.on_input(input{{_id{"rule_name"}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"}, _value{edit ? rule->name : ""}}},
+                        ctx.on_input(input{{_id{"dialog_add_cleanup_rule_name"}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"}, _value{edit ? rule->name : ""}}},
                             [this](webpp::event e){
                                 auto name = *e.target().as<webpp::element>()->get_property<std::string>("value");
                                 bool valid = !name.empty();
                                 if(valid) {
-                                    webpp::get_element_by_id("cleanup_rule_add")->remove_class("btn-disabled");
-                                    webpp::eval("document.getElementById('rule_name').setCustomValidity('');");
+                                    webpp::get_element_by_id("dialog_add_cleanup_rule_button")->remove_class("btn-disabled");
+                                    webpp::eval("document.getElementById('dialog_add_cleanup_rule_name').setCustomValidity('');");
                                 } else {
-                                    webpp::get_element_by_id("cleanup_rule_add")->add_class("btn-disabled");
-                                    webpp::eval("document.getElementById('rule_name').setCustomValidity('Rule name must be non-empty and unique.');");
+                                    webpp::get_element_by_id("dialog_add_cleanup_rule_button")->add_class("btn-disabled");
+                                    webpp::eval("document.getElementById('dialog_add_cleanup_rule_name').setCustomValidity('Rule name must be non-empty and unique.');");
                                 }
                             }
                         ),
-                        dv{{_id{"rule_name_validator"}, _class{"validator-hint"}}, "Rule name must be non-empty and unique."},
+                        dv{{_id{"dialog_add_cleanup_rule_name_validator"}, _class{"validator-hint"}}, "Rule name must be non-empty and unique."},
 
                         label{{_class{"fieldset-label"}}, "Rule description"},
-                        textarea{{_id{"rule_description"}, _class{"textarea w-full"}, _placeholder{"Description"}}, edit ? rule->description : ""},
+                        textarea{{_id{"dialog_add_cleanup_rule_description"}, _class{"textarea w-full"}, _placeholder{"Description"}}, edit ? rule->description : ""},
                         dv{{_class{"validator-hint invisible"}}, "Just here for equal spacing."},
 
                         dv{{_class{"flex flex-row gap-16 w-full"}},
@@ -83,14 +87,14 @@ export class settings : public page {
                                 label{{_class{"fieldset-label"}}, "Enabled"},
                                 dv{{_class{"flex grow items-center"}},
                                     enabled ?
-                                        input{{_id{"rule_enabled"}, _type{"checkbox"}, _class{"toggle toggle-xl toggle-primary"}, _checked{}}} :
-                                        input{{_id{"rule_enabled"}, _type{"checkbox"}, _class{"toggle toggle-xl toggle-primary"}}}
+                                        input{{_id{"dialog_add_cleanup_rule_enabled"}, _type{"checkbox"}, _class{"toggle toggle-xl toggle-primary"}, _checked{}}} :
+                                        input{{_id{"dialog_add_cleanup_rule_enabled"}, _type{"checkbox"}, _class{"toggle toggle-xl toggle-primary"}}}
                                 },
                                 dv{{_class{"validator-hint invisible"}}, "Just here for equal spacing."},
                             },
                             dv{{_class{"grow"}},
                                 label{{_class{"fieldset-label"}}, "Execution interval"},
-                                components::duration_picker("rule_execution_interval", "Execution interval",
+                                components::duration_picker("dialog_add_cleanup_rule_execution_interval", "Execution interval",
                                     dv{{_class{"validator-hint w-[200%]"}}, "Execution interval must be a positive number."},
                                     rule.transform([](const auto& v){return v.execution_interval;})
                                 )
@@ -101,15 +105,101 @@ export class settings : public page {
                             legend{{_class{"fieldset-legend"}}, "Conditions"},
 
                             label{{_class{"fieldset-label"}}, "Minimum age"},
-                            components::duration_picker("rule_minimum_age", "Minimum age",
+                            components::duration_picker("dialog_add_cleanup_rule_minimum_age", "Minimum age",
                                 dv{{_class{"validator-hint w-[200%]"}}, "Minimum age must be a positive number."},
                                 rule.transform([](const auto& v){return v.filter_minimum_age;})
                             )
                         },
 
-                        ctx.on_click(button{{_id{"cleanup_rule_add"}, _class{"btn btn-neutral mt-4 w-fit btn-disabled"}},
+                        ctx.on_click(button{{_id{"dialog_add_cleanup_rule_button"}, _class{edit ? "btn btn-warning mt-4 w-fit" : "btn btn-success mt-4 w-fit btn-disabled"}},
                             assets::icons::add, edit ? "Save rule" : "Add rule"},
-                            [this](webpp::event e) {
+                            [this, edit, rule](webpp::event e) {
+                                webpp::coro::submit([this](bool edit, std::optional<common::cleanup_rule> rule) -> webpp::coroutine<void> {
+                                    common::cleanup_rule new_rule = rule.value_or(common::cleanup_rule{});
+                                    new_rule.name = *webpp::get_element_by_id("dialog_add_cleanup_rule_name")->get_property<std::string>("value");
+                                    new_rule.description = webpp::get_element_by_id("dialog_add_cleanup_rule_description")->get_property<std::string>("value").value_or("");
+                                    new_rule.enabled = webpp::get_element_by_id("dialog_add_cleanup_rule_enabled")->get_property<bool>("checked").value_or(false);
+                                    new_rule.execution_interval = components::get_duration("dialog_add_cleanup_rule_execution_interval");
+
+                                    new_rule.filter_minimum_age = components::get_duration("dialog_add_cleanup_rule_minimum_age");
+
+                                    std::string beve = glz::write_beve(new_rule).value_or("null");
+
+                                    webpp::js_object request = webpp::js_object::create();
+                                    request["headers"] = utils::fetch_headers;
+                                    request["body"] = beve;
+
+                                    webpp::response res;
+                                    if(edit) {
+                                        request["method"] = "PATCH";
+                                        res = co_await webpp::coro::fetch(std::format("/api/v1/settings/cleanup_rules/{}", rule->id), request);
+                                    } else {
+                                        request["method"] = "PUT";
+                                        res = co_await webpp::coro::fetch("/api/v1/settings/cleanup_rules", request);
+                                    }
+
+                                    if(!res.ok()) {
+                                        std::string message = co_await res.co_text();
+                                        webpp::get_element_by_id("dialog_add_cleanup_rule_error_text")->inner_html(std::format("<h3 class=\"font-bold\">{}</h3><div>{}</div>", res.status_text(), message));
+                                        webpp::get_element_by_id("dialog_add_cleanup_rule_error")->remove_class("hidden");
+                                        co_return;
+                                    }
+                                    auto new_rule_expected = glz::read_beve<common::cleanup_rule>(co_await res.co_bytes());
+                                    if(!new_rule_expected) {
+                                        webpp::get_element_by_id("dialog_add_cleanup_rule_error_text")->inner_html(std::format("<h3 class=\"font-bold\">{}</h3><div>{}</div>",
+                                            "Failed to parse rule", glz::format_error(new_rule_expected.error())));
+                                        webpp::get_element_by_id("dialog_add_cleanup_rule_error")->remove_class("hidden");
+                                        co_return;
+                                    }
+
+                                    webpp::eval("document.getElementById('dialog_add_cleanup_rule').close();");
+
+                                    cleanup_rules.rules[new_rule_expected->id] = *new_rule_expected;
+                                    webpp::get_element_by_id("settings_cleanup_rules")->inner_html(Webxx::render(render_cleanup_rules()));
+
+                                    co_return;
+                                }(edit, rule));
+                            }
+                        ),
+                    }
+                },
+                form{{_method{"dialog"}, _class{"modal-backdrop"}},
+                    button{"close"}
+                },
+            };
+        }
+
+        Webxx::dialog render_cleanup_rule_delete_dialog(event_context& ctx, common::cleanup_rule rule) {
+            using namespace Webxx;
+
+            return dialog{{_id{"dialog_delete_cleanup_rule"}, _class{"modal"}},
+                dv{{_class{"modal-box"}},
+                    form{{_method{"dialog"}},
+                        button{{_class{"btn btn-sm btn-circle btn-ghost absolute right-2 top-2"}}, "x"}
+                    },
+                    h3{{_id{"dialog_delete_cleanup_rule_title"}, _class{"text-lg font-bold"}}, std::format("Delete cleanup rule \"{}\" ({})", rule.name, rule.id)},
+                    fieldset{{_class{"fieldset w-full"}},
+                        label{{_class{"text-base"}}, "Please type the name of the rule to confirm deletion."},
+                        ctx.on_input(input{{_id{"dialog_delete_cleanup_rule_name"}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"}}},
+                            [rule](webpp::event e){
+                                auto name = *e.target().as<webpp::element>()->get_property<std::string>("value");
+                                bool valid = !name.empty() && name == rule.name;
+                                if(valid) {
+                                    webpp::get_element_by_id("dialog_delete_cleanup_rule_button")->remove_class("btn-disabled");
+                                    webpp::eval("document.getElementById('dialog_delete_cleanup_rule_name').setCustomValidity('');");
+                                } else {
+                                    webpp::get_element_by_id("dialog_delete_cleanup_rule_button")->add_class("btn-disabled");
+                                    webpp::eval("document.getElementById('dialog_delete_cleanup_rule_name').setCustomValidity('Rule name must match.');");
+                                }
+                            }
+                        ),
+                        dv{{_id{"dialog_delete_cleanup_rule_name_validator"}, _class{"validator-hint"}}, "Rule name must match."},
+
+                        ctx.on_click(button{{_id{"dialog_delete_cleanup_rule_button"}, _class{"btn btn-error mt-4 w-fit btn-disabled"}},
+                            assets::icons::delete_, "Delete rule"},
+                            [](webpp::event e) {
+                                webpp::eval("document.getElementById('dialog_delete_cleanup_rule').close();");
+
                                 // TODO
                             }
                         ),
@@ -138,13 +228,18 @@ export class settings : public page {
             }, false
         );
         std::unique_ptr<webpp::callback_data> cb_delete_cleanup_rule = std::make_unique<webpp::callback_data>(
-            [](js_handle h, std::string_view) {
+            [this](js_handle h, std::string_view) {
                 webpp::event event{h};
                 webpp::element target = *event.current_target().as<webpp::element>();
 
                 unsigned int id = std::stoi(*target["dataset"]["ruleId"].as<std::string>());
+                const auto& rule = cleanup_rules.rules[id];
 
-                webpp::log("Delete cleanup rule clicked for rule id: {}", id);
+                static event_context ctx;
+                ctx.clear();
+
+                webpp::get_element_by_id("dialog_placeholder")->inner_html(Webxx::render(render_cleanup_rule_delete_dialog(ctx, rule)));
+                webpp::eval("document.getElementById('dialog_delete_cleanup_rule').showModal();");
             }, false
         );
 
@@ -162,7 +257,7 @@ export class settings : public page {
             std::string run_info = rule.last_execution ?
                 std::format("Last run: {}", *rule.last_execution) :
                 "Never run";
-            std::string generated_decription = "Delete logs older than " + utils::format_duration(rule.filter_minimum_age);
+            std::string generated_decription = "Delete logs older than " + common::format_duration(rule.filter_minimum_age);
             if(!rule.filter_resources.values.empty()) {
                 generated_decription += std::format(" {} {} {}{:n}{} and",
                     rule.filter_resources.type == common::filter_type::INCLUDE ? "belonging to"sv : "not belonging to"sv,
@@ -218,7 +313,7 @@ export class settings : public page {
                 dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Enable/Disable rule"}}, std::move(checkbox)},
                 dv{{_class{"list-col-grow flex flex-row items-center gap-4"}},
                     h3{{_class{"text-lg font-bold"}}, rule.name},
-                    p{{_class{"text-sm text-base-content/80"}}, std::format("Execution interval: {}", utils::format_duration(rule.execution_interval))},
+                    p{{_class{"text-sm text-base-content/80"}}, std::format("Execution interval: {}", common::format_duration(rule.execution_interval))},
                 },
                 dv{{_class{"text-sm text-base-content/80 list-col-wrap"}},
                     p{rule.description.empty() ? fragment{i{"No description"}} : fragment{b{rule.description}}},

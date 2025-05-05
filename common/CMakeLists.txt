@@ -5,6 +5,7 @@ target_sources(common PUBLIC FILE_SET CXX_MODULES FILES
     stencil_functions.cppm
     structs.cppm
     mmdb.cppm
+    utils.cppm
 )
 target_compile_features(common PUBLIC cxx_std_23)
 target_link_libraries(common PUBLIC glazeModule)

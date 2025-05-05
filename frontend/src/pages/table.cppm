@@ -380,7 +380,7 @@ export class table : public page {
                         label{{_class{"fieldset-label"}}, "Preview"},
                         textarea{{_id{"column_stencil_validator"}, _class{"textarea w-full min-h-[2.5rem]"}, _rows{"1"}, _readonly{}}},
 
-                        ctx.on_click(button{{_id{"column_add"}, _class{"btn btn-neutral mt-4 w-fit btn-disabled"}},
+                        ctx.on_click(button{{_id{"column_add"}, _class{"btn btn-success mt-4 w-fit btn-disabled"}},
                             assets::icons::add, "Add column"},
                             [this](webpp::event e) {
                                 auto el_name = *webpp::get_element_by_id("column_name");

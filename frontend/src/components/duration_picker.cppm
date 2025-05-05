@@ -4,6 +4,7 @@ import std;
 import webxx;
 
 import :utils;
+import common;
 
 namespace frontend::components {
 
@@ -25,15 +26,15 @@ export auto duration_picker(std::string_view id, std::string_view placeholder, a
         }
     }
 
-    return dv{{_class{"flex flex-row gap-4 w-full"}},
+    return dv{{_id{id}, _class{"flex flex-row gap-4 w-full"}},
         dv{{_class{"grow"}},
             (duration ?
-                input{{_id{id}, _type{"number"}, _class{"input validator"}, _min{"1"}, _placeholder{placeholder}, _value{std::format("{:.2f}", value)}}} :
-                input{{_id{id}, _type{"number"}, _class{"input validator"}, _min{"1"}, _placeholder{placeholder}}}
+                input{{_id{std::format("{}_input", id)}, _type{"number"}, _class{"input validator"}, _min{"1"}, _step{"any"}, _placeholder{placeholder}, _value{std::format("{:.2f}", value)}}} :
+                input{{_id{std::format("{}_input", id)}, _type{"number"}, _class{"input validator"}, _min{"1"}, _step{"any"}, _placeholder{placeholder}}}
             ),
             validator,
         },
-        select{{_class{"select grow"}},
+        select{{_id{std::format("{}_unit", id)}, _class{"select grow"}},
             each(std::views::zip(indices, units, unit_values), [&](auto e) {
                 auto [index, unit, unit_value] = e;
                 if(index == selected_unit) {
@@ -44,6 +45,18 @@ export auto duration_picker(std::string_view id, std::string_view placeholder, a
             })
         }
     };
+}
+
+export std::chrono::seconds get_duration(std::string_view id) {
+    auto input = webpp::get_element_by_id(std::format("{}_input", id));
+    auto select = webpp::get_element_by_id(std::format("{}_unit", id));
+
+    if(!input || !select) {
+        return std::chrono::seconds{0};
+    }
+    auto value = common::parse_double(input->get_property<std::string>("value").value_or("0")).value_or(0);
+    auto unit = common::parse_int(select->get_property<std::string>("value").value_or("0")).value_or(0);
+    return std::chrono::duration_cast<std::chrono::seconds>(value * unit * std::chrono::seconds{1});
 }
 
 }

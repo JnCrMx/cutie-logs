@@ -13,16 +13,9 @@ export module common:stencil_functions;
 
 import glaze;
 import :mmdb;
+import :utils;
 
 namespace common {
-
-double parse_int(std::string_view x) {
-    int i;
-    if(std::from_chars(x.data(), x.data() + x.size(), i).ec != std::errc{}) {
-        return 0;
-    }
-    return i;
-}
 
 uint32_t parse_ipv4(std::string_view x) {
     uint32_t result = 0;
@@ -42,7 +35,7 @@ uint32_t parse_ipv4(std::string_view x) {
             pos = s.size();
         }
         auto part = s.substr(0, pos);
-        int part_int = parse_int(part);
+        int part_int = parse_int(part).value_or(0);
         result = (result << 8) | (part_int & 0xFF);
         s.remove_prefix(pos + 1);
     }
@@ -57,7 +50,7 @@ glz::json_t get_path(glz::json_t x, std::string_view path) {
     for(auto part : path | std::views::split('.')) {
         std::string_view sv{part};
         if(x.is_array()) {
-            int index = parse_int(sv);
+            int index = parse_int(sv).value_or(0);
             if(index < 0) {
                 index = x.size() + index;
             }
@@ -100,7 +93,7 @@ export struct stencil_functions {
 
     std::add_pointer_t<glz::json_t(glz::json_t, std::string_view)> at = [](glz::json_t x, std::string_view arg){
         if(x.is_array()) {
-            int index = parse_int(arg);
+            int index = parse_int(arg).value_or(0);
             if(index < 0) {
                 index = x.size() + index;
             }
@@ -122,19 +115,19 @@ export struct stencil_functions {
     };
 
     std::add_pointer_t<double(double, std::string_view)> add = [](double x, std::string_view y){
-        return x + parse_int(y);
+        return x + parse_int(y).value_or(0);
     };
     std::add_pointer_t<double(double, std::string_view)> sub = [](double x, std::string_view y){
-        return x - parse_int(y);
+        return x - parse_int(y).value_or(0);
     };
     std::add_pointer_t<double(double, std::string_view)> mul = [](double x, std::string_view y){
-        return x * parse_int(y);
+        return x * parse_int(y).value_or(0);
     };
     std::add_pointer_t<double(double, std::string_view)> div = [](double x, std::string_view y){
-        return x / parse_int(y);
+        return x / parse_int(y).value_or(1);
     };
     std::add_pointer_t<double(double, std::string_view)> mod = [](double x, std::string_view y){
-        return std::fmod(x, parse_int(y));
+        return std::fmod(x, parse_int(y).value_or(1));
     };
 
     struct {
@@ -167,33 +160,33 @@ export struct stencil_functions {
         return x;
     };
     std::add_pointer_t<std::string(std::string, std::string_view)> pad_left = [](std::string x, std::string_view y){
-        int n = parse_int(y);
+        int n = parse_int(y).value_or(0);
         return std::format("{:>{}}", x, n);
     };
     std::add_pointer_t<std::string(std::string, std::string_view)> pad_right = [](std::string x, std::string_view y){
-        int n = parse_int(y);
+        int n = parse_int(y).value_or(0);
         return std::format("{:<{}}", x, n);
     };
     std::add_pointer_t<std::string(std::string, std::string_view)> pad_both = [](std::string x, std::string_view y){
-        int n = parse_int(y);
+        int n = parse_int(y).value_or(0);
         return std::format("{:^{}}", x, n);
     };
     std::add_pointer_t<std::string(std::string, std::string_view)> truncate = [](std::string x, std::string_view y){
-        int n = parse_int(y);
+        int n = parse_int(y).value_or(0);
         if(x.size() > n) {
             return x.substr(0, n);
         }
         return x;
     };
     std::add_pointer_t<std::string(std::string, std::string_view)> truncate_left = [](std::string x, std::string_view y){
-        int n = parse_int(y);
+        int n = parse_int(y).value_or(0);
         if(x.size() > n) {
             return x.substr(x.size() - n);
         }
         return x;
     };
     std::add_pointer_t<std::string(std::string, std::string_view)> repeat = [](std::string x, std::string_view y){
-        int n = parse_int(y);
+        int n = parse_int(y).value_or(0);
         std::string result;
         for(int i = 0; i < n; ++i) {
             result += x;
