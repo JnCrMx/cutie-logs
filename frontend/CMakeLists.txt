@@ -54,6 +54,7 @@ set(MODULE_SOURCES
   src/assets.cppm
   src/utils.cppm
   src/components/_components.cppm
+  src/components/alert.cppm
   src/components/duration_picker.cppm
   src/components/resource_modal.cppm
   src/components/selection.cppm

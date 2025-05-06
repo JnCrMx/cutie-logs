@@ -1,10 +1,11 @@
 module;
 #include <array>
 #include <chrono>
+#include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 export module common:structs;
@@ -116,10 +117,10 @@ export namespace common {
         std::chrono::seconds execution_interval;
 
         std::chrono::seconds filter_minimum_age;
-        filter<std::unordered_set<unsigned int>> filter_resources;
-        filter<std::unordered_set<std::string>> filter_scopes;
-        filter<std::unordered_set<log_severity>> filter_severities;
-        filter<std::unordered_set<std::string>> filter_attributes;
+        filter<std::set<unsigned int>> filter_resources;
+        filter<std::set<std::string>> filter_scopes;
+        filter<std::set<log_severity>> filter_severities;
+        filter<std::set<std::string>> filter_attributes;
         filter<glz::json_t> filter_attribute_values = {{}, glz::json_t::object_t{}};
 
         std::chrono::sys_seconds created_at;
@@ -129,7 +130,7 @@ export namespace common {
     static_assert(serializable<cleanup_rule>);
 
     struct cleanup_rules_response {
-        std::unordered_map<unsigned int, cleanup_rule> rules;
+        std::map<unsigned int, cleanup_rule> rules;
     };
     static_assert(serializable<cleanup_rules_response>);
 }

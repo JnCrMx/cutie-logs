@@ -58,9 +58,7 @@ export class settings : public page {
                     },
                     h3{{_class{"text-lg font-bold"}}, edit ? std::format("Edit cleanup rule \"{}\" ({})", rule->name, rule->id) : "Add cleanup rule"},
                     fieldset{{_class{"fieldset w-full"}},
-                        dv{{_id{"dialog_add_cleanup_rule_error"}, _role{"alert"}, _class{"alert alert-error alert-vertical sm:alert-horizontal hidden"}},
-                            assets::icons::error, dv{{_id{"dialog_add_cleanup_rule_error_text"}}}
-                        },
+                        components::alert("dialog_add_cleanup_rule_error"),
 
                         label{{_class{"fieldset-label"}}, "Rule name"},
                         ctx.on_input(input{{_id{"dialog_add_cleanup_rule_name"}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"}, _value{edit ? rule->name : ""}}},
@@ -127,7 +125,7 @@ export class settings : public page {
 
                                     webpp::js_object request = webpp::js_object::create();
                                     request["headers"] = utils::fetch_headers;
-                                    request["body"] = beve;
+                                    request["body"] = webpp::uint8array::create(beve);
 
                                     webpp::response res;
                                     if(edit) {
@@ -140,15 +138,12 @@ export class settings : public page {
 
                                     if(!res.ok()) {
                                         std::string message = co_await res.co_text();
-                                        webpp::get_element_by_id("dialog_add_cleanup_rule_error_text")->inner_html(std::format("<h3 class=\"font-bold\">{}</h3><div>{}</div>", res.status_text(), message));
-                                        webpp::get_element_by_id("dialog_add_cleanup_rule_error")->remove_class("hidden");
+                                        components::show_alert("dialog_add_cleanup_rule_error", res.status_text(), message);
                                         co_return;
                                     }
                                     auto new_rule_expected = glz::read_beve<common::cleanup_rule>(co_await res.co_bytes());
                                     if(!new_rule_expected) {
-                                        webpp::get_element_by_id("dialog_add_cleanup_rule_error_text")->inner_html(std::format("<h3 class=\"font-bold\">{}</h3><div>{}</div>",
-                                            "Failed to parse rule", glz::format_error(new_rule_expected.error())));
-                                        webpp::get_element_by_id("dialog_add_cleanup_rule_error")->remove_class("hidden");
+                                        components::show_alert("dialog_add_cleanup_rule_error", "Failed to parse rule", glz::format_error(new_rule_expected.error()));
                                         co_return;
                                     }
 
@@ -179,6 +174,8 @@ export class settings : public page {
                     },
                     h3{{_id{"dialog_delete_cleanup_rule_title"}, _class{"text-lg font-bold"}}, std::format("Delete cleanup rule \"{}\" ({})", rule.name, rule.id)},
                     fieldset{{_class{"fieldset w-full"}},
+                        components::alert("dialog_delete_cleanup_rule_error"),
+
                         label{{_class{"text-base"}}, "Please type the name of the rule to confirm deletion."},
                         ctx.on_input(input{{_id{"dialog_delete_cleanup_rule_name"}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"}}},
                             [rule](webpp::event e){
@@ -197,10 +194,25 @@ export class settings : public page {
 
                         ctx.on_click(button{{_id{"dialog_delete_cleanup_rule_button"}, _class{"btn btn-error mt-4 w-fit btn-disabled"}},
                             assets::icons::delete_, "Delete rule"},
-                            [](webpp::event e) {
-                                webpp::eval("document.getElementById('dialog_delete_cleanup_rule').close();");
+                            [this, id = rule.id](webpp::event e) {
+                                webpp::coro::submit([this](unsigned int id) -> webpp::coroutine<void> {
+                                    webpp::js_object request = webpp::js_object::create();
+                                    request["headers"] = utils::fetch_headers;
+                                    request["method"] = "DELETE";
+                                    webpp::response res = co_await webpp::coro::fetch(std::format("/api/v1/settings/cleanup_rules/{}", id), request);
+                                    if(!res.ok()) {
+                                        std::string message = co_await res.co_text();
+                                        components::show_alert("dialog_delete_cleanup_rule_error", res.status_text(), message);
+                                        co_return;
+                                    }
 
-                                // TODO
+                                    webpp::eval("document.getElementById('dialog_delete_cleanup_rule').close();");
+
+                                    cleanup_rules.rules.erase(id);
+                                    webpp::get_element_by_id("settings_cleanup_rules")->inner_html(Webxx::render(render_cleanup_rules()));
+
+                                    co_return;
+                                }(id));
                             }
                         ),
                     }
@@ -242,6 +254,41 @@ export class settings : public page {
                 webpp::eval("document.getElementById('dialog_delete_cleanup_rule').showModal();");
             }, false
         );
+        std::unique_ptr<webpp::callback_data> cb_toggle_cleanup_rule = std::make_unique<webpp::callback_data>(
+            [this](js_handle h, std::string_view) {
+                webpp::coro::submit([this](webpp::event event) -> webpp::coroutine<void> {
+                    webpp::element target = *event.current_target().as<webpp::element>();
+
+                    unsigned int id = std::stoi(*target["dataset"]["ruleId"].as<std::string>());
+                    auto& rule = cleanup_rules.rules[id];
+                    rule.enabled = target.get_property<bool>("checked").value_or(false);
+
+                    std::string beve = glz::write_beve(rule).value_or("null");
+
+                    webpp::js_object request = webpp::js_object::create();
+                    request["headers"] = utils::fetch_headers;
+                    request["method"] = "PATCH";
+                    request["body"] = webpp::uint8array::create(beve);
+
+                    webpp::response res = co_await webpp::coro::fetch(std::format("/api/v1/settings/cleanup_rules/{}", rule.id), request);
+                    if(!res.ok()) {
+                        std::string message = co_await res.co_text();
+                        components::show_alert("settings_cleanup_rules_error", res.status_text(), message);
+                        co_return;
+                    }
+                    auto new_rule_expected = glz::read_beve<common::cleanup_rule>(co_await res.co_bytes());
+                    if(!new_rule_expected) {
+                        components::show_alert("settings_cleanup_rules_error", "Failed to parse rule", glz::format_error(new_rule_expected.error()));
+                        co_return;
+                    }
+
+                    cleanup_rules.rules[new_rule_expected->id] = *new_rule_expected;
+                    webpp::get_element_by_id("settings_cleanup_rules")->inner_html(Webxx::render(render_cleanup_rules()));
+
+                    co_return;
+                }(webpp::event{h}));
+            }, false
+        );
 
         auto render_cleanup_rule(const common::cleanup_rule& rule) {
             using namespace Webxx;
@@ -253,6 +300,8 @@ export class settings : public page {
             auto checkbox = rule.enabled ?
                 input{{_type{"checkbox"}, _class{"toggle toggle-primary"}, _checked{}}} :
                 input{{_type{"checkbox"}, _class{"toggle toggle-primary"}}};
+            checkbox.data.attributes.emplace_back(_dataRuleId{std::to_string(rule.id)});
+            checkbox = events::on_change(std::move(checkbox), cb_toggle_cleanup_rule.get());
 
             std::string run_info = rule.last_execution ?
                 std::format("Last run: {}", *rule.last_execution) :
@@ -335,6 +384,7 @@ export class settings : public page {
 
             using namespace Webxx;
             return fragment{
+                components::alert("settings_cleanup_rules_error", "mb-4"),
                 dv{{_class{"flex flex-col gap-4 w-fit mb-4"}},
                     ctx.on_click(button{{_class{"btn btn-primary"}}, assets::icons::add, "Add cleanup rule"},
                         [this](webpp::event e) {
