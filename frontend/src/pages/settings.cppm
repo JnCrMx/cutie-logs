@@ -307,46 +307,30 @@ export class settings : public page {
                 std::format("Last run: {}", *rule.last_execution) :
                 "Never run";
             std::string generated_decription = "Delete logs older than " + common::format_duration(rule.filter_minimum_age);
-            if(!rule.filter_resources.values.empty()) {
-                generated_decription += std::format(" {} {} {}{:n}{} and",
-                    rule.filter_resources.type == common::filter_type::INCLUDE ? "belonging to"sv : "not belonging to"sv,
-                    rule.filter_resources.values.size() == 1 ? "resource"sv : "resources"sv,
-                    rule.filter_resources.values.size() == 1 ? ""sv : "["sv,
-                    rule.filter_resources.values,
-                    rule.filter_resources.values.size() == 1 ? ""sv : "]"sv
-                );
-            }
-            if(!rule.filter_scopes.values.empty()) {
-                generated_decription += std::format(" {} {} {}{:n}{} and",
-                    rule.filter_scopes.type == common::filter_type::INCLUDE ? "having"sv : "not having"sv,
-                    rule.filter_scopes.values.size() == 1 ? "scope"sv : "scopes"sv,
-                    rule.filter_scopes.values.size() == 1 ? ""sv : "["sv,
-                    rule.filter_scopes.values,
-                    rule.filter_scopes.values.size() == 1 ? ""sv : "]"sv
-                );
-            }
-            if(!rule.filter_severities.values.empty()) {
-                std::vector<std::string_view> severity_names;
-                for(const auto& severity : rule.filter_severities.values) {
-                    severity_names.push_back(common::log_severity_names[std::to_underlying(severity)]);
+            auto add_filter = [&](std::string_view name_singular, std::string_view name_plural, std::string_view yes_verb, std::string_view no_verb, const auto& v) {
+                if(v.values.empty() && v.type != common::filter_type::INCLUDE) {
+                    return;
                 }
-                generated_decription += std::format(" {} {} {}{:n}{} and",
-                    rule.filter_severities.type == common::filter_type::INCLUDE ? "being of"sv : "not being of"sv,
-                    rule.filter_severities.values.size() == 1 ? "severity"sv : "severities"sv,
-                    rule.filter_severities.values.size() == 1 ? ""sv : "["sv,
-                    severity_names,
-                    rule.filter_severities.values.size() == 1 ? ""sv : "]"sv
+                if(v.values.empty()) {
+                    generated_decription += "<span class=\"text-error\">";
+                }
+                generated_decription += std::format(" {} {} {}{:n}{}",
+                    v.type == common::filter_type::INCLUDE ? yes_verb : no_verb,
+                    v.values.size() == 1 ? name_singular : name_plural,
+                    v.values.size() == 1 ? ""sv : "["sv,
+                    v.values,
+                    v.values.size() == 1 ? ""sv : "]"sv
                 );
-            }
-            if(!rule.filter_attributes.values.empty()) {
-                generated_decription += std::format(" {} {} {}{:n}{} and",
-                    rule.filter_attributes.type == common::filter_type::INCLUDE ? "having"sv : "not having"sv,
-                    rule.filter_attributes.values.size() == 1 ? "attribute"sv : "attributes"sv,
-                    rule.filter_attributes.values.size() == 1 ? ""sv : "["sv,
-                    rule.filter_attributes.values,
-                    rule.filter_attributes.values.size() == 1 ? ""sv : "]"sv
-                );
-            }
+                if(v.values.empty()) {
+                    generated_decription += "</span>";
+                }
+                generated_decription += " and";
+            };
+
+            add_filter("resource"sv, "resources"sv, "having"sv, "not having"sv, rule.filter_resources);
+            add_filter("scope"sv, "scopes"sv, "having"sv, "not having"sv, rule.filter_scopes);
+            add_filter("severity"sv, "severities"sv, "being of"sv, "not being of"sv, rule.filter_severities);
+            add_filter("attribute"sv, "attributes"sv, "having"sv, "not having"sv, rule.filter_attributes);
             if(!rule.filter_attributes.values.empty()) {
                 generated_decription += std::format(" {} attributes {}",
                     rule.filter_attribute_values.type == common::filter_type::INCLUDE ? "having"sv : "not having"sv,
