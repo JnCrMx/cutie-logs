@@ -257,6 +257,16 @@ export class profile_data {
         void add_callback(std::function<void(profile_data&)> cb) {
             callbacks.push_back(std::move(cb));
         }
+        const std::unordered_map<std::string, std::string>& get_profile_data() const {
+            return profiles.at(current_profile);
+        }
+        const std::unordered_map<std::string, std::string>& get_profile_data(const std::string& name) const {
+            return profiles.at(name);
+        }
+        void set_profile_data(const std::string& name, const std::unordered_map<std::string, std::string>& data) {
+            profiles[name] = data;
+            save();
+        }
 
         std::optional<std::string> get_data(const std::string& key) const {
             const auto& data = profiles.at(current_profile);

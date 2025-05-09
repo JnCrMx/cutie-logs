@@ -159,6 +159,26 @@ Webxx::dv profile_selector() {
     bool is_default = profile.get_current_profile() == "default";
     auto button_classes = is_default ? "btn btn-square btn-disabled" : "btn btn-square";
 
+    static webpp::callback_data import_profile_callback([](auto, std::string_view data){
+        using import_data = std::unordered_map<std::string, std::unordered_map<std::string, std::string>>;
+        auto imported_data = glz::read_json<import_data>(data);
+        if(!imported_data) {
+            webpp::eval("window.alert('Invalid profile file: '+{});",
+                glz::write_json(glz::format_error(imported_data.error(), data)).value_or("error"));
+            return;
+        }
+        if(imported_data->empty()) {
+            webpp::eval("window.alert('Empty profile file');");
+            return;
+        }
+        for(auto& [key, value] : *imported_data) {
+            profile.set_profile_data(key, value);
+        }
+        profile.switch_profile(imported_data->begin()->first);
+        webpp::get_element_by_id("profile_selector_mobile_container")->inner_html(Webxx::render(profile_selector<"mobile">()));
+        webpp::get_element_by_id("profile_selector_desktop_container")->inner_html(Webxx::render(profile_selector<"desktop">()));
+    }, false);
+
     return dv{{_class{"flex flex-row items-center gap-1"}},
         ctx.on_change(select{{_id{std::format("profile_selector_{}", identifier.sv())}, _class{"select select-lg grow"}},
             each(profiles_list, [](auto& p) {
@@ -168,6 +188,7 @@ Webxx::dv profile_selector() {
                 return option{p};
             }),
             option{{_class{"italic"}}, "Create New Profile..."},
+            option{{_class{"italic"}}, "Import Profile..."},
         }, [profiles_list](webpp::event e) {
             int selected = e.target().get_property<int>("selectedIndex").value_or(0);
             if(selected < profiles_list.size()) {
@@ -176,10 +197,36 @@ Webxx::dv profile_selector() {
 
                 webpp::get_element_by_id("profile_selector_mobile_container")->inner_html(Webxx::render(profile_selector<"mobile">()));
                 webpp::get_element_by_id("profile_selector_desktop_container")->inner_html(Webxx::render(profile_selector<"desktop">()));
-            } else {
+            } else if(selected == profiles_list.size()-1) {
                 webpp::get_element_by_id("profile_name")->set_property("value", "");
                 webpp::get_element_by_id("profile_add")->add_class("btn-disabled");
                 webpp::eval("document.getElementById('dialog_add_profile').showModal();");
+                e.prevent_default();
+                e.target().set_property("selectedIndex", static_cast<int>(std::distance(profiles_list.begin(),
+                    std::find(profiles_list.begin(), profiles_list.end(), profile.get_current_profile()))));
+            } else {
+                webpp::eval(R"(
+                    let input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'application/json';
+                    input.style.display = 'none';
+
+                    document.body.appendChild(input);
+                    input.addEventListener('change', (event)=>{{
+                        let file = event.target.files[0];
+                        if (!file) {{
+                            return;
+                        }}
+                        let reader = new FileReader();
+                        reader.onload = function(event) {{
+                            let data = event.target.result;
+                            window.invokeDataCallback(new Uint8Array(data), {});
+                        }};
+                        reader.readAsArrayBuffer(file);
+                    }});
+                    input.click();
+                )", reinterpret_cast<std::uintptr_t>(&import_profile_callback));
+
                 e.prevent_default();
                 e.target().set_property("selectedIndex", static_cast<int>(std::distance(profiles_list.begin(),
                     std::find(profiles_list.begin(), profiles_list.end(), profile.get_current_profile()))));
@@ -193,6 +240,23 @@ Webxx::dv profile_selector() {
                 webpp::eval("document.getElementById('dialog_rename_profile').showModal();");
             }),
         },
+        dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Export profile"}},
+            ctx.on_click(button{{_class{"btn btn-square"}}, assets::icons::export_}, [](webpp::event e) {
+                std::unordered_map<std::string, std::unordered_map<std::string, std::string>> data{};
+                data[profile.get_current_profile()] = profile.get_profile_data();
+                std::string json = glz::write_json(data).value_or("error");
+
+                webpp::eval(R"(
+                    let a = document.createElement('a');
+                    a.href = window.URL.createObjectURL(new Blob([{}], {{type: 'application/json'}}));
+                    a.download = 'cutie-logs-profile-{}.json';
+
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                )", glz::write_json(json).value_or("\"error\""), profile.get_current_profile());
+            }),
+        },
         dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Delete profile"}},
             ctx.on_click(button{{_class{button_classes}}, assets::icons::delete_}, [](webpp::event e) {
                 webpp::get_element_by_id("dialog_delete_profile_title")->inner_html("Delete profile \"" + profile.get_current_profile()+"\"");
@@ -201,7 +265,7 @@ Webxx::dv profile_selector() {
                 webpp::get_element_by_id("profile_delete")->add_class("btn-disabled");
                 webpp::eval("document.getElementById('dialog_delete_profile').showModal();");
             }),
-        }
+        },
     };
 }
 

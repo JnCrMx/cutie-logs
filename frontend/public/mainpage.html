@@ -23,6 +23,11 @@
         window.handleEvent = function(element, event, callback) {
             functions.invoke_callback(callback, functions.create_object_ref(event));
         }
+        window.invokeDataCallback = function(data, callback) {
+            const [ptr, len] = functions.copy_data(data);
+            functions.invoke_callback(callback, 0, ptr, len);
+            functions.delete_string(ptr);
+        }
     </script>
     <main id="main">
 

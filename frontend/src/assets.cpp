@@ -78,5 +78,10 @@ namespace frontend::assets {
             #embed "assets/icons/edit.svg"
         };
         const std::string_view edit{edit_data, sizeof(edit_data)};
+
+        constexpr char export_data[] = {
+            #embed "assets/icons/export.svg"
+        };
+        const std::string_view export_{export_data, sizeof(export_data)};
     }
 }

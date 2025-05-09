@@ -20,5 +20,6 @@ export namespace frontend::assets {
         extern const std::string_view remove;
         extern const std::string_view delete_;
         extern const std::string_view edit;
+        extern const std::string_view export_;
     }
 }
