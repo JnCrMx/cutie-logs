@@ -4,14 +4,13 @@ module;
 #include <deque>
 #include <format>
 #include <functional>
+#include <map>
 #include <mutex>
 #include <ranges>
 #include <set>
 #include <string>
 #include <thread>
 #include <type_traits>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -223,9 +222,9 @@ export class Database {
             }
         }
 
-        std::unordered_map<unsigned int, common::cleanup_rule> get_cleanup_rules(pqxx::transaction_base& txn) {
+        std::map<unsigned int, common::cleanup_rule> get_cleanup_rules(pqxx::transaction_base& txn) {
             auto result = txn.exec(pqxx::prepped{"get_cleanup_rules"});
-            std::unordered_map<unsigned int, common::cleanup_rule> rules;
+            std::map<unsigned int, common::cleanup_rule> rules;
 
             for(const auto& row : result) {
                 unsigned int id = row["id"].as<unsigned int>();
@@ -240,13 +239,13 @@ export class Database {
 
                 rule.filter_minimum_age = std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::duration<double>{row["filter_minimum_age_s"].as<double>()});
-                rule.filter_resources.values = parse_array<std::unordered_set<unsigned int>>(row["filter_resources"].as<std::string>(), txn.conn());
+                rule.filter_resources.values = parse_array<std::set<unsigned int>>(row["filter_resources"].as<std::string>(), txn.conn());
                 rule.filter_resources.type = row["filter_resources_type"].as<common::filter_type>();
-                rule.filter_scopes.values = parse_array<std::unordered_set<std::string>>(row["filter_scopes"].as<std::string>(), txn.conn());
+                rule.filter_scopes.values = parse_array<std::set<std::string>>(row["filter_scopes"].as<std::string>(), txn.conn());
                 rule.filter_scopes.type = row["filter_scopes_type"].as<common::filter_type>();
-                rule.filter_severities.values = parse_array<std::unordered_set<common::log_severity>>(row["filter_severities"].as<std::string>(), txn.conn());
+                rule.filter_severities.values = parse_array<std::set<common::log_severity>>(row["filter_severities"].as<std::string>(), txn.conn());
                 rule.filter_severities.type = row["filter_severities_type"].as<common::filter_type>();
-                rule.filter_attributes.values = parse_array<std::unordered_set<std::string>>(row["filter_attributes"].as<std::string>(), txn.conn());
+                rule.filter_attributes.values = parse_array<std::set<std::string>>(row["filter_attributes"].as<std::string>(), txn.conn());
                 rule.filter_attributes.type = row["filter_attributes_type"].as<common::filter_type>();
                 rule.filter_attribute_values.values = row["filter_attribute_values"].as<glz::json_t>();
                 rule.filter_attribute_values.type = row["filter_attribute_values_type"].as<common::filter_type>();
@@ -313,6 +312,16 @@ export class Database {
                 "VALUES ($1, $2, $3, $4*'1 second'::interval, $5*'1 second'::interval, "
                 "$6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15) "
                 "RETURNING id, extract(epoch from created_at) AS created_at_s, extract(epoch from updated_at) AS updated_at_s");
+            conn.prepare("update_cleanup_rule",
+                "UPDATE cleanup_rules SET name = $1, description = $2, enabled = $3, "
+                "execution_interval = $4*'1 second'::interval, filter_minimum_age = $5*'1 second'::interval, "
+                "filter_resources = $6, filter_resources_type = $7, filter_scopes = $8, filter_scopes_type = $9, "
+                "filter_severities = $10, filter_severities_type = $11, filter_attributes = $12, filter_attributes_type = $13, "
+                "filter_attribute_values = $14::jsonb, filter_attribute_values_type = $15, updated_at = now() "
+                "WHERE id = $16 "
+                "RETURNING id, extract(epoch from created_at) AS created_at_s, extract(epoch from updated_at) AS updated_at_s, extract(epoch from last_execution) AS last_execution_s");
+            conn.prepare("delete_cleanup_rule",
+                "DELETE FROM cleanup_rules WHERE id = $1");
         }
 
         void worker(unsigned int id, pqxx::connection& conn, std::stop_token st) {

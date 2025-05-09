@@ -52,8 +52,6 @@ namespace common {
                     return glz::format_error(err);
                 });
             }
-        } else if constexpr (std::is_same_v<T, common::log_severity>) {
-            return common::log_severity_names[std::to_underlying(obj)];
         } else {
             return std::unexpected{"Cannot format type: "+std::string(glz::name_v<T>)};
         }

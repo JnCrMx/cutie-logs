@@ -1,7 +1,7 @@
 module;
 #include <chrono>
 #include <future>
-#include <unordered_map>
+#include <map>
 #include <utility>
 
 module backend.jobs;
@@ -77,7 +77,7 @@ void Jobs::run_cleanup_jobs() {
     std::future<void> future = promise.get_future();
 
     db.queue_work([this, promise = std::move(promise)](pqxx::connection& conn) mutable {
-        std::unordered_map<unsigned int, common::cleanup_rule> jobs;
+        std::map<unsigned int, common::cleanup_rule> jobs;
         {
             pqxx::nontransaction txn(conn);
             jobs = db.get_cleanup_rules(txn);

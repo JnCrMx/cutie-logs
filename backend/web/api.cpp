@@ -308,7 +308,8 @@ void Server::setup_api_routes() {
         });
         return Pistache::Rest::Route::Result::Ok;
     });
-    router.put("/api/v1/settings/cleanup_rules", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+
+    auto create_or_update_cleanup_rule = [this]<bool update>(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         bool accepts_beve = accepts(request, mime::application_beve);
 
         std::expected<common::cleanup_rule, glz::error_ctx> rule;
@@ -321,7 +322,7 @@ void Server::setup_api_routes() {
             return Pistache::Rest::Route::Result::Ok;
         }
         if(!rule) {
-            response.send(Pistache::Http::Code::Bad_Request, std::format("Invalid request body: {}", glz::format_error(rule.error())));
+            response.send(Pistache::Http::Code::Bad_Request, std::format("Failed to parse request body: {}", glz::format_error(rule.error(), request.body())));
             return Pistache::Rest::Route::Result::Ok;
         }
 
@@ -330,7 +331,16 @@ void Server::setup_api_routes() {
             return Pistache::Rest::Route::Result::Ok;
         }
 
-        db.queue_work([this, accepts_beve, rule = std::move(*rule), response = std::move(response)](pqxx::connection& conn) mutable {
+        unsigned int id = 0;
+        if constexpr (update) {
+            id = request.param(":id").as<unsigned int>();
+            if(id != rule->id) {
+                response.send(Pistache::Http::Code::Bad_Request, "ID in URL and body do not match");
+                return Pistache::Rest::Route::Result::Ok;
+            }
+        }
+
+        db.queue_work([this, accepts_beve, id, rule = std::move(*rule), response = std::move(response)](pqxx::connection& conn) mutable {
             pqxx::work txn{conn};
 
             std::vector<unsigned int> filter_resources{rule.filter_resources.values.begin(), rule.filter_resources.values.end()};
@@ -340,21 +350,37 @@ void Server::setup_api_routes() {
             std::string filter_attribute_values = glz::write_json(rule.filter_attribute_values.values).value_or("null");
 
             try {
-                auto cleanup_rule = txn.exec(pqxx::prepped{"insert_cleanup_rule"},
-                    pqxx::params{
-                        rule.name, rule.description, rule.enabled, rule.execution_interval.count(),
-                        rule.filter_minimum_age.count(),
-                        filter_resources, rule.filter_resources.type,
-                        filter_scopes, rule.filter_scopes.type,
-                        filter_severities, rule.filter_severities.type,
-                        filter_attributes, rule.filter_attributes.type,
-                        filter_attribute_values, rule.filter_attribute_values.type
-                    }
-                );
+                pqxx::result cleanup_rule;
+                if constexpr (update) {
+                    cleanup_rule = txn.exec(pqxx::prepped{"update_cleanup_rule"},
+                        pqxx::params{
+                            rule.name, rule.description, rule.enabled, rule.execution_interval.count(),
+                            rule.filter_minimum_age.count(),
+                            filter_resources, rule.filter_resources.type,
+                            filter_scopes, rule.filter_scopes.type,
+                            filter_severities, rule.filter_severities.type,
+                            filter_attributes, rule.filter_attributes.type,
+                            filter_attribute_values, rule.filter_attribute_values.type,
+                            id
+                        }
+                    );
+                } else {
+                    cleanup_rule = txn.exec(pqxx::prepped{"insert_cleanup_rule"},
+                        pqxx::params{
+                            rule.name, rule.description, rule.enabled, rule.execution_interval.count(),
+                            rule.filter_minimum_age.count(),
+                            filter_resources, rule.filter_resources.type,
+                            filter_scopes, rule.filter_scopes.type,
+                            filter_severities, rule.filter_severities.type,
+                            filter_attributes, rule.filter_attributes.type,
+                            filter_attribute_values, rule.filter_attribute_values.type
+                        }
+                    );
+                }
                 txn.commit();
 
                 if(cleanup_rule.empty()) {
-                    response.send(Pistache::Http::Code::Internal_Server_Error, "Failed to insert cleanup rule");
+                    response.send(Pistache::Http::Code::Internal_Server_Error, "Failed to insert/update cleanup rule");
                     return;
                 }
 
@@ -364,7 +390,14 @@ void Server::setup_api_routes() {
                     std::chrono::duration<double>{row["created_at_s"].as<double>()})};
                 rule.updated_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::duration<double>{row["updated_at_s"].as<double>()})};
-                rule.last_execution = std::nullopt;
+                if constexpr (update) {
+                    rule.last_execution = row["last_execution_s"].as<std::optional<double>>().transform([](const auto& d) {
+                        return std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
+                            std::chrono::duration<double>{d})};
+                    });
+                } else {
+                    rule.last_execution = std::nullopt;
+                }
 
                 send_response(response, accepts_beve, rule);
             } catch(const pqxx::unique_violation& e) {
@@ -373,6 +406,31 @@ void Server::setup_api_routes() {
             } catch(const std::exception& e) {
                 response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
                 return;
+            }
+        });
+        return Pistache::Rest::Route::Result::Ok;
+    };
+
+    router.put("/api/v1/settings/cleanup_rules", [create_or_update_cleanup_rule](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        return create_or_update_cleanup_rule.template operator()<false>(request, std::move(response));
+    });
+    router.patch("/api/v1/settings/cleanup_rules/:id", [create_or_update_cleanup_rule](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        return create_or_update_cleanup_rule.template operator()<true>(request, std::move(response));
+    });
+    router.del("/api/v1/settings/cleanup_rules/:id", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        auto id = request.param(":id").as<unsigned int>();
+        db.queue_work([this, id, response = std::move(response)](pqxx::connection& conn) mutable {
+            pqxx::work txn{conn};
+            try {
+                auto result = txn.exec(pqxx::prepped{"delete_cleanup_rule"}, id);
+                if(result.affected_rows() == 0) {
+                    response.send(Pistache::Http::Code::Not_Found, std::format("Cleanup rule with id {} not found", id));
+                    return;
+                }
+                txn.commit();
+                response.send(Pistache::Http::Code::No_Content);
+            } catch(const std::exception& e) {
+                response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
             }
         });
         return Pistache::Rest::Route::Result::Ok;

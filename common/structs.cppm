@@ -1,10 +1,12 @@
 module;
 #include <array>
 #include <chrono>
+#include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
+#include <utility>
 #include <vector>
 
 export module common:structs;
@@ -104,7 +106,7 @@ export namespace common {
 
     template<typename T>
     struct filter {
-        filter_type type;
+        filter_type type = filter_type::EXCLUDE;
         T values;
     };
 
@@ -112,14 +114,14 @@ export namespace common {
         unsigned int id;
         std::string name;
         std::string description;
-        bool enabled;
+        bool enabled = false;
         std::chrono::seconds execution_interval;
 
         std::chrono::seconds filter_minimum_age;
-        filter<std::unordered_set<unsigned int>> filter_resources;
-        filter<std::unordered_set<std::string>> filter_scopes;
-        filter<std::unordered_set<log_severity>> filter_severities;
-        filter<std::unordered_set<std::string>> filter_attributes;
+        filter<std::set<unsigned int>> filter_resources;
+        filter<std::set<std::string>> filter_scopes;
+        filter<std::set<log_severity>> filter_severities;
+        filter<std::set<std::string>> filter_attributes;
         filter<glz::json_t> filter_attribute_values = {{}, glz::json_t::object_t{}};
 
         std::chrono::sys_seconds created_at;
@@ -129,7 +131,7 @@ export namespace common {
     static_assert(serializable<cleanup_rule>);
 
     struct cleanup_rules_response {
-        std::unordered_map<unsigned int, cleanup_rule> rules;
+        std::map<unsigned int, cleanup_rule> rules;
     };
     static_assert(serializable<cleanup_rules_response>);
 }
@@ -171,3 +173,29 @@ export namespace glz {
         }
     };
 }
+
+export template<>
+struct std::formatter<common::log_severity> {
+    template<class ParseContext>
+    constexpr ParseContext::iterator parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<class FmtContext>
+    constexpr FmtContext::iterator format(common::log_severity severity, FmtContext& ctx) const {
+        return std::format_to(ctx.out(), "{}", common::log_severity_names[std::to_underlying(severity)]);
+    }
+};
+
+export template<>
+struct std::formatter<common::filter_type> {
+    template<class ParseContext>
+    constexpr ParseContext::iterator parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<class FmtContext>
+    constexpr FmtContext::iterator format(common::filter_type type, FmtContext& ctx) const {
+        return std::format_to(ctx.out(), "{}", common::filter_type_names[std::to_underlying(type)]);
+    }
+};
