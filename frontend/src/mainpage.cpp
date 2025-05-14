@@ -410,7 +410,7 @@ Webxx::dialog dialog_delete_profile(event_context& ctx) {
     };
 }
 
-auto page(std::string_view current_theme) {
+auto page() {
     using namespace Webxx;
 
     static event_context ctx;
@@ -434,7 +434,7 @@ auto page(std::string_view current_theme) {
             dv{{_id{"stats"}, _class{"ml-2 mr-2 grow flex flex-row justify-center items-center"}}, page_stats({})},
             dv{{_class{"flex items-center mr-4 gap-8"}},
                 dv{{_id{"profile_selector_desktop_container"}, _class{"hidden md:flex"}}, profile_selector<"desktop">()},
-                components::theme_button{ctx, current_theme}
+                components::theme_button{ctx, profile}
             }
         },
         dv{{_class{"w-full mx-auto my-2 px-4 md:w-auto md:mx-[10vw]"}, {_id{"page"}}}},
@@ -514,16 +514,19 @@ auto load_settings() -> webpp::coroutine<void> {
 
 [[clang::export_name("main")]]
 int main() {
-    std::string theme = webpp::eval("let theme = localStorage.getItem('theme'); if(theme === null) {theme = '';}; theme")["result"]
-        .as<std::string>().value_or("");
+    std::string theme = profile.get_data("theme").value_or("light");
     if(theme.empty()) {
         theme = "light";
-        webpp::eval("localStorage.setItem('theme', 'light'); ''");
+        profile.set_data("theme", theme);
     }
 
     auto main = *webpp::get_element_by_id("main");
     main.set_property("data-theme", theme);
-    main.inner_html(Webxx::render(page(theme)));
+    main.inner_html(Webxx::render(page()));
+    profile.add_callback([](const auto& profile) {
+        std::string theme = profile.get_data("theme").value_or("light");
+        webpp::eval("document.body.setAttribute('data-theme', '{}');", theme);
+    });
 
     auto_select_page();
 

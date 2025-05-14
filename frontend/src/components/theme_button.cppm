@@ -21,21 +21,23 @@ constexpr static std::array themes = {
     "nord", "sunset", "caramellatte", "abyss", "silk",
 };
 export struct theme_button : component<theme_button> {
-    theme_button(event_context& ctx, std::string_view current) : component<theme_button>{
+    theme_button(event_context& ctx, profile_data& profile) : component<theme_button>{
         dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Themes"}},
             dv{{_class{"dropdown dropdown-end dropdown-bottom"}},
                 dv{{_class{"btn btn-square m-1"}, _tabindex{"0"}, _role{"button"}}, assets::icons::themes},
                 ul{{_class{"dropdown-content bg-base-300 rounded-box z-[1] w-52 p-2 shadow-2xl h-80 overflow-y-auto"}, _tabindex{"0"}},
-                    each(themes, [&ctx, current](const auto& theme) {
-                        auto cb = [theme](webpp::event) {
-                            auto current = webpp::eval("localStorage.getItem('theme')")["result"].as<std::string>().value_or("light");
+                    each(themes, [&ctx, &profile](const auto& theme) {
+                        auto cb = [theme, &profile](webpp::event) {
+                            auto current = profile.get_data("theme").value_or("light");
 
                             webpp::get_element_by_id(std::format("theme-button-{}", current))->remove_class("btn-active");
                             webpp::get_element_by_id(std::format("theme-button-{}", theme))->add_class("btn-active");
 
-                            webpp::eval("localStorage.setItem('theme', '{}');", theme);
-                            webpp::get_element_by_id("main")->set_property("data-theme", theme);
+                            profile.set_data("theme", theme);
+                            webpp::eval("document.body.setAttribute('data-theme', '{}');", theme);
                         };
+
+                        auto current = profile.get_data("theme").value_or("light");
                         if(current == theme) {
                             return li{ctx.on_click(input{{_type{"radio"}, _name{"theme-dropdown"},
                                 _id{std::format("theme-button-{}", theme)},
