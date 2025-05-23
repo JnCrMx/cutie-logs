@@ -327,14 +327,14 @@ export class settings : public page {
                 generated_decription += " and";
             };
 
-            add_filter("resource"sv, "resources"sv, "having"sv, "not having"sv, rule.filter_resources);
-            add_filter("scope"sv, "scopes"sv, "having"sv, "not having"sv, rule.filter_scopes);
-            add_filter("severity"sv, "severities"sv, "being of"sv, "not being of"sv, rule.filter_severities);
-            add_filter("attribute"sv, "attributes"sv, "having"sv, "not having"sv, rule.filter_attributes);
-            if(!rule.filter_attributes.values.empty()) {
+            add_filter("resource"sv, "resources"sv, "having"sv, "not having"sv, rule.filters.resources);
+            add_filter("scope"sv, "scopes"sv, "having"sv, "not having"sv, rule.filters.scopes);
+            add_filter("severity"sv, "severities"sv, "being of"sv, "not being of"sv, rule.filters.severities);
+            add_filter("attribute"sv, "attributes"sv, "having"sv, "not having"sv, rule.filters.attributes);
+            if(!rule.filters.attribute_values.values.empty()) {
                 generated_decription += std::format(" {} attributes {}",
-                    rule.filter_attribute_values.type == common::filter_type::INCLUDE ? "having"sv : "not having"sv,
-                    rule.filter_attribute_values.values.dump().value_or("null")
+                    rule.filters.attribute_values.type == common::filter_type::INCLUDE ? "having"sv : "not having"sv,
+                    rule.filters.attribute_values.values.dump().value_or("null")
                 );
             }
             if(generated_decription.ends_with(" and")) {

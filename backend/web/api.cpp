@@ -343,11 +343,11 @@ void Server::setup_api_routes() {
         db.queue_work([this, accepts_beve, id, rule = std::move(*rule), response = std::move(response)](pqxx::connection& conn) mutable {
             pqxx::work txn{conn};
 
-            std::vector<unsigned int> filter_resources{rule.filter_resources.values.begin(), rule.filter_resources.values.end()};
-            std::vector<std::string> filter_scopes{rule.filter_scopes.values.begin(), rule.filter_scopes.values.end()};
-            std::vector<common::log_severity> filter_severities{rule.filter_severities.values.begin(), rule.filter_severities.values.end()};
-            std::vector<std::string> filter_attributes{rule.filter_attributes.values.begin(), rule.filter_attributes.values.end()};
-            std::string filter_attribute_values = glz::write_json(rule.filter_attribute_values.values).value_or("null");
+            std::vector<unsigned int> filter_resources{rule.filters.resources.values.begin(), rule.filters.resources.values.end()};
+            std::vector<std::string> filter_scopes{rule.filters.scopes.values.begin(), rule.filters.scopes.values.end()};
+            std::vector<common::log_severity> filter_severities{rule.filters.severities.values.begin(), rule.filters.severities.values.end()};
+            std::vector<std::string> filter_attributes{rule.filters.attributes.values.begin(), rule.filters.attributes.values.end()};
+            std::string filter_attribute_values = glz::write_json(rule.filters.attribute_values.values).value_or("null");
 
             try {
                 pqxx::result cleanup_rule;
@@ -356,11 +356,11 @@ void Server::setup_api_routes() {
                         pqxx::params{
                             rule.name, rule.description, rule.enabled, rule.execution_interval.count(),
                             rule.filter_minimum_age.count(),
-                            filter_resources, rule.filter_resources.type,
-                            filter_scopes, rule.filter_scopes.type,
-                            filter_severities, rule.filter_severities.type,
-                            filter_attributes, rule.filter_attributes.type,
-                            filter_attribute_values, rule.filter_attribute_values.type,
+                            filter_resources, rule.filters.resources.type,
+                            filter_scopes, rule.filters.scopes.type,
+                            filter_severities, rule.filters.severities.type,
+                            filter_attributes, rule.filters.attributes.type,
+                            filter_attribute_values, rule.filters.attribute_values.type,
                             id
                         }
                     );
@@ -369,11 +369,11 @@ void Server::setup_api_routes() {
                         pqxx::params{
                             rule.name, rule.description, rule.enabled, rule.execution_interval.count(),
                             rule.filter_minimum_age.count(),
-                            filter_resources, rule.filter_resources.type,
-                            filter_scopes, rule.filter_scopes.type,
-                            filter_severities, rule.filter_severities.type,
-                            filter_attributes, rule.filter_attributes.type,
-                            filter_attribute_values, rule.filter_attribute_values.type
+                            filter_resources, rule.filters.resources.type,
+                            filter_scopes, rule.filters.scopes.type,
+                            filter_severities, rule.filters.severities.type,
+                            filter_attributes, rule.filters.attributes.type,
+                            filter_attribute_values, rule.filters.attribute_values.type
                         }
                     );
                 }

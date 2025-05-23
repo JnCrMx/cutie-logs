@@ -16,52 +16,52 @@ namespace backend::jobs {
 std::string craft_cleanup_job_sql(const common::cleanup_rule& rule, pqxx::connection& conn) {
     std::string sql = "DELETE FROM logs WHERE ";
     sql += "timestamp < NOW() - '" + std::to_string(rule.filter_minimum_age.count()) + " seconds'::interval";
-    if(!rule.filter_resources.values.empty()) {
-        if(rule.filter_resources.type == common::filter_type::INCLUDE) {
+    if(!rule.filters.resources.values.empty()) {
+        if(rule.filters.resources.type == common::filter_type::INCLUDE) {
             sql += " AND resource IN (";
         } else {
             sql += " AND resource NOT IN (";
         }
-        for(const auto& resource : rule.filter_resources.values) {
+        for(const auto& resource : rule.filters.resources.values) {
             sql += std::to_string(resource) + ",";
         }
         sql.pop_back(); // Remove the last comma
         sql += ")";
     }
-    if(!rule.filter_scopes.values.empty()) {
-        if(rule.filter_scopes.type == common::filter_type::INCLUDE) {
+    if(!rule.filters.scopes.values.empty()) {
+        if(rule.filters.scopes.type == common::filter_type::INCLUDE) {
             sql += " AND scope IN (";
         } else {
             sql += " AND scope NOT IN (";
         }
-        for(const auto& scope : rule.filter_scopes.values) {
+        for(const auto& scope : rule.filters.scopes.values) {
             sql += "'" + conn.esc(scope) + "',";
         }
         sql.pop_back(); // Remove the last comma
         sql += ")";
     }
-    if(!rule.filter_severities.values.empty()) {
-        if(rule.filter_severities.type == common::filter_type::INCLUDE) {
+    if(!rule.filters.severities.values.empty()) {
+        if(rule.filters.severities.type == common::filter_type::INCLUDE) {
             sql += " AND severity IN (";
         } else {
             sql += " AND severity NOT IN (";
         }
-        for(const auto& severity : rule.filter_severities.values) {
+        for(const auto& severity : rule.filters.severities.values) {
             sql += "'" + std::string{common::log_severity_names[std::to_underlying(severity)]} + "',";
         }
         sql.pop_back(); // Remove the last comma
         sql += ")";
     }
-    for(const auto& attr : rule.filter_attributes.values) {
-        if(rule.filter_attributes.type == common::filter_type::INCLUDE) {
+    for(const auto& attr : rule.filters.attributes.values) {
+        if(rule.filters.attributes.type == common::filter_type::INCLUDE) {
             sql += " AND attributes ? '" + conn.esc(attr) + "'";
         } else {
             sql += " AND NOT attributes ? '" + conn.esc(attr) + "'";
         }
     }
-    if(!rule.filter_attribute_values.values.empty()) {
-        std::string json = glz::write_json(rule.filter_attribute_values.values).value_or("null");
-        if(rule.filter_attribute_values.type == common::filter_type::INCLUDE) {
+    if(!rule.filters.attribute_values.values.empty()) {
+        std::string json = glz::write_json(rule.filters.attribute_values.values).value_or("null");
+        if(rule.filters.attribute_values.type == common::filter_type::INCLUDE) {
             sql += " AND attributes @> '" + conn.esc(json) + "'::jsonb";
         } else {
             sql += " AND NOT attributes @> '" + conn.esc(json) + "'::jsonb";
@@ -95,15 +95,15 @@ void Jobs::run_cleanup_jobs() {
                 continue;
             }
 
-            if(rule.filter_resources.values.empty() && rule.filter_resources.type == common::filter_type::INCLUDE) {
+            if(rule.filters.resources.values.empty() && rule.filters.resources.type == common::filter_type::INCLUDE) {
                 logger->warn("Skipping cleanup job {}:{} because it has a resource filter of type INCLUDE, but no resources are specified", rule.id, rule.name);
                 continue;
             }
-            if(rule.filter_scopes.values.empty() && rule.filter_scopes.type == common::filter_type::INCLUDE) {
+            if(rule.filters.scopes.values.empty() && rule.filters.scopes.type == common::filter_type::INCLUDE) {
                 logger->warn("Skipping cleanup job {}:{} because it has a scope filter of type INCLUDE, but no scopes are specified", rule.id, rule.name);
                 continue;
             }
-            if(rule.filter_severities.values.empty() && rule.filter_severities.type == common::filter_type::INCLUDE) {
+            if(rule.filters.severities.values.empty() && rule.filters.severities.type == common::filter_type::INCLUDE) {
                 logger->warn("Skipping cleanup job {}:{} because it has a severity filter of type INCLUDE, but no severities are specified", rule.id, rule.name);
                 continue;
             }

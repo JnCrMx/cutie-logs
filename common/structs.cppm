@@ -110,6 +110,15 @@ export namespace common {
         T values;
     };
 
+    struct standard_filters {
+        filter<std::set<unsigned int>> resources;
+        filter<std::set<std::string>> scopes;
+        filter<std::set<log_severity>> severities;
+        filter<std::set<std::string>> attributes;
+        filter<glz::json_t> attribute_values = {{}, glz::json_t::object_t{}};
+    };
+    static_assert(serializable<standard_filters>);
+
     struct cleanup_rule {
         unsigned int id;
         std::string name;
@@ -118,11 +127,7 @@ export namespace common {
         std::chrono::seconds execution_interval;
 
         std::chrono::seconds filter_minimum_age;
-        filter<std::set<unsigned int>> filter_resources;
-        filter<std::set<std::string>> filter_scopes;
-        filter<std::set<log_severity>> filter_severities;
-        filter<std::set<std::string>> filter_attributes;
-        filter<glz::json_t> filter_attribute_values = {{}, glz::json_t::object_t{}};
+        standard_filters filters;
 
         std::chrono::sys_seconds created_at;
         std::chrono::sys_seconds updated_at;

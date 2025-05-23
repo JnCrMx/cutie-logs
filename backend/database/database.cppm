@@ -115,9 +115,24 @@ namespace pqxx {
 namespace backend::database {
 
 export template<typename T>
-T parse_array(std::string_view sv, pqxx::connection& conn) {
+T parse_array(std::string_view sv, const pqxx::connection& conn) {
     pqxx::array<std::ranges::range_value_t<T>> arr{sv, conn};
     return T{arr.cbegin(), arr.cend()};
+}
+
+common::standard_filters parse_filters(const pqxx::row& row, const pqxx::connection& conn) {
+    common::standard_filters filters;
+    filters.resources.values = parse_array<std::set<unsigned int>>(row["filter_resources"].as<std::string>(), conn);
+    filters.resources.type = row["filter_resources_type"].as<common::filter_type>();
+    filters.scopes.values = parse_array<std::set<std::string>>(row["filter_scopes"].as<std::string>(), conn);
+    filters.scopes.type = row["filter_scopes_type"].as<common::filter_type>();
+    filters.severities.values = parse_array<std::set<common::log_severity>>(row["filter_severities"].as<std::string>(), conn);
+    filters.severities.type = row["filter_severities_type"].as<common::filter_type>();
+    filters.attributes.values = parse_array<std::set<std::string>>(row["filter_attributes"].as<std::string>(), conn);
+    filters.attributes.type = row["filter_attributes_type"].as<common::filter_type>();
+    filters.attribute_values.values = row["filter_attribute_values"].as<glz::json_t>();
+    filters.attribute_values.type = row["filter_attribute_values_type"].as<common::filter_type>();
+    return filters;
 }
 
 export class Database {
@@ -239,16 +254,7 @@ export class Database {
 
                 rule.filter_minimum_age = std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::duration<double>{row["filter_minimum_age_s"].as<double>()});
-                rule.filter_resources.values = parse_array<std::set<unsigned int>>(row["filter_resources"].as<std::string>(), txn.conn());
-                rule.filter_resources.type = row["filter_resources_type"].as<common::filter_type>();
-                rule.filter_scopes.values = parse_array<std::set<std::string>>(row["filter_scopes"].as<std::string>(), txn.conn());
-                rule.filter_scopes.type = row["filter_scopes_type"].as<common::filter_type>();
-                rule.filter_severities.values = parse_array<std::set<common::log_severity>>(row["filter_severities"].as<std::string>(), txn.conn());
-                rule.filter_severities.type = row["filter_severities_type"].as<common::filter_type>();
-                rule.filter_attributes.values = parse_array<std::set<std::string>>(row["filter_attributes"].as<std::string>(), txn.conn());
-                rule.filter_attributes.type = row["filter_attributes_type"].as<common::filter_type>();
-                rule.filter_attribute_values.values = row["filter_attribute_values"].as<glz::json_t>();
-                rule.filter_attribute_values.type = row["filter_attribute_values_type"].as<common::filter_type>();
+                rule.filters = parse_filters(row, txn.conn());
 
                 rule.created_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::duration<double>{row["created_at_s"].as<double>()})};
