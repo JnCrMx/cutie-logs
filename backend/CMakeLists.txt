@@ -75,6 +75,8 @@ set(MODULE_SOURCES
   utils.cppm
   database/database.cppm
   jobs/jobs.cppm
+  notifications/notifications.cppm
+  notifications/provider.cppm
   opentelemetry/server.cppm
   web/server.cppm
 )
