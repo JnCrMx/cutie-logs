@@ -29,11 +29,11 @@ available as Ubuntu packages.
 - profiles for easily working with different log formats and attributes for different resources and scopes
 
 ### Planned Features
-- rule-based automatic cleanup of old logs
+- rule-based automatic cleanup of old logs *(work in progress)*
 - server-side custom columns (calculated & created before a log line is written to the database)
 - server-side rules for redacting information before a log line is written to the database
 - aggregation and analysis of logs
-- rule-based alerts (i.e. send an email when an error log of a specifc server arrives)
+- rule-based alerts (i.e. send an email when an error log of a specifc server arrives) *(work in progress)*
 
 ## Warnings
 
