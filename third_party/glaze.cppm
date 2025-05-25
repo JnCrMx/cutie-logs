@@ -29,6 +29,8 @@ export namespace glz {
     using glz::serialize;
     using glz::JSON;
     using glz::BEVE;
+    using glz::get;
+    using glz::set;
 
     using glz::reflect;
     using glz::reflectable;

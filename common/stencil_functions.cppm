@@ -14,6 +14,7 @@ export module common:stencil_functions;
 import glaze;
 import :mmdb;
 import :utils;
+import :structs;
 
 namespace common {
 
@@ -70,6 +71,12 @@ glz::json_t get_path(glz::json_t x, std::string_view path) {
     }
     return x;
 }
+
+template<typename T>
+concept log_with_resource = requires(T t) {
+    { t.resource } -> std::convertible_to<const log_resource*>;
+    { t.log } -> std::convertible_to<const log_entry*>;
+};
 
 export struct stencil_functions {
     std::add_pointer_t<double(glz::json_t)> get_number = [](glz::json_t x){
@@ -214,12 +221,66 @@ export struct stencil_functions {
     std::add_pointer_t<std::string(sys_seconds_double)> iso_time = [](sys_seconds_double x){
         return std::format("{:%H:%M:%S}", std::chrono::time_point_cast<std::chrono::seconds>(x));
     };
+    std::add_pointer_t<std::string(sys_seconds_double)> iso_8601 = [](sys_seconds_double x){
+        return std::format("{:%Y-%m-%dT%H:%M:%S.000Z}", std::chrono::time_point_cast<std::chrono::seconds>(x));
+    };
     std::add_pointer_t<std::string(sys_seconds_double)> strftime = [](sys_seconds_double x){
         return std::format("{:%d/%b/%Y:%H:%M:%S %z}", std::chrono::time_point_cast<std::chrono::seconds>(x));
     };
 
     std::add_pointer_t<uint32_t(std::string)> parse_ipv4 = [](std::string x) -> uint32_t {
         return ::common::parse_ipv4(x);
+    };
+
+    struct {
+        std::string operator()(const log_with_resource auto& o) const {
+            return o.resource->guess_name().value_or(std::format("Resource #{}", o.log->resource));
+        }
+        std::string operator()(const log_resource& r) const {
+            return r.guess_name().value_or("Unknown Resource");
+        }
+    } resource_name;
+
+    std::add_pointer_t<uint32_t(common::log_severity)> severity_color = [](common::log_severity severity) -> uint32_t {
+        switch(severity) {
+            case common::log_severity::UNSPECIFIED:
+                return 0xFFFFFF; // White for unspecified
+            case common::log_severity::TRACE:
+            case common::log_severity::TRACE2:
+            case common::log_severity::TRACE3:
+            case common::log_severity::TRACE4:
+                return 0xCCCCCC; // Light gray for trace
+            case common::log_severity::DEBUG:
+            case common::log_severity::DEBUG2:
+            case common::log_severity::DEBUG3:
+            case common::log_severity::DEBUG4:
+                return 0x0000FF; // Blue for debug
+            case common::log_severity::INFO:
+            case common::log_severity::INFO2:
+            case common::log_severity::INFO3:
+            case common::log_severity::INFO4:
+                return 0x00FF00; // Green for info
+            case common::log_severity::WARN:
+            case common::log_severity::WARN2:
+            case common::log_severity::WARN3:
+            case common::log_severity::WARN4:
+                return 0xFFFF00; // Yellow for warning
+            case common::log_severity::ERROR:
+            case common::log_severity::ERROR2:
+            case common::log_severity::ERROR3:
+            case common::log_severity::ERROR4:
+                return 0xFF0000; // Red for error
+            case common::log_severity::FATAL:
+            case common::log_severity::FATAL2:
+            case common::log_severity::FATAL3:
+            case common::log_severity::FATAL4:
+                return 0xCC0000; // Dark red for fatal
+            default:
+                return 0xFFFFFF; // White for unknown severity
+        }
+    };
+    std::add_pointer_t<std::string(uint32_t)> hex_color = [](uint32_t color) {
+        return std::format("#{0:06X}", color);
     };
 };
 

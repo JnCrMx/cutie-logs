@@ -35,6 +35,18 @@ export namespace common {
     struct log_resource {
         glz::json_t attributes;
         double created_at;
+
+        std::optional<std::string> guess_name() const {
+            if(attributes.contains("service.name")) {
+                return attributes.at("service.name").get_string();
+            }
+            if(attributes.contains("k8s.namespace.name")) {
+                if(attributes.contains("k8s.pod.name")) {
+                    return std::format("{}/{}", attributes.at("k8s.namespace.name").get_string(), attributes.at("k8s.pod.name").get_string());
+                }
+            }
+            return std::nullopt;
+        }
     };
     static_assert(serializable<log_resource>);
 
@@ -67,13 +79,12 @@ export namespace common {
     };
     static_assert(serializable<log_entry>);
 
-    struct log_entry_with_resource {
-        log_resource* resource;
-        log_entry* log;
+    struct log_entry_stencil_object {
+        const log_resource* resource;
+        const log_entry* log;
 
         static constexpr auto root = "log";
     };
-    static_assert(serializable<log_entry_with_resource>);
 
     struct logs_response {
         std::vector<common::log_entry> logs;
@@ -116,6 +127,26 @@ export namespace common {
         filter<std::set<log_severity>> severities;
         filter<std::set<std::string>> attributes;
         filter<glz::json_t> attribute_values = {{}, glz::json_t::object_t{}};
+
+        bool match(const log_entry& entry) const {
+            if(resources.type == filter_type::INCLUDE && !resources.values.contains(entry.resource)) { return false; }
+            if(resources.type == filter_type::EXCLUDE &&  resources.values.contains(entry.resource)) { return false; }
+            if(scopes.type == filter_type::INCLUDE && !scopes.values.contains(entry.scope)) { return false; }
+            if(scopes.type == filter_type::EXCLUDE &&  scopes.values.contains(entry.scope)) { return false; }
+            if(severities.type == filter_type::INCLUDE && !severities.values.contains(entry.severity)) { return false; }
+            if(severities.type == filter_type::EXCLUDE &&  severities.values.contains(entry.severity)) { return false; }
+            if(attributes.type == filter_type::INCLUDE) {
+                for(const auto& a : attributes.values) {
+                    if(!entry.attributes.contains(a)) { return false; }
+                }
+            } else {
+                for(const auto& a : attributes.values) {
+                    if(entry.attributes.contains(a)) { return false; }
+                }
+            }
+            // TODO: attribute_values filtering
+            return true;
+        }
     };
     static_assert(serializable<standard_filters>);
 
@@ -139,6 +170,39 @@ export namespace common {
         std::map<unsigned int, cleanup_rule> rules;
     };
     static_assert(serializable<cleanup_rules_response>);
+
+    struct alert_rule {
+        unsigned int id;
+        std::string name;
+        std::string description;
+        bool enabled = false;
+
+        standard_filters filters;
+
+        std::string notification_provider;
+        glz::json_t notification_options;
+
+        std::chrono::sys_seconds created_at;
+        std::chrono::sys_seconds updated_at;
+        std::optional<std::chrono::sys_seconds> last_alert;
+        std::optional<bool> last_alert_successful;
+        std::optional<std::string> last_alert_message;
+
+        bool match(const log_entry& entry) const {
+            if(!enabled) return false;
+            if(!filters.match(entry)) return false;
+            return true;
+        }
+    };
+    static_assert(serializable<alert_rule>);
+
+    struct alert_stencil_object {
+        const alert_rule* rule;
+        const log_resource* resource;
+        const log_entry* log;
+
+        static constexpr auto root = "log";
+    };
 }
 
 export namespace glz {

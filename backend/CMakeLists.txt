@@ -31,13 +31,18 @@ FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
   GIT_TAG        v5.1.2
   GIT_SHALLOW TRUE)
+FetchContent_Declare(cpr
+  GIT_REPOSITORY https://github.com/libcpr/cpr.git
+  GIT_TAG        1.11.2)
 
 set(PISTACHE_BUILD_TESTS OFF CACHE BOOL "Pistache: Build tests" FORCE)
 set(PISTACHE_USE_RAPIDJSON OFF CACHE BOOL "Pistache: Use RapidJSON" FORCE)
+set(CPR_ENABLE_CURL_HTTP_ONLY OFF CACHE BOOL "CPR: Enable only HTTP" FORCE)
+set(CPR_USE_SYSTEM_CURL ON CACHE BOOL "CPR: Use system libcurl" FORCE)
 set(SKIP_BUILD_TEST ON CACHE BOOL "" FORCE)
 set(BUILD_TEST OFF CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(opentelemetry-proto pistache gzip-hpp pqxx argparse glaze)
+FetchContent_MakeAvailable(opentelemetry-proto pistache gzip-hpp pqxx argparse glaze cpr)
 
 find_package(spdlog REQUIRED)
 
@@ -67,6 +72,7 @@ set(SOURCES
   database/consistency.cpp
   database/migrations.cpp
   jobs/cleanup.cpp
+  notifications/providers/webhook.cpp
   web/api.cpp
   web/static.cpp
 )
@@ -85,7 +91,7 @@ add_executable(server ${SOURCES})
 target_sources(server PRIVATE FILE_SET CXX_MODULES FILES ${MODULE_SOURCES})
 target_link_libraries(server PRIVATE
   common protoModule
-  pistacheModule gzipModule pqxxModule argparseModule spdlogModule glazeModule
+  pistacheModule gzipModule pqxxModule argparseModule spdlogModule glazeModule cprModule
   protobuf::libprotobuf)
 target_compile_options(server PRIVATE --embed-dir=${CMAKE_BINARY_DIR}/frontend/ --embed-dir=${CMAKE_SOURCE_DIR} -Wno-c23-extensions)
 add_dependencies(server frontend_files)

@@ -25,6 +25,11 @@ if(${BUILD_TARGET} STREQUAL "backend")
     target_sources(spdlogModule PUBLIC FILE_SET CXX_MODULES FILES spdlog.cppm)
     target_compile_features(spdlogModule PUBLIC cxx_std_23)
     target_link_libraries(spdlogModule PUBLIC spdlog::spdlog)
+
+    add_library(cprModule STATIC)
+    target_sources(cprModule PUBLIC FILE_SET CXX_MODULES FILES cpr.cppm)
+    target_compile_features(cprModule PUBLIC cxx_std_23)
+    target_link_libraries(cprModule PUBLIC cpr::cpr)
 endif()
 
 # Frontend modules

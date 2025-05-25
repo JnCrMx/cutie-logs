@@ -265,16 +265,7 @@ export class table : public page {
         }
 
         std::string resource_name(unsigned int id, const common::log_resource& resource) {
-            // TODO: make this configurable
-            if(resource.attributes.contains("service.name")) {
-                return resource.attributes.at("service.name").get_string();
-            }
-            if(resource.attributes.contains("k8s.namespace.name")) {
-                if(resource.attributes.contains("k8s.pod.name")) {
-                    return std::format("{}/{}", resource.attributes.at("k8s.namespace.name").get_string(), resource.attributes.at("k8s.pod.name").get_string());
-                }
-            }
-            return std::format("Resource #{}", id);
+            return resource.guess_name().value_or(std::format("Resource #{}", id));
         }
         void update_resources() {
             transformed_resources.clear();

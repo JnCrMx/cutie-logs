@@ -1,5 +1,6 @@
 module;
 #include <chrono>
+#include <map>
 #include <memory>
 #include <unordered_set>
 
@@ -15,6 +16,7 @@ import spdlog;
 import common;
 import backend.utils;
 import backend.database;
+import backend.notifications;
 
 glz::json_t to_json(const ::opentelemetry::proto::common::v1::AnyValue& v) {
     if(v.has_bool_value()) {
@@ -70,6 +72,13 @@ namespace backend::opentelemetry {
 
                 router.post("/v1/logs", Pistache::Rest::Routes::bind(&Server::handle_log, this));
                 server.setHandler(router.handler());
+
+                auto f = db.queue_work([this](pqxx::connection& conn) {
+                    pqxx::nontransaction txn(conn);
+                    alert_rules = this->db.get_alert_rules(txn);
+                });
+                f.wait();
+                logger->info("Loaded {} alert rule(s)", alert_rules.size());
             }
 
             void serve() {
@@ -81,6 +90,40 @@ namespace backend::opentelemetry {
                 server.serveThreaded();
             }
         private:
+            void process_alerts(pqxx::connection& conn, const common::log_entry& log, const common::log_resource& resource) {
+                pqxx::work txn(conn);
+                for(const auto& [_, rule] : alert_rules) {
+                    if(!rule.match(log)) {
+                        continue;
+                    }
+
+                    logger->trace("Sending alert for rule {}:{}", rule.id, rule.name);
+                    common::alert_stencil_object msg{
+                        .rule = &rule,
+                        .resource = &resource,
+                        .log = &log
+                    };
+
+                    auto provider = notifications::registry::instance()
+                        .create_provider(rule.notification_provider, *logger, rule.notification_options);
+                    if(!provider) {
+                        logger->error("Failed to create notification provider {} for rule {}:{}: {}",
+                            rule.notification_provider, rule.id, rule.name, provider.error().message);
+                        txn.exec(pqxx::prepped{"update_alert_result"}, {rule.id, false, provider.error().message});
+                        continue;
+                    }
+                    auto result = (*provider)->notify(msg);
+                    if(!result) {
+                        logger->error("Failed to send notification for rule {}:{}: {}",
+                            rule.id, rule.name, result.error().message);
+                        txn.exec(pqxx::prepped{"update_alert_result"}, {rule.id, false, result.error().message});
+                        continue;
+                    }
+                    txn.exec(pqxx::prepped{"update_alert_result"}, {rule.id, true, std::nullopt});
+                }
+                txn.commit();
+            }
+
             Pistache::Rest::Route::Result handle_log(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
                 try {
                     logger->trace("{} | Received a POST request to /v1/logs", request.address());
@@ -124,7 +167,12 @@ namespace backend::opentelemetry {
                             static uint64_t timestamp_fix_offset = 0;
 
                             for(auto& resourceLog : req.resource_logs()) {
-                                unsigned int resource = db.ensure_resource(conn, to_json(resourceLog.resource().attributes()));
+                                glz::json_t::object_t resource_attributes = to_json(resourceLog.resource().attributes());
+                                unsigned int resource = db.ensure_resource(conn, resource_attributes);
+                                common::log_resource log_resource{
+                                    .attributes = std::move(resource_attributes),
+                                };
+
                                 for(auto& scopeLog : resourceLog.scope_logs()) {
                                     for(auto& log : scopeLog.log_records()) {
                                         std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> ts{std::chrono::nanoseconds(log.time_unix_nano())};
@@ -141,8 +189,19 @@ namespace backend::opentelemetry {
                                         seen_timestamps.insert(ts.time_since_epoch().count());
 
                                         glz::json_t::object_t attributes = to_json(log.attributes());
+                                        glz::json_t body = to_json(log.body());
                                         common::log_severity severity = static_cast<common::log_severity>(log.severity_number());
-                                        db.insert_log(conn, resource, ts, scopeLog.scope().name(), severity, attributes, to_json(log.body()));
+                                        db.insert_log(conn, resource, ts, scopeLog.scope().name(), severity, attributes, body);
+
+                                        common::log_entry log_entry{
+                                            .resource = resource,
+                                            .timestamp = std::chrono::time_point_cast<std::chrono::duration<double>>(ts).time_since_epoch().count(),
+                                            .scope = scopeLog.scope().name(),
+                                            .severity = severity,
+                                            .attributes = std::move(attributes),
+                                            .body = std::move(body)
+                                        };
+                                        process_alerts(conn, log_entry, log_resource);
                                     }
                                 }
                             }
@@ -163,5 +222,7 @@ namespace backend::opentelemetry {
             Pistache::Http::Endpoint server;
             Pistache::Rest::Router router;
             database::Database& db;
+
+            std::map<unsigned int, common::alert_rule> alert_rules;
     };
 }

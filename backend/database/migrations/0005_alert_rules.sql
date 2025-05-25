@@ -23,7 +23,7 @@ CREATE TABLE alert_rules (
 
     last_alert TIMESTAMP,
     last_alert_successful BOOLEAN DEFAULT NULL,
-    last_alert_message TEXT DEFAULT NULL,
+    last_alert_message TEXT DEFAULT NULL
 );
 CREATE INDEX alert_rules_name_index ON alert_rules (name);
 CREATE INDEX alert_rules_created_at_index ON alert_rules (created_at);

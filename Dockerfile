@@ -10,8 +10,8 @@ RUN TARGETARCH=$TARGETARCH BUILDARCH=$BUILDARCH /setup-cross-compile.sh
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     build-essential cmake ninja-build git \
     clang-19 clang-tools-19 lld-19 llvm-19 wabt protobuf-compiler \
-    libc++-19-dev libc++-19-dev-wasm32 libclang-rt-19-dev-wasm32 \
-    libpq-dev:$TARGETARCH libspdlog-dev:$TARGETARCH libprotobuf-dev:$TARGETARCH libstdc++-14-dev:$TARGETARCH
+    libc++-19-dev libc++-19-dev-wasm32 libclang-rt-19-dev-wasm32 libstdc++-14-dev:$TARGETARCH \
+    libpq-dev:$TARGETARCH libspdlog-dev:$TARGETARCH libprotobuf-dev:$TARGETARCH libcurl4-openssl-dev:$TARGETARCH
 # Force the use of lld, since it supports cross-compilation out of the box
 RUN ln -sf /usr/bin/ld.lld-19 /usr/bin/ld
 
@@ -27,7 +27,7 @@ RUN cmake --build build
 FROM ubuntu:plucky
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    libpq5 libprotobuf32t64 libspdlog1.15
+    libpq5 libprotobuf32t64 libspdlog1.15 libcurl4t64
 
 RUN mkdir /app
 COPY --from=builder /src/build/backend/server /app/cutie-logs-server

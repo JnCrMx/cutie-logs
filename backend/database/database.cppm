@@ -4,6 +4,7 @@ module;
 #include <deque>
 #include <format>
 #include <functional>
+#include <future>
 #include <map>
 #include <mutex>
 #include <ranges>
@@ -164,10 +165,12 @@ export class Database {
             }
         }
 
-        void queue_work(std::move_only_function<void(pqxx::connection&)>&& work) {
+        std::future<void> queue_work(std::move_only_function<void(pqxx::connection&)>&& work) {
             std::unique_lock lock(mutex);
-            queue.push_back(std::move(work));
+            queue.emplace_back(std::move(work), std::promise<void>{});
             cv.notify_one();
+
+            return queue.back().second.get_future();
         }
         unsigned int ensure_resource(pqxx::connection& conn, const glz::json_t& attributes, unsigned int tries = 3) {
             try {
@@ -267,6 +270,37 @@ export class Database {
             }
             return rules;
         }
+        std::map<unsigned int, common::alert_rule> get_alert_rules(pqxx::transaction_base& txn) {
+            auto result = txn.exec(pqxx::prepped{"get_alert_rules"});
+            std::map<unsigned int, common::alert_rule> rules;
+
+            for(const auto& row : result) {
+                unsigned int id = row["id"].as<unsigned int>();
+                common::alert_rule& rule = rules[id];
+
+                rule.id = id;
+                rule.name = row["name"].as<std::string>();
+                rule.description = row["description"].as<std::string>();
+                rule.enabled = row["enabled"].as<bool>();
+
+                rule.filters = parse_filters(row, txn.conn());
+
+                rule.notification_provider = row["notification_provider"].as<std::string>();
+                rule.notification_options = row["notification_options"].as<glz::json_t>();
+
+                rule.created_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::duration<double>{row["created_at_s"].as<double>()})};
+                rule.updated_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::duration<double>{row["updated_at_s"].as<double>()})};
+                rule.last_alert = row["last_alert_s"].as<std::optional<double>>().transform([](const auto& d) {
+                    return std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
+                        std::chrono::duration<double>{d})};
+                });
+                rule.last_alert_successful = row["last_alert_successful"].as<std::optional<bool>>();
+                rule.last_alert_message = row["last_alert_message"].as<std::optional<std::string>>();
+            }
+            return rules;
+        }
 
     private:
         void prepare_statements(pqxx::connection& conn) {
@@ -328,6 +362,20 @@ export class Database {
                 "RETURNING id, extract(epoch from created_at) AS created_at_s, extract(epoch from updated_at) AS updated_at_s, extract(epoch from last_execution) AS last_execution_s");
             conn.prepare("delete_cleanup_rule",
                 "DELETE FROM cleanup_rules WHERE id = $1");
+            conn.prepare("get_alert_rules",
+                "SELECT id, name, description, enabled, "
+                "filter_resources, filter_resources_type, "
+                "filter_scopes, filter_scopes_type, "
+                "filter_severities, filter_severities_type, "
+                "filter_attributes, filter_attributes_type, "
+                "filter_attribute_values, filter_attribute_values_type, "
+                "notification_provider, notification_options, "
+                "extract(epoch from created_at) AS created_at_s, extract(epoch from updated_at) AS updated_at_s, "
+                "extract(epoch from last_alert) AS last_alert_s, last_alert_successful, last_alert_message "
+                "FROM alert_rules");
+            conn.prepare("update_alert_result",
+                "UPDATE alert_rules SET last_alert = now(), last_alert_successful = $2, last_alert_message = $3 "
+                "WHERE id = $1");
         }
 
         void worker(unsigned int id, pqxx::connection& conn, std::stop_token st) {
@@ -336,21 +384,26 @@ export class Database {
 
             while(!st.stop_requested()) {
                 std::move_only_function<void(pqxx::connection&)> work;
+                std::promise<void> promise;
                 {
                     std::unique_lock lock(mutex);
-                    cv.wait(lock, [this, &work, &st] {
-                        if(st.stop_requested()) {
-                            return true;
-                        }
+                    if(queue.empty()) {
+                        cv.wait(lock, [this, &st] {
+                            return st.stop_requested() || !queue.empty();
+                        });
+                    }
 
-                        if(queue.empty()) {
-                            return false;
-                        }
+                    if(st.stop_requested()) {
+                        break;
+                    }
 
-                        work = std::move(queue.front());
-                        queue.pop_front();
-                        return true;
-                    });
+                    if(queue.empty()) {
+                        continue;
+                    }
+
+                    work = std::move(queue.front().first);
+                    promise = std::move(queue.front().second);
+                    queue.pop_front();
                 }
 
                 if(st.stop_requested()) {
@@ -358,6 +411,7 @@ export class Database {
                 }
 
                 work(conn);
+                promise.set_value();
             }
         }
 
@@ -366,7 +420,7 @@ export class Database {
         std::vector<std::jthread> threads;
         std::mutex mutex;
         std::condition_variable cv;
-        std::deque<std::move_only_function<void(pqxx::connection&)>> queue;
+        std::deque<std::pair<std::move_only_function<void(pqxx::connection&)>, std::promise<void>>> queue;
 };
 
 }

@@ -35,6 +35,7 @@ int main() {
 
     common::log_entry log{};
     log.timestamp = 1742524030.321027;
+    log.severity = common::log_severity::ERROR;
     std::cout << *common::stencil("{timestamp} = {timestamp | from_timestamp | strftime}", log).or_else([](auto&& err) -> std::expected<std::string, std::string> {
         return std::string{"error: "} + err;
     }) << std::endl;
@@ -46,13 +47,49 @@ int main() {
         return std::string{"error: "} + err;
     }) << std::endl;
 
-    common::log_entry_with_resource log_with_resource{
+    common::log_entry_stencil_object log_with_resource{
         .resource = &resource,
         .log = &log
     };
     std::cout << *common::stencil("resource: {resource.created_at} = {resource.created_at | from_timestamp | strftime} | {resource.attributes.key} | {.timestamp} = {.timestamp | from_timestamp | strftime}", log_with_resource, functions{}).or_else([](auto&& err) -> std::expected<std::string, std::string> {
         return std::string{"error: "} + err;
     }) << std::endl;
+
+    common::alert_rule rule{
+        .name = "Test Rule",
+        .description = "This is a test rule"
+    };
+    common::alert_stencil_object alert_object{
+        .rule = &rule,
+        .resource = &resource,
+        .log = &log
+    };
+    glz::json_t json_obj = glz::json_t::object_t{
+        {"content", glz::json_t::null_t{}},
+        {"embeds", glz::json_t::array_t{
+            glz::json_t::object_t{
+                {"title", "Alert: {.severity}"},
+                {"description", "{.body} ({.attributes})"},
+                {"timestamp", "{.timestamp | from_timestamp | iso_8601}"},
+                {"color", "{.severity | severity_color}!json"},
+                {"author", glz::json_t::object_t{
+                    {"name", "{| resource_name}"}
+                }},
+                {"fields", glz::json_t::array_t{
+                    glz::json_t::object_t{
+                        {"name", "Rule Name"},
+                        {"value", "{rule.name}"}
+                    },
+                    glz::json_t::object_t{
+                        {"name", "Rule Description"},
+                        {"value", "{rule.description}"}
+                    },
+                }}
+            }
+        }}
+    };
+    glz::json_t stenciled = common::stencil_json(json_obj, alert_object);
+    std::cout << glz::write_json(stenciled).value_or("error") << std::endl;
 
     return 0;
 }

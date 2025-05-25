@@ -6,6 +6,7 @@ module;
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
 export module common:stencil;
@@ -203,18 +204,20 @@ namespace common {
             result = "";
         }
         if(first_key.empty()) {
+            if(key.empty()) {
+                return eval_expression(obj, expression, functions, functions);
+            }
+
             if constexpr (has_root<T>) {
                 first_key = T::root;
-            } else if (key.empty()) {
-                return eval_expression(obj, expression, functions, functions);
-            } else {
+            } else  {
                 return std::unexpected{std::format("\".\" given as key, but type \"{}\" does not have a root", glz::name_v<T>)};
             }
         }
 
         auto keys = get_keys(obj);
         unsigned int index = 0;
-        for_each_field(obj, [&](auto&& field) {
+        for_each_field<T>(obj, [&](auto&& field) {
             using decayed = std::decay_t<decltype(field)>;
             if(keys[index] == first_key) {
                 if constexpr (can_get_field<decayed>) {
@@ -282,6 +285,60 @@ namespace common {
             }
         }
         return result;
+    }
+
+    export template<can_stencil T, glz::reflectable Functions = stencil_functions>
+    glz::json_t stencil_json(glz::json_t stencil_object, const T& obj, const Functions& functions = stencil_functions{}) {
+        struct visitor {
+            const T& obj;
+            const Functions& functions;
+
+            void operator()(glz::json_t::null_t&) const {}
+            void operator()(double&) const {}
+            void operator()(bool&) const {}
+
+            void operator()(std::string& str) const {
+                auto r = stencil(str, obj, functions);
+                if(!r) {
+                    str = std::format("stencil error: {}", r.error());
+                } else {
+                    str = r.value();
+                }
+            }
+
+            void operator()(glz::json_t::array_t& array) const {
+                for(auto& value : array) {
+                    (*this)(value);
+                }
+            }
+            void operator()(glz::json_t::object_t& obj) const {
+                for(auto& [key, value] : obj) {
+                    (*this)(value);
+                }
+            }
+
+            void operator()(glz::json_t& json) const {
+                if(json.is_string() && json.get_string().ends_with("!json")) {
+                    std::string str = json.get_string();
+                    str = str.substr(0, str.size() - 5); // remove the "!json" suffix
+
+                    auto r = stencil(str, this->obj, this->functions);
+                    if(!r) {
+                        json = glz::json_t::null_t{};
+                    } else if(auto p = glz::read_json<glz::json_t>(r.value())) {
+                        json = std::move(p.value());
+                    } else {
+                        json = glz::json_t::null_t{};
+                    }
+                } else {
+                    std::visit(*this, *json);
+                }
+            }
+        };
+        visitor v{obj, functions};
+        v(stencil_object);
+
+        return stencil_object;
     }
 
     static_assert(can_get_field<glz::json_t>);
