@@ -54,7 +54,7 @@ docker run -p 4318:4318 -p 8080:8080 -e CUTIE_LOGS_DATABASE_URL=postgres://... g
 
 ## Command Line Options
 ```
-Usage: cutie-logs [--help] [--version] [--otel-address ADDRESS] [--web-address ADDRESS] [--web-dev-path PATH] [--disable-web] --database-url CONNECTION_STRING
+Usage: cutie-logs [--help] [--version] [--otel-address ADDRESS] [--web-address ADDRESS] [--web-dev-path PATH] [--skip-database-consistency] [--disable-web] [--geoip-country-url URL] [--geoip-asn-url URL] [--geoip-city-url URL] --database-url CONNECTION_STRING
 
 Optional arguments:
   -h, --help                                    shows help message and exits
@@ -62,6 +62,10 @@ Optional arguments:
   --otel-address ADDRESS                        Address to listen for OpenTelemetry requests on (env: CUTIE_LOGS_OTEL_ADDRESS) [default: "0.0.0.0:4318"]
   --web-address ADDRESS                         Address to serve web interface on (env: CUTIE_LOGS_WEB_ADDRESS) [default: "127.0.0.1:8080"]
   --web-dev-path PATH                           Path to serve static files from in development mode (env: CUTIE_LOGS_WEB_DEV_PATH)
+  --skip-database-consistency                   Skip database consistency check (env: CUTIE_LOGS_SKIP_DATABASE_CONSISTENCY)
   --disable-web                                 Disable the web interface (env: CUTIE_LOGS_DISABLE_WEB)
+  --geoip-country-url URL                       URL to download GeoLite2-Country database from (env: CUTIE_LOGS_GEOIP_COUNTRY_URL)
+  --geoip-asn-url URL                           URL to download GeoLite2-ASN database from (env: CUTIE_LOGS_GEOIP_ASN_URL)
+  --geoip-city-url URL                          URL to download GeoLite2-City database from (env: CUTIE_LOGS_GEOIP_CITY_URL)
   --database, --database-url CONNECTION_STRING  Database connection string (env: CUTIE_LOGS_DATABASE_URL) [required]
 ```
