@@ -13,6 +13,7 @@ export namespace pqxx {
     using pqxx::row;
     using pqxx::prepped;
     using pqxx::params;
+    using pqxx::notification;
 
     using pqxx::zview;
     using pqxx::string_traits;

@@ -74,8 +74,16 @@ namespace backend::opentelemetry {
                 server.setHandler(router.handler());
 
                 auto f = db.queue_work([this](pqxx::connection& conn) {
-                    pqxx::nontransaction txn(conn);
-                    alert_rules = this->db.get_alert_rules(txn);
+                    {
+                        pqxx::nontransaction txn(conn);
+                        alert_rules = this->db.get_alert_rules(txn);
+                    }
+
+                    conn.listen("alert_rules", [this](pqxx::notification notification){
+                        pqxx::nontransaction txn(notification.conn);
+                        alert_rules = this->db.get_alert_rules(txn);
+                        logger->info("Reloaded {} alert rule(s)", alert_rules.size());
+                    });
                 });
                 f.wait();
                 logger->info("Loaded {} alert rule(s)", alert_rules.size());

@@ -383,14 +383,21 @@ export class Database {
             prepare_statements(conn);
 
             while(!st.stop_requested()) {
+                // first of all, make sure we receive notifications
+                conn.get_notifs();
+
                 std::move_only_function<void(pqxx::connection&)> work;
                 std::promise<void> promise;
                 {
                     std::unique_lock lock(mutex);
                     if(queue.empty()) {
-                        cv.wait(lock, [this, &st] {
+                        // timeout, so we will check for notifications, even if we don't have work
+                        bool no_timeout = cv.wait_for(lock, std::chrono::seconds(10), [this, &st] {
                             return st.stop_requested() || !queue.empty();
                         });
+                        if(!no_timeout) {
+                            continue;
+                        }
                     }
 
                     if(st.stop_requested()) {
