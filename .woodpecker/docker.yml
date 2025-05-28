@@ -17,6 +17,7 @@ variables:
 when:
   - event: push
     branch: ${CI_REPO_DEFAULT_BRANCH}
+  - event: manual
 
 steps:
   docker:
