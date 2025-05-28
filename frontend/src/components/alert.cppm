@@ -14,7 +14,7 @@ namespace alert_types {
     };
 };
 
-export template<typename type = alert_types::error> auto alert(std::string_view id, std::string_view extra_classes = "") {
+export template<typename type = alert_types::error> auto alert(const std::string& id, std::string_view extra_classes = "") {
     using namespace Webxx;
 
     return dv{{_id{id}, _role{"alert"}, _class{std::string{"alert alert-vertical sm:alert-horizontal hidden "}+type::class_name+" "+extra_classes}},

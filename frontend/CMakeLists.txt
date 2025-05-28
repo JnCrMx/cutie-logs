@@ -55,6 +55,8 @@ set(MODULE_SOURCES
   src/utils.cppm
   src/components/_components.cppm
   src/components/alert.cppm
+  src/components/dialog_add.cppm
+  src/components/dialog_delete.cppm
   src/components/duration_picker.cppm
   src/components/resource_modal.cppm
   src/components/selection.cppm

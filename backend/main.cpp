@@ -1,7 +1,8 @@
+#include <algorithm>
 #include <concepts>
 #include <iostream>
+#include <map>
 #include <optional>
-#include <algorithm>
 
 import pistache;
 import pqxx;
@@ -13,6 +14,7 @@ import backend.database;
 import backend.jobs;
 import backend.opentelemetry;
 import backend.web;
+import backend.notifications;
 
 template<typename T>
 std::optional<T> get_env(std::string arg) {
@@ -123,6 +125,9 @@ int main(int argc, char** argv) {
     }
     if(auto city_url = env_present(program, "--geoip-city-url")) {
         settings.geoip.city_url = *city_url;
+    }
+    for(const auto& [name, provider] : notifications::registry::instance().get_providers()) {
+        settings.notification_providers[name] = provider.second;
     }
 
     jobs::Jobs job_runner(db);

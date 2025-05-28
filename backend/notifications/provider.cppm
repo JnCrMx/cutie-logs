@@ -3,6 +3,7 @@ module;
 #include <expected>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -44,16 +45,27 @@ public:
     }
 
     using func = std::function<std::expected<std::unique_ptr<provider>, error>(spdlog::logger& logger, const glz::json_t& options)>;
-    void register_provider(std::string&& name, func&& f) {
-        m_providers.emplace(std::move(name), std::move(f));
+    void register_provider(std::string&& name, func&& f, common::notification_provider_info&& info = {}) {
+        m_providers.emplace(std::move(name), std::make_pair(std::move(f), std::move(info)));
     }
 
     std::expected<std::unique_ptr<provider>, error> create_provider(const std::string& name, spdlog::logger& logger, const glz::json_t& options) {
         auto it = m_providers.find(name);
         if (it != m_providers.end()) {
-            return it->second(logger, options);
+            return it->second.first(logger, options);
         }
         return std::unexpected<error>(std::in_place, error_code::not_found, "Provider not found: " + name);
+    }
+
+    std::optional<common::notification_provider_info> get_provider_info(const std::string& name) const {
+        auto it = m_providers.find(name);
+        if (it != m_providers.end()) {
+            return it->second.second;
+        }
+        return std::nullopt;
+    }
+    const std::unordered_map<std::string, std::pair<func, common::notification_provider_info>>& get_providers() const {
+        return m_providers;
     }
 private:
     registry() = default;
@@ -63,13 +75,13 @@ private:
     registry(registry&&) = delete;
     registry& operator=(registry&&) = delete;
 
-    std::unordered_map<std::string, func> m_providers;
+    std::unordered_map<std::string, std::pair<func, common::notification_provider_info>> m_providers;
 };
 
 export class register_provider {
     public:
-        register_provider(std::string name, registry::func f) {
-            registry::instance().register_provider(std::move(name), std::move(f));
+        register_provider(std::string name, registry::func f, common::notification_provider_info info = {}) {
+            registry::instance().register_provider(std::move(name), std::move(f), std::move(info));
         }
 };
 export template<typename T> auto default_provider_factory = [](spdlog::logger& logger, const glz::json_t& options) -> std::expected<std::unique_ptr<provider>, error> {

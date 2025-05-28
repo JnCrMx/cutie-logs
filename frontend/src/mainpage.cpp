@@ -36,7 +36,7 @@ static profile_data profile;
 
 static pages::logs logs_page(profile, example_entry, attributes, scopes, resources, mmdbs);
 static pages::table table_page(profile, example_entry, attributes, scopes, resources, mmdbs);
-static pages::settings settings_page(profile, example_entry, attributes, scopes, resources, mmdbs);
+static pages::settings settings_page(profile, settings, example_entry, attributes, scopes, resources, mmdbs);
 
 using page_tuple = std::tuple<std::string_view, std::string_view, std::string_view, pages::page*>;
 static std::array all_pages = {
@@ -197,7 +197,7 @@ Webxx::dv profile_selector() {
 
                 webpp::get_element_by_id("profile_selector_mobile_container")->inner_html(Webxx::render(profile_selector<"mobile">()));
                 webpp::get_element_by_id("profile_selector_desktop_container")->inner_html(Webxx::render(profile_selector<"desktop">()));
-            } else if(selected == profiles_list.size()-1) {
+            } else if(selected == profiles_list.size()) {
                 webpp::get_element_by_id("profile_name")->set_property("value", "");
                 webpp::get_element_by_id("profile_add")->add_class("btn-disabled");
                 webpp::eval("document.getElementById('dialog_add_profile').showModal();");

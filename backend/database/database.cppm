@@ -376,6 +376,25 @@ export class Database {
             conn.prepare("update_alert_result",
                 "UPDATE alert_rules SET last_alert = now(), last_alert_successful = $2, last_alert_message = $3 "
                 "WHERE id = $1");
+            conn.prepare("insert_alert_rule",
+                "INSERT INTO alert_rules (name, description, enabled, notification_provider, notification_options, "
+                "filter_resources, filter_resources_type, filter_scopes, filter_scopes_type, "
+                "filter_severities, filter_severities_type, filter_attributes, filter_attributes_type, "
+                "filter_attribute_values, filter_attribute_values_type) "
+                "VALUES ($1, $2, $3, $4, $5::jsonb, "
+                "$6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15) "
+                "RETURNING id, extract(epoch from created_at) AS created_at_s, extract(epoch from updated_at) AS updated_at_s");
+            conn.prepare("update_alert_rule",
+                "UPDATE alert_rules SET name = $1, description = $2, enabled = $3, "
+                "notification_provider = $4, notification_options = $5::jsonb, "
+                "filter_resources = $6, filter_resources_type = $7, filter_scopes = $8, filter_scopes_type = $9, "
+                "filter_severities = $10, filter_severities_type = $11, filter_attributes = $12, filter_attributes_type = $13, "
+                "filter_attribute_values = $14::jsonb, filter_attribute_values_type = $15, updated_at = now() "
+                "WHERE id = $16 "
+                "RETURNING id, extract(epoch from created_at) AS created_at_s, extract(epoch from updated_at) AS updated_at_s, "
+                "extract(epoch from last_alert) AS last_alert_s, last_alert_successful, last_alert_message");
+            conn.prepare("delete_alert_rule",
+                "DELETE FROM alert_rules WHERE id = $1");
         }
 
         void worker(unsigned int id, pqxx::connection& conn, std::stop_token st) {

@@ -23,15 +23,6 @@ export namespace common {
     template<typename T>
     concept serializable = serializable_beve<T> && serializable_json<T>;
 
-    struct shared_settings {
-        struct {
-            std::optional<std::string> country_url;
-            std::optional<std::string> asn_url;
-            std::optional<std::string> city_url;
-        } geoip;
-    };
-    static_assert(serializable<shared_settings>);
-
     struct log_resource {
         glz::json_t attributes;
         double created_at;
@@ -196,6 +187,11 @@ export namespace common {
     };
     static_assert(serializable<alert_rule>);
 
+    struct alert_rules_response {
+        std::map<unsigned int, alert_rule> rules;
+    };
+    static_assert(serializable<alert_rules_response>);
+
     struct alert_stencil_object {
         const alert_rule* rule;
         const log_resource* resource;
@@ -203,6 +199,40 @@ export namespace common {
 
         static constexpr auto root = "log";
     };
+
+    enum class notification_provider_option_type {
+        STRING, NUMBER, BOOLEAN, ENUM, STENCIL, OBJECT, ARRAY
+    };
+
+    struct notification_provider_option {
+        std::string id;
+        std::string name;
+        std::string description;
+        notification_provider_option_type type;
+        std::optional<glz::json_t> default_value;
+        std::optional<std::set<std::string>> allowed_values;
+        std::optional<double> min_value;
+        std::optional<double> max_value;
+    };
+    static_assert(serializable<notification_provider_option>);
+
+    struct notification_provider_info {
+        std::string name;
+        std::string description;
+        std::string icon;
+        std::vector<notification_provider_option> options;
+    };
+    static_assert(serializable<notification_provider_info>);
+
+    struct shared_settings {
+        struct {
+            std::optional<std::string> country_url;
+            std::optional<std::string> asn_url;
+            std::optional<std::string> city_url;
+        } geoip;
+        std::map<std::string, notification_provider_info> notification_providers;
+    };
+    static_assert(serializable<shared_settings>);
 }
 
 export namespace glz {

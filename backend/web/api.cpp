@@ -172,6 +172,15 @@ std::expected<void, std::string> check_cleanup_rule(const common::cleanup_rule& 
     }
     return {};
 }
+std::expected<void, std::string> check_alert_rule(const common::alert_rule& rule) {
+    if(rule.name.empty()) {
+        return std::unexpected{"Field \"name\" cannot be empty"};
+    }
+    if(rule.notification_provider.empty()) {
+        return std::unexpected{"Field \"notification_provider\" cannot be empty"};
+    }
+    return {};
+}
 
 void Server::setup_api_routes() {
     router.get("/api/v1/healthz", [](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
@@ -308,7 +317,6 @@ void Server::setup_api_routes() {
         });
         return Pistache::Rest::Route::Result::Ok;
     });
-
     auto create_or_update_cleanup_rule = [this]<bool update>(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         bool accepts_beve = accepts(request, mime::application_beve);
 
@@ -410,7 +418,6 @@ void Server::setup_api_routes() {
         });
         return Pistache::Rest::Route::Result::Ok;
     };
-
     router.put("/api/v1/settings/cleanup_rules", [create_or_update_cleanup_rule](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         return create_or_update_cleanup_rule.template operator()<false>(request, std::move(response));
     });
@@ -427,6 +434,149 @@ void Server::setup_api_routes() {
                     response.send(Pistache::Http::Code::Not_Found, std::format("Cleanup rule with id {} not found", id));
                     return;
                 }
+                txn.commit();
+                response.send(Pistache::Http::Code::No_Content);
+            } catch(const std::exception& e) {
+                response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
+            }
+        });
+        return Pistache::Rest::Route::Result::Ok;
+    });
+
+
+    router.get("/api/v1/settings/alert_rules", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        bool accepts_beve = accepts(request, mime::application_beve);
+        db.queue_work([this, accepts_beve, response = std::move(response)](pqxx::connection& conn) mutable {
+            pqxx::nontransaction txn{conn};
+
+            common::alert_rules_response res{db.get_alert_rules(txn)};
+            send_response(response, accepts_beve, res);
+        });
+        return Pistache::Rest::Route::Result::Ok;
+    });
+    auto create_or_update_alert_rule = [this]<bool update>(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        bool accepts_beve = accepts(request, mime::application_beve);
+
+        std::expected<common::alert_rule, glz::error_ctx> rule;
+        if(isContentType(request, mime::application_json)) {
+            rule = glz::read_json<common::alert_rule>(request.body());
+        } else if(isContentType(request, mime::application_beve)) {
+            rule = glz::read_beve<common::alert_rule>(request.body());
+        } else {
+            response.send(Pistache::Http::Code::Unsupported_Media_Type, "Unsupported media type");
+            return Pistache::Rest::Route::Result::Ok;
+        }
+        if(!rule) {
+            response.send(Pistache::Http::Code::Bad_Request, std::format("Failed to parse request body: {}", glz::format_error(rule.error(), request.body())));
+            return Pistache::Rest::Route::Result::Ok;
+        }
+
+        if(auto res = check_alert_rule(*rule); !res) {
+            response.send(Pistache::Http::Code::Bad_Request, std::format("Invalid request body: {}", res.error()));
+            return Pistache::Rest::Route::Result::Ok;
+        }
+
+        unsigned int id = 0;
+        if constexpr (update) {
+            id = request.param(":id").as<unsigned int>();
+            if(id != rule->id) {
+                response.send(Pistache::Http::Code::Bad_Request, "ID in URL and body do not match");
+                return Pistache::Rest::Route::Result::Ok;
+            }
+        }
+
+        db.queue_work([this, accepts_beve, id, rule = std::move(*rule), response = std::move(response)](pqxx::connection& conn) mutable {
+            pqxx::work txn{conn};
+
+            std::vector<unsigned int> filter_resources{rule.filters.resources.values.begin(), rule.filters.resources.values.end()};
+            std::vector<std::string> filter_scopes{rule.filters.scopes.values.begin(), rule.filters.scopes.values.end()};
+            std::vector<common::log_severity> filter_severities{rule.filters.severities.values.begin(), rule.filters.severities.values.end()};
+            std::vector<std::string> filter_attributes{rule.filters.attributes.values.begin(), rule.filters.attributes.values.end()};
+            std::string filter_attribute_values = glz::write_json(rule.filters.attribute_values.values).value_or("null");
+
+            try {
+                pqxx::result alert_rule;
+                if constexpr (update) {
+                    alert_rule = txn.exec(pqxx::prepped{"update_alert_rule"},
+                        pqxx::params{
+                            rule.name, rule.description, rule.enabled,
+                            rule.notification_provider, glz::write_json(rule.notification_options).value_or("{}"),
+                            filter_resources, rule.filters.resources.type,
+                            filter_scopes, rule.filters.scopes.type,
+                            filter_severities, rule.filters.severities.type,
+                            filter_attributes, rule.filters.attributes.type,
+                            filter_attribute_values, rule.filters.attribute_values.type,
+                            id
+                        }
+                    );
+                } else {
+                    alert_rule = txn.exec(pqxx::prepped{"insert_alert_rule"},
+                        pqxx::params{
+                            rule.name, rule.description, rule.enabled,
+                            rule.notification_provider, glz::write_json(rule.notification_options).value_or("{}"),
+                            filter_resources, rule.filters.resources.type,
+                            filter_scopes, rule.filters.scopes.type,
+                            filter_severities, rule.filters.severities.type,
+                            filter_attributes, rule.filters.attributes.type,
+                            filter_attribute_values, rule.filters.attribute_values.type
+                        }
+                    );
+                }
+                txn.notify("alert_rules");
+                txn.commit();
+
+                if(alert_rule.empty()) {
+                    response.send(Pistache::Http::Code::Internal_Server_Error, "Failed to insert/update alert rule");
+                    return;
+                }
+
+                auto row = alert_rule[0];
+                rule.id = row["id"].as<unsigned int>();
+                rule.created_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::duration<double>{row["created_at_s"].as<double>()})};
+                rule.updated_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::duration<double>{row["updated_at_s"].as<double>()})};
+                if constexpr (update) {
+                    rule.last_alert = row["last_alert_s"].as<std::optional<double>>().transform([](const auto& d) {
+                        return std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
+                            std::chrono::duration<double>{d})};
+                    });
+                    rule.last_alert_successful = row["last_alert_successful"].as<std::optional<bool>>();
+                    rule.last_alert_message = row["last_alert_message"].as<std::optional<std::string>>();
+                } else {
+                    rule.last_alert = std::nullopt;
+                    rule.last_alert_successful = std::nullopt;
+                    rule.last_alert_message = std::nullopt;
+                }
+
+                send_response(response, accepts_beve, rule);
+            } catch(const pqxx::unique_violation& e) {
+                response.send(Pistache::Http::Code::Conflict, std::format("Alert rule with name \"{}\" already exists", rule.name));
+                return;
+            } catch(const std::exception& e) {
+                response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
+                return;
+            }
+        });
+        return Pistache::Rest::Route::Result::Ok;
+    };
+    router.put("/api/v1/settings/alert_rules", [create_or_update_alert_rule](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        return create_or_update_alert_rule.template operator()<false>(request, std::move(response));
+    });
+    router.patch("/api/v1/settings/alert_rules/:id", [create_or_update_alert_rule](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        return create_or_update_alert_rule.template operator()<true>(request, std::move(response));
+    });
+    router.del("/api/v1/settings/alert_rules/:id", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        auto id = request.param(":id").as<unsigned int>();
+        db.queue_work([this, id, response = std::move(response)](pqxx::connection& conn) mutable {
+            pqxx::work txn{conn};
+            try {
+                auto result = txn.exec(pqxx::prepped{"delete_alert_rule"}, id);
+                if(result.affected_rows() == 0) {
+                    response.send(Pistache::Http::Code::Not_Found, std::format("Alert rule with id {} not found", id));
+                    return;
+                }
+                txn.notify("alert_rules");
                 txn.commit();
                 response.send(Pistache::Http::Code::No_Content);
             } catch(const std::exception& e) {

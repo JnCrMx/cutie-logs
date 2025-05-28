@@ -73,46 +73,55 @@ auto webhook_factory(const glz::json_t& default_template) -> registry::func {
     };
 }
 
-register_provider reg("discord", webhook_factory(
-    glz::json_t::object_t{
-        {"content", glz::json_t::null_t{}},
-        {"embeds", glz::json_t::array_t{
-            glz::json_t::object_t{
-                {"title", "Alert: {.severity}"},
-                {"description", "{.body} ({.attributes})"},
-                {"timestamp", "{.timestamp | from_timestamp | iso_8601}"},
-                {"color", "{.severity | severity_color}!json"},
-                {"author", glz::json_t::object_t{
-                    {"name", "{| resource_name}"}
-                }},
-                {"footer", glz::json_t::object_t{
-                    {"text", "{rule.name} • {rule.description}"}
-                }},
-                {"fields", glz::json_t::array_t{
-                    glz::json_t::object_t{
-                        {"name", "Timestamp"},
-                        {"value", "{.timestamp | from_timestamp | iso_date_time}"},
-                        {"inline", true}
-                    },
-                    glz::json_t::object_t{
-                        {"name", "Resource"},
-                        {"value", "{| resource_name}"},
-                        {"inline", true}
-                    },
-                    glz::json_t::object_t{
-                        {"name", "Scope"},
-                        {"value", "{.scope}"},
-                        {"inline", true}
-                    },
-                    glz::json_t::object_t{
-                        {"name", "Severity"},
-                        {"value", "{.severity}"},
-                        {"inline", true}
-                    },
-                }}
-            }
-        }}
+const auto discord_template = glz::json_t::object_t{
+    {"content", glz::json_t::null_t{}},
+    {"embeds", glz::json_t::array_t{
+        glz::json_t::object_t{
+            {"title", "Alert: {.severity}"},
+            {"description", "{.body} ({.attributes})"},
+            {"timestamp", "{.timestamp | from_timestamp | iso_8601}"},
+            {"color", "{.severity | severity_color}!json"},
+            {"author", glz::json_t::object_t{
+                {"name", "{| resource_name}"}
+            }},
+            {"footer", glz::json_t::object_t{
+                {"text", "{rule.name} • {rule.description}"}
+            }},
+            {"fields", glz::json_t::array_t{
+                glz::json_t::object_t{
+                    {"name", "Timestamp"},
+                    {"value", "{.timestamp | from_timestamp | iso_date_time}"},
+                    {"inline", true}
+                },
+                glz::json_t::object_t{
+                    {"name", "Resource"},
+                    {"value", "{| resource_name}"},
+                    {"inline", true}
+                },
+                glz::json_t::object_t{
+                    {"name", "Scope"},
+                    {"value", "{.scope}"},
+                    {"inline", true}
+                },
+                glz::json_t::object_t{
+                    {"name", "Severity"},
+                    {"value", "{.severity}"},
+                    {"inline", true}
+                },
+            }}
+        }
+    }}
+};
+const common::notification_provider_info discord_info{
+    .name = "Discord Webhook",
+    .description = "Send notifications to a Discord channel via webhook.",
+    .icon = "discord",
+    .options = {
+        {"url", "URL", "Webhook URL from Discord", common::notification_provider_option_type::STRING},
+        {"template", "Template", "JSON template for the message payload", common::notification_provider_option_type::OBJECT, discord_template},
+        {"overrides", "Overrides", "List of key-value pairs to override template values", common::notification_provider_option_type::ARRAY, glz::json_t::array_t{}}
     }
-));
+};
+register_provider discord_reg("discord", webhook_factory(discord_template), discord_info);
 
 }
