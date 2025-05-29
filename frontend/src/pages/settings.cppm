@@ -181,12 +181,10 @@ export class settings : public page {
                     static auto render_provider_options = [](const common::notification_provider_info& info, std::optional<common::alert_rule> rule) -> Webxx::fragment {
                         return fragment{each(info.options, [&](const common::notification_provider_option& option) {
                             fragment input_field = [&]() -> fragment {
-                                std::optional<glz::json_t> value = rule.and_then([&](const auto& r) -> std::optional<glz::json_t> {
-                                    if(r.notification_options.contains(option.id)) {
-                                        return r.notification_options.at(option.id);
-                                    }
-                                    return option.default_value;
-                                });
+                                std::optional<glz::json_t> value = option.default_value;
+                                if(rule && rule->notification_options.contains(option.id)) {
+                                    value = rule->notification_options[option.id];
+                                }
                                 switch(option.type) {
                                     case common::notification_provider_option_type::STRING:
                                         return fragment{input{{_id{std::format("dialog_add_rule_notification_option_{}", option.id)},
