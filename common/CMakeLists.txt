@@ -1,10 +1,11 @@
 add_library(common STATIC)
 target_sources(common PUBLIC FILE_SET CXX_MODULES FILES
     common.cppm
-    stencil.cppm
-    stencil_functions.cppm
-    structs.cppm
+    glaze.cppm
     mmdb.cppm
+    stencil_functions.cppm
+    stencil.cppm
+    structs.cppm
     utils.cppm
 )
 target_compile_features(common PUBLIC cxx_std_23)

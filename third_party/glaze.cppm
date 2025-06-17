@@ -41,4 +41,15 @@ export namespace glz {
     using glz::string_literal;
 
     using glz::stencil;
+
+    template <auto Opts, class T, class Buffer> requires read_supported<T, Opts.format>
+    [[nodiscard]] inline expected<T, error_ctx> read(Buffer&& buffer)
+    {
+        T value{};
+        const auto pe = read<Opts>(value, std::forward<Buffer>(buffer));
+        if (pe) [[unlikely]] {
+            return unexpected(pe);
+        }
+        return value;
+    }
 }

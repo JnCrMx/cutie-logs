@@ -3,10 +3,11 @@ module;
 
 export module common;
 
-export import :structs;
-export import :stencil;
-export import :stencil_functions;
+export import :glaze;
 export import :mmdb;
+export import :stencil_functions;
+export import :stencil;
+export import :structs;
 export import :utils;
 
 export namespace common {

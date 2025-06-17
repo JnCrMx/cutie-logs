@@ -61,16 +61,16 @@ auto refresh() -> webpp::coroutine<void> {
     auto resources_future = webpp::coro::fetch("/api/v1/logs/resources", utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes));
     auto example_future = webpp::coro::fetch("/api/v1/logs?limit=1&attributes=*", utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes));
 
-    attributes = glz::read_beve<common::logs_attributes_response>(co_await attributes_future).value_or(common::logs_attributes_response{});
-    scopes = glz::read_beve<common::logs_scopes_response>(co_await scopes_future).value_or(common::logs_scopes_response{});
-    resources = glz::read_beve<common::logs_resources_response>(co_await resources_future).value_or(common::logs_resources_response{});
+    attributes = glz::read<common::beve_opts, common::logs_attributes_response>(co_await attributes_future).value_or(common::logs_attributes_response{});
+    scopes = glz::read<common::beve_opts, common::logs_scopes_response>(co_await scopes_future).value_or(common::logs_scopes_response{});
+    resources = glz::read<common::beve_opts, common::logs_resources_response>(co_await resources_future).value_or(common::logs_resources_response{});
 
     auto resource_modals = Webxx::each(resources->resources, [](auto& e){
         return components::resource_modal{std::get<0>(e), std::get<0>(std::get<1>(e))};
     });
     webpp::get_element_by_id("modals-resources")->inner_html(Webxx::render(resource_modals));
 
-    auto example = glz::read_beve<common::logs_response>(co_await example_future).value_or(common::logs_response{});
+    auto example = glz::read<common::beve_opts, common::logs_response>(co_await example_future).value_or(common::logs_response{});
     if(!example.logs.empty()) {
         example_entry = example.logs.front();
     } else {
@@ -244,7 +244,7 @@ Webxx::dv profile_selector() {
             ctx.on_click(button{{_class{"btn btn-square"}}, assets::icons::export_}, [](webpp::event e) {
                 std::unordered_map<std::string, std::unordered_map<std::string, std::string>> data{};
                 data[profile.get_current_profile()] = profile.get_profile_data();
-                std::string json = glz::write_json(data).value_or("error");
+                std::string json = glz::write<glz::opts{.format=glz::JSON, .prettify=true}>(data).value_or("error");
 
                 webpp::eval(R"(
                     let a = document.createElement('a');
@@ -499,7 +499,7 @@ auto load_mmdb(common::mmdb& target, std::string_view url) -> webpp::coroutine<v
 auto load_settings() -> webpp::coroutine<void> {
     auto data = co_await webpp::coro::fetch("/api/v1/settings", utils::fetch_options)
         .then(std::mem_fn(&webpp::response::co_bytes));
-    settings = glz::read_beve<common::shared_settings>(data).value_or(common::shared_settings{});
+    settings = glz::read<common::beve_opts, common::shared_settings>(data).value_or(common::shared_settings{});
 
     if(settings.geoip.country_url) {
         webpp::coro::submit(load_mmdb(geoip_country, *settings.geoip.country_url));

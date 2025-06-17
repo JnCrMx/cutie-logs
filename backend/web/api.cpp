@@ -61,7 +61,7 @@ bool isContentType(const Pistache::Http::Request& req, Pistache::Http::Mime::Med
 
 template<typename T>
 void send_response(Pistache::Http::ResponseWriter& response, bool beve, const T& data) {
-    auto res_data = beve ? *glz::write_beve(data) : *glz::write_json(data);
+    auto res_data = beve ? *glz::write<common::beve_opts>(data) : *glz::write<common::json_opts>(data);
     response.send(Pistache::Http::Code::Ok, res_data.data(), res_data.size(),
         beve ? mime::application_beve : mime::application_json);
 }
@@ -322,9 +322,9 @@ void Server::setup_api_routes() {
 
         std::expected<common::cleanup_rule, glz::error_ctx> rule;
         if(isContentType(request, mime::application_json)) {
-            rule = glz::read_json<common::cleanup_rule>(request.body());
+            rule = glz::read<common::json_opts, common::cleanup_rule>(request.body());
         } else if(isContentType(request, mime::application_beve)) {
-            rule = glz::read_beve<common::cleanup_rule>(request.body());
+            rule = glz::read<common::beve_opts, common::cleanup_rule>(request.body());
         } else {
             response.send(Pistache::Http::Code::Unsupported_Media_Type, "Unsupported media type");
             return Pistache::Rest::Route::Result::Ok;
@@ -459,9 +459,9 @@ void Server::setup_api_routes() {
 
         std::expected<common::alert_rule, glz::error_ctx> rule;
         if(isContentType(request, mime::application_json)) {
-            rule = glz::read_json<common::alert_rule>(request.body());
+            rule = glz::read<common::json_opts, common::alert_rule>(request.body());
         } else if(isContentType(request, mime::application_beve)) {
-            rule = glz::read_beve<common::alert_rule>(request.body());
+            rule = glz::read<common::beve_opts, common::alert_rule>(request.body());
         } else {
             response.send(Pistache::Http::Code::Unsupported_Media_Type, "Unsupported media type");
             return Pistache::Rest::Route::Result::Ok;

@@ -41,8 +41,8 @@ export class settings : public page {
             auto alert_rules_future = webpp::coro::fetch("/api/v1/settings/alert_rules", utils::fetch_options)
                 .then(std::mem_fn(&webpp::response::co_bytes));
 
-            cleanup_rules = glz::read_beve<common::cleanup_rules_response>(co_await cleanup_rules_future).value_or(common::cleanup_rules_response{});
-            alert_rules = glz::read_beve<common::alert_rules_response>(co_await alert_rules_future).value_or(common::alert_rules_response{});
+            cleanup_rules = glz::read<common::beve_opts, common::cleanup_rules_response>(co_await cleanup_rules_future).value_or(common::cleanup_rules_response{});
+            alert_rules = glz::read<common::beve_opts, common::alert_rules_response>(co_await alert_rules_future).value_or(common::alert_rules_response{});
 
             webpp::get_element_by_id("settings_cleanup_rules")->inner_html(Webxx::render(render_cleanup_rules()));
             webpp::get_element_by_id("settings_alert_rules")->inner_html(Webxx::render(render_alert_rules()));
@@ -118,7 +118,7 @@ export class settings : public page {
                         new_rule.execution_interval = components::get_duration("dialog_add_rule_execution_interval");
                         new_rule.filter_minimum_age = components::get_duration("dialog_add_rule_minimum_age");
 
-                        std::string beve = glz::write_beve(new_rule).value_or("null");
+                        std::string beve = glz::write<common::beve_opts>(new_rule).value_or("null");
 
                         webpp::js_object request = webpp::js_object::create();
                         request["headers"] = utils::fetch_headers;
@@ -138,7 +138,7 @@ export class settings : public page {
                             error(res.status_text(), message);
                             co_return;
                         }
-                        auto new_rule_expected = glz::read_beve<common::cleanup_rule>(co_await res.co_bytes());
+                        auto new_rule_expected = glz::read<common::beve_opts, common::cleanup_rule>(co_await res.co_bytes());
                         if(!new_rule_expected) {
                             error("Failed to parse rule", glz::format_error(new_rule_expected.error()));
                             co_return;
@@ -321,7 +321,7 @@ export class settings : public page {
                             }
                         }
 
-                        std::string beve = glz::write_beve(new_rule).value_or("null");
+                        std::string beve = glz::write<common::beve_opts>(new_rule).value_or("null");
 
                         webpp::js_object request = webpp::js_object::create();
                         request["headers"] = utils::fetch_headers;
@@ -341,7 +341,7 @@ export class settings : public page {
                             error(res.status_text(), message);
                             co_return;
                         }
-                        auto new_rule_expected = glz::read_beve<common::alert_rule>(co_await res.co_bytes());
+                        auto new_rule_expected = glz::read<common::beve_opts, common::alert_rule>(co_await res.co_bytes());
                         if(!new_rule_expected) {
                             error("Failed to parse rule", glz::format_error(new_rule_expected.error()));
                             co_return;
@@ -405,7 +405,7 @@ export class settings : public page {
                 webpp::js_object request = webpp::js_object::create();
                 request["headers"] = utils::fetch_headers;
                 request["method"] = "PATCH";
-                request["body"] = webpp::uint8array::create(glz::write_beve(rule).value_or("null"));
+                request["body"] = webpp::uint8array::create(glz::write<common::beve_opts>(rule).value_or("null"));
 
                 webpp::response res = co_await webpp::coro::fetch(std::format("/api/v1/settings/cleanup_rules/{}", rule.id), request);
                 if(!res.ok()) {
@@ -413,7 +413,7 @@ export class settings : public page {
                     components::show_alert("settings_cleanup_rules_error", res.status_text(), message);
                     co_return;
                 }
-                auto new_rule_expected = glz::read_beve<common::cleanup_rule>(co_await res.co_bytes());
+                auto new_rule_expected = glz::read<common::beve_opts, common::cleanup_rule>(co_await res.co_bytes());
                 if(!new_rule_expected) {
                     components::show_alert("settings_cleanup_rules_error", "Failed to parse rule", glz::format_error(new_rule_expected.error()));
                     co_return;
@@ -445,7 +445,7 @@ export class settings : public page {
                 webpp::js_object request = webpp::js_object::create();
                 request["headers"] = utils::fetch_headers;
                 request["method"] = "PATCH";
-                request["body"] = webpp::uint8array::create(glz::write_beve(rule).value_or("null"));
+                request["body"] = webpp::uint8array::create(glz::write<common::beve_opts>(rule).value_or("null"));
 
                 webpp::response res = co_await webpp::coro::fetch(std::format("/api/v1/settings/alert_rules/{}", rule.id), request);
                 if(!res.ok()) {
@@ -453,7 +453,7 @@ export class settings : public page {
                     components::show_alert("settings_alert_rules_error", res.status_text(), message);
                     co_return;
                 }
-                auto new_rule_expected = glz::read_beve<common::alert_rule>(co_await res.co_bytes());
+                auto new_rule_expected = glz::read<common::beve_opts, common::alert_rule>(co_await res.co_bytes());
                 if(!new_rule_expected) {
                     components::show_alert("settings_alert_rules_error", "Failed to parse rule", glz::format_error(new_rule_expected.error()));
                     co_return;
