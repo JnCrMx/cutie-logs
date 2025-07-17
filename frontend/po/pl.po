@@ -1,0 +1,448 @@
+# Polish translations for frontend package.
+# Copyright (C) 2025 THE frontend'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the frontend package.
+# Cyndi <cyndi@jcm.re>, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: frontend \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2017-07-14 02:40+0000\n"
+"PO-Revision-Date: 2025-07-16 18:22+0200\n"
+"Last-Translator: Cyndi <cyndi@jcm.re>\n"
+"Language-Team: Polish <translation-team-pl@jcm.re>\n"
+"Language: pl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 "
+"|| n%100>=20) ? 1 : 2);\n"
+
+msgid "Alert Rule"
+msgstr ""
+
+msgid "Cleanup Rule"
+msgstr ""
+
+msgid "Expected an array."
+msgstr ""
+
+msgid "Failed to parse rule"
+msgstr ""
+
+msgid "Never run"
+msgstr ""
+
+msgid "Never triggered"
+msgstr ""
+
+msgid "Rule name must be non-empty."
+msgstr ""
+
+msgid "Rule name must be unique."
+msgstr ""
+
+msgid "The notification provider option type is not supported yet."
+msgstr ""
+
+msgid "Unknown option type"
+msgstr ""
+
+#: src/components/dialog_add.cppm:102
+msgid "Save {}"
+msgstr ""
+
+#: src/components/dialog_add.cppm:104 src/components/dialog_add.cppm:59
+msgid "Add {}"
+msgstr ""
+
+#: src/components/dialog_add.cppm:57
+msgid "Edit {} \"{}\" ({})"
+msgstr ""
+
+#: src/components/dialog_add.cppm:64
+msgid "{} name"
+msgstr ""
+
+#: src/components/dialog_add.cppm:65 src/components/dialog_delete.cppm:36
+#: src/mainpage.cpp:292 src/pages/table.cppm:348
+msgid "Name"
+msgstr ""
+
+#: src/components/dialog_add.cppm:83
+msgid "Name must be valid."
+msgstr ""
+
+#: src/components/dialog_add.cppm:86
+msgid "{} description"
+msgstr ""
+
+#: src/components/dialog_add.cppm:87
+msgid "Description"
+msgstr ""
+
+#: src/components/dialog_delete.cppm:30
+msgid "Delete {} \"{}\" ({})"
+msgstr ""
+
+#: src/components/dialog_delete.cppm:35
+msgid "Please type the name of the {} to confirm deletion."
+msgstr ""
+
+#: src/components/dialog_delete.cppm:49
+msgid "Name must match."
+msgstr ""
+
+#: src/components/dialog_delete.cppm:53
+msgid "Delete {}"
+msgstr ""
+
+#: src/components/duration_picker.cppm:18
+msgid "days"
+msgstr ""
+
+#: src/components/duration_picker.cppm:18
+msgid "hours"
+msgstr ""
+
+#: src/components/duration_picker.cppm:18
+msgid "minutes"
+msgstr ""
+
+#: src/components/duration_picker.cppm:18
+msgid "seconds"
+msgstr ""
+
+#: src/components/resource_modal.cppm:27 src/pages/logs.cppm:158
+#: src/pages/table.cppm:289
+msgid "Resource #{}"
+msgstr ""
+
+#: src/components/resource_modal.cppm:92
+msgid "Attribute"
+msgstr ""
+
+#: src/components/resource_modal.cppm:93
+msgid "Value"
+msgstr ""
+
+#: src/components/selection.cppm:61
+msgid "Search..."
+msgstr ""
+
+#: src/components/theme_button.cppm:27
+msgid "Themes"
+msgstr ""
+
+#: src/mainpage.cpp:110
+msgid "Total Log Entries"
+msgstr ""
+
+#: src/mainpage.cpp:114
+msgid "Total Attributes"
+msgstr ""
+
+#: src/mainpage.cpp:118
+msgid "Total Resources"
+msgstr ""
+
+#: src/mainpage.cpp:122
+msgid "Total Scopes"
+msgstr ""
+
+#: src/mainpage.cpp:199
+msgid "Create New Profile..."
+msgstr ""
+
+#: src/mainpage.cpp:200
+msgid "Import Profile..."
+msgstr ""
+
+#: src/mainpage.cpp:244 src/mainpage.cpp:337 src/mainpage.cpp:356
+msgid "Rename profile"
+msgstr ""
+
+#: src/mainpage.cpp:246
+msgid "Rename profile \"{}\""
+msgstr ""
+
+#: src/mainpage.cpp:252
+msgid "Export profile"
+msgstr ""
+
+#: src/mainpage.cpp:269 src/mainpage.cpp:385 src/mainpage.cpp:404
+msgid "Delete profile"
+msgstr ""
+
+#: src/mainpage.cpp:271
+msgid "Delete profile \"{}\""
+msgstr ""
+
+#: src/mainpage.cpp:289 src/mainpage.cpp:308
+msgid "Add profile"
+msgstr ""
+
+#: src/mainpage.cpp:291
+msgid "Profile name"
+msgstr ""
+
+#: src/mainpage.cpp:305 src/mainpage.cpp:353
+msgid "Profile name must be non-empty and unique."
+msgstr ""
+
+#: src/mainpage.cpp:339
+msgid "New name"
+msgstr ""
+
+#: src/mainpage.cpp:387
+msgid "Please type the name of the profile to confirm deletion."
+msgstr ""
+
+#: src/mainpage.cpp:401
+msgid "Profile name must match."
+msgstr ""
+
+#: src/mainpage.cpp:432
+msgid "version {}"
+msgstr ""
+
+#: src/mainpage.cpp:52
+msgid "Text View"
+msgstr ""
+
+#: src/mainpage.cpp:53
+msgid "Table View"
+msgstr ""
+
+#. page_tuple{"analysis", "Analysis", assets::icons::analysis, &logs_page},
+#: src/mainpage.cpp:55
+msgid "Settings"
+msgstr ""
+
+#: src/pages/logs.cppm:146 src/pages/logs.cppm:211 src/pages/table.cppm:277
+#: src/pages/table.cppm:441
+msgid "Select Attributes"
+msgstr ""
+
+#: src/pages/logs.cppm:154 src/pages/logs.cppm:213 src/pages/table.cppm:285
+#: src/pages/table.cppm:443
+msgid "Filter Scopes"
+msgstr ""
+
+#: src/pages/logs.cppm:169 src/pages/logs.cppm:212 src/pages/table.cppm:300
+#: src/pages/table.cppm:442
+msgid "Filter Resources"
+msgstr ""
+
+#: src/pages/logs.cppm:221 src/pages/table.cppm:449
+msgid "Query"
+msgstr ""
+
+#: src/pages/logs.cppm:230
+msgid "Download"
+msgstr ""
+
+#: src/pages/logs.cppm:234
+msgid "100 entries"
+msgstr ""
+
+#: src/pages/logs.cppm:235
+msgid "1k entries"
+msgstr ""
+
+#: src/pages/logs.cppm:236
+msgid "10k entries"
+msgstr ""
+
+#: src/pages/logs.cppm:237
+msgid "100k entries"
+msgstr ""
+
+#: src/pages/logs.cppm:238
+msgid "1M entries"
+msgstr ""
+
+#: src/pages/logs.cppm:28
+msgid "Display Options"
+msgstr ""
+
+#: src/pages/logs.cppm:29
+msgid "Log line stencil. Use {{...}} to insert values."
+msgstr ""
+
+#: src/pages/logs.cppm:46 src/pages/table.cppm:380
+msgid "Stencil invalid: \"{}\""
+msgstr ""
+
+#: src/pages/logs.cppm:56 src/pages/table.cppm:392
+msgid "Preview"
+msgstr ""
+
+#: src/pages/settings.cppm:104 src/pages/settings.cppm:270
+msgid "Conditions"
+msgstr ""
+
+#: src/pages/settings.cppm:106 src/pages/settings.cppm:107
+msgid "Minimum age"
+msgstr ""
+
+#: src/pages/settings.cppm:108
+msgid "Minimum age must be a positive number."
+msgstr ""
+
+#: src/pages/settings.cppm:220 src/pages/settings.cppm:87
+msgid "Enabled"
+msgstr ""
+
+#: src/pages/settings.cppm:229
+msgid "Notification Provider"
+msgstr ""
+
+#: src/pages/settings.cppm:231
+msgid "Select a provider"
+msgstr ""
+
+#: src/pages/settings.cppm:258
+msgid "Notification Settings"
+msgstr ""
+
+#: src/pages/settings.cppm:260
+msgid "Please select a notification provider first."
+msgstr ""
+
+#: src/pages/settings.cppm:298 src/pages/settings.cppm:302
+#: src/pages/settings.cppm:311 src/pages/settings.cppm:315
+msgid "Invalid JSON for option {}"
+msgstr ""
+
+#: src/pages/settings.cppm:569
+msgid "Last run: {}"
+msgstr ""
+
+#: src/pages/settings.cppm:571
+msgid "Delete logs older than {}"
+msgstr ""
+
+#: src/pages/settings.cppm:576 src/pages/settings.cppm:615
+msgid "Enable/Disable rule"
+msgstr ""
+
+#: src/pages/settings.cppm:579
+msgid "Execution interval: {}"
+msgstr ""
+
+#: src/pages/settings.cppm:582 src/pages/settings.cppm:621
+msgid "No description"
+msgstr ""
+
+#: src/pages/settings.cppm:586 src/pages/settings.cppm:625
+msgid "Edit rule"
+msgstr ""
+
+#: src/pages/settings.cppm:589 src/pages/settings.cppm:628
+msgid "Delete rule"
+msgstr ""
+
+#: src/pages/settings.cppm:608
+msgid "Last alert: {}"
+msgstr ""
+
+#: src/pages/settings.cppm:618
+msgid "Provider: {}"
+msgstr ""
+
+#: src/pages/settings.cppm:642
+msgid "Add cleanup rule"
+msgstr ""
+
+#: src/pages/settings.cppm:657
+msgid "No cleanup rules found"
+msgstr ""
+
+#: src/pages/settings.cppm:658 src/pages/settings.cppm:689
+msgid "You can add a new rule by clicking the button above."
+msgstr ""
+
+#: src/pages/settings.cppm:673
+msgid "Add alert rule"
+msgstr ""
+
+#: src/pages/settings.cppm:688
+msgid "No alert rules found"
+msgstr ""
+
+#: src/pages/settings.cppm:703
+msgid "Cleanup rules"
+msgstr ""
+
+#: src/pages/settings.cppm:706
+msgid "Alert rules"
+msgstr ""
+
+#: src/pages/settings.cppm:93
+msgid "Just here for equal spacing."
+msgstr ""
+
+#: src/pages/settings.cppm:96 src/pages/settings.cppm:97
+msgid "Execution interval"
+msgstr ""
+
+#: src/pages/settings.cppm:98
+msgid "Execution interval must be a positive number."
+msgstr ""
+
+#: src/pages/table.cppm:168
+msgid "error: {}"
+msgstr ""
+
+#: src/pages/table.cppm:174
+msgid "missing"
+msgstr ""
+
+#: src/pages/table.cppm:203
+msgid ":T:Timestamp"
+msgstr ""
+
+#: src/pages/table.cppm:205
+msgid ":R:Resource"
+msgstr ""
+
+#: src/pages/table.cppm:207
+msgid ":S:Scope"
+msgstr ""
+
+#: src/pages/table.cppm:209
+msgid ":V:Severity"
+msgstr ""
+
+#: src/pages/table.cppm:229
+msgid ":B:Body"
+msgstr ""
+
+#: src/pages/table.cppm:345 src/pages/table.cppm:465
+msgid "Add custom column"
+msgstr ""
+
+#: src/pages/table.cppm:347
+msgid "Column name"
+msgstr ""
+
+#: src/pages/table.cppm:361
+msgid "Column name must be non-empty and unique."
+msgstr ""
+
+#: src/pages/table.cppm:363
+msgid "Stencil"
+msgstr ""
+
+#: src/pages/table.cppm:364
+msgid "Column stencil. Use {{...}} to insert values."
+msgstr ""
+
+#: src/pages/table.cppm:396
+msgid "Add column"
+msgstr ""
+
+#: src/pages/table.cppm:457
+msgid "Reset table"
+msgstr ""

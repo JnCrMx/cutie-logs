@@ -3,10 +3,13 @@ export module frontend.components:dialog_add;
 import std;
 import webxx;
 import webpp;
+import i18n;
 import frontend.assets;
 
 import :alert;
 import :utils;
+
+using namespace mfk::i18n::literals;
 
 namespace frontend::components {
 
@@ -50,14 +53,16 @@ export Webxx::dialog dialog_add(event_context& ctx, const std::string& id, dialo
                 button{{_class{"btn btn-sm btn-circle btn-ghost absolute right-2 top-2"}}, "x"}
             },
             h3{{_class{"text-lg font-bold"}}, params->edit ?
-                std::format("Edit {} \"{}\" ({})", params->what, params->object_name, params->object_id) :
-                std::format("Add {}", params->what)
+                // note for translator: the scheme is "Edit [what] "[name]" ([id])"; example: "Edit cleanup rule "My Rule" (123)"
+                "Edit {} \"{}\" ({})"_(params->what, params->object_name, params->object_id) :
+                // note for translator: the scheme is "Add [what]"; example: "Add cleanup rule"
+                "Add {}"_(params->what)
             },
             fieldset{{_class{"fieldset w-full"}},
                 components::alert(std::format("{}_error", id)),
 
-                label{{_class{"fieldset-label"}}, std::format("{} name", params->what)},
-                ctx.on_input(input{{_id{std::format("{}_name", id)}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"}, _value{params->object_name}}},
+                label{{_class{"fieldset-label"}}, "{} name"_(params->what)},
+                ctx.on_input(input{{_id{std::format("{}_name", id)}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"_}, _value{params->object_name}}},
                     [id, params](webpp::event e){
                         auto name = *e.target().as<webpp::element>()->get_property<std::string>("value");
                         auto error = params->name_validator(*params, name);
@@ -75,10 +80,11 @@ export Webxx::dialog dialog_add(event_context& ctx, const std::string& id, dialo
                         }
                     }
                 ),
-                dv{{_id{std::format("{}_name_validator", id)}, _class{"validator-hint"}}, "Name must be valid."},
+                dv{{_id{std::format("{}_name_validator", id)}, _class{"validator-hint"}}, "Name must be valid."_},
 
-                label{{_class{"fieldset-label"}}, std::format("{} description", params->what)},
-                textarea{{_id{std::format("{}_description", id)}, _class{"textarea w-full"}, _placeholder{"Description"}}, params->object_description},
+                // note for translator: the scheme is "[what] description"; example: "Cleanup rule description"
+                label{{_class{"fieldset-label"}}, "{} description"_(params->what)},
+                textarea{{_id{std::format("{}_description", id)}, _class{"textarea w-full"}, _placeholder{"Description"_}}, params->object_description},
                 dv{{_class{"validator-hint invisible"}}, "&nbsp;"},
 
                 params->content(*params, [params, id](bool valid) {
@@ -91,7 +97,11 @@ export Webxx::dialog dialog_add(event_context& ctx, const std::string& id, dialo
                 }),
 
                 ctx.on_click(button{{_id{std::format("{}_button", id)}, _class{params->edit ? "btn btn-warning mt-4 w-fit" : "btn btn-success mt-4 w-fit btn-disabled"}},
-                    assets::icons::add, params->edit ? std::format("Save {}", params->what) : std::format("Add {}", params->what)},
+                    assets::icons::add, params->edit ?
+                        // note for translator: the scheme is "Save [what]"; example: "Save cleanup rule"
+                        "Save {}"_(params->what) :
+                        // note for translator: the scheme is "Add [what]"; example: "Add cleanup rule"
+                        "Add {}"_(params->what)},
                     [id, params](webpp::event e) {
                         e.prevent_default();
                         auto name = *webpp::get_element_by_id(std::format("{}_name", id))->get_property<std::string>("value");

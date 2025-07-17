@@ -3,6 +3,7 @@ export module frontend.components:resource_modal;
 import std;
 import webxx;
 import glaze;
+import i18n;
 
 import common;
 
@@ -11,6 +12,7 @@ import :utils;
 namespace frontend::components {
 
 using namespace Webxx;
+using namespace mfk::i18n::literals;
 
 std::string resource_name(unsigned int id, const common::log_resource& resource) {
     // TODO: make this configurable
@@ -22,7 +24,7 @@ std::string resource_name(unsigned int id, const common::log_resource& resource)
             return std::format("{}/{}", resource.attributes.at("k8s.namespace.name").get_string(), resource.attributes.at("k8s.pod.name").get_string());
         }
     }
-    return std::format("Resource #{}", id);
+    return "Resource #{}"_(id);
 }
 
 export struct resource_modal : component<resource_modal> {
@@ -87,8 +89,8 @@ export struct resource_modal : component<resource_modal> {
                     dv{{_class{"overflow-auto"}},
                         table{{_class{"table table-zebra w-full"}},
                             thead{tr{
-                                th{"Attribute"},
-                                th{"Value"}
+                                th{"Attribute"_},
+                                th{"Value"_}
                             }},
                             Webxx::each(attributes, [&resource](auto& key){
                                 auto attr = resource.attributes[key];

@@ -3,8 +3,11 @@ export module frontend.components:selection;
 import std;
 import glaze;
 import webpp;
+import i18n;
 
 import :utils;
+
+using namespace mfk::i18n::literals;
 
 namespace frontend::components {
 
@@ -55,7 +58,7 @@ auto selection_detail(std::string_view title,
                 save_selections(profile, identifier.sv(), saved_selections);
             }),
             label{{_class{"input w-full flex flex-col"}},
-                ctx.on_input(input{{_id{search_id}, _type{"search"}, _class{"grow basis-[3rem] md:basis-[3.5rem]"}, _placeholder{"Search..."}}},
+                ctx.on_input(input{{_id{search_id}, _type{"search"}, _class{"grow basis-[3rem] md:basis-[3.5rem]"}, _placeholder{"Search..."_}}},
                     [search_id, attributes](webpp::event) {
                         auto search = webpp::get_element_by_id(search_id)->template get_property<std::string>("value").value_or("");
                         std::transform(search.begin(), search.end(), search.begin(), [](char c){return std::tolower(c);});

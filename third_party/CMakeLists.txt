@@ -38,6 +38,11 @@ if(${BUILD_TARGET} STREQUAL "frontend")
     target_sources(webxxModule PUBLIC FILE_SET CXX_MODULES FILES webxx.cppm)
     target_compile_features(webxxModule PUBLIC cxx_std_26)
     target_link_libraries(webxxModule PUBLIC webxx::webxx)
+
+    add_library(i18nModule STATIC)
+    target_sources(i18nModule PUBLIC FILE_SET CXX_MODULES FILES i18n.cppm)
+    target_compile_features(i18nModule PUBLIC cxx_std_26)
+    target_link_libraries(i18nModule PUBLIC i18n::i18n-lib)
 endif()
 
 # Common modules

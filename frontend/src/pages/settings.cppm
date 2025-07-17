@@ -4,6 +4,7 @@ import std;
 import webpp;
 import webxx;
 import glaze;
+import i18n;
 
 import :page;
 
@@ -11,6 +12,8 @@ import common;
 import frontend.assets;
 import frontend.components;
 import frontend.utils;
+
+using namespace mfk::i18n::literals;
 
 namespace frontend::pages {
 
@@ -56,21 +59,21 @@ export class settings : public page {
 
         Webxx::dialog render_cleanup_rule_dialog(event_context& ctx, std::optional<common::cleanup_rule> rule = std::nullopt) {
             return components::dialog_add(ctx, "dialog_add_rule", components::dialog_add_ctx{
-                .what = "Cleanup Rule",
+                .what = "Cleanup Rule"_s,
                 .edit = rule.has_value(),
                 .object_id = rule.has_value() ? rule->id : 0,
                 .object_name = rule.has_value() ? rule->name : "",
                 .object_description = rule.has_value() ? rule->description : "",
                 .name_validator = [this](components::dialog_add_ctx& ctx, const std::string& name) -> std::optional<std::string> {
                     if(name.empty()) {
-                        return "Rule name must be non-empty.";
+                        return "Rule name must be non-empty."_s;
                     }
                     if(ctx.edit && ctx.object_name == name) {
                         return std::nullopt;
                     }
                     for(const auto& r : cleanup_rules.rules) {
                         if(r.second.name == name) {
-                            return "Rule name must be unique.";
+                            return "Rule name must be unique."_s;
                         }
                     }
                     return std::nullopt;
@@ -81,28 +84,28 @@ export class settings : public page {
                     return fragment{
                         dv{{_class{"flex flex-row gap-16 w-full"}},
                             dv{{_class{"flex flex-col"}},
-                                label{{_class{"fieldset-label"}}, "Enabled"},
+                                label{{_class{"fieldset-label"}}, "Enabled"_},
                                 dv{{_class{"flex grow items-center"}},
                                     (ctx.edit && rule->enabled) ?
                                         input{{_id{"dialog_add_rule_enabled"}, _type{"checkbox"}, _class{"toggle toggle-xl toggle-primary"}, _checked{}}} :
                                         input{{_id{"dialog_add_rule_enabled"}, _type{"checkbox"}, _class{"toggle toggle-xl toggle-primary"}}}
                                 },
-                                dv{{_class{"validator-hint invisible"}}, "Just here for equal spacing."},
+                                dv{{_class{"validator-hint invisible"}}, "Just here for equal spacing."_},
                             },
                             dv{{_class{"grow"}},
-                                label{{_class{"fieldset-label"}}, "Execution interval"},
-                                components::duration_picker("dialog_add_rule_execution_interval", "Execution interval",
-                                    dv{{_class{"validator-hint w-[200%]"}}, "Execution interval must be a positive number."},
+                                label{{_class{"fieldset-label"}}, "Execution interval"_},
+                                components::duration_picker("dialog_add_rule_execution_interval", "Execution interval"_,
+                                    dv{{_class{"validator-hint w-[200%]"}}, "Execution interval must be a positive number."_},
                                     rule.transform([](const auto& v){return v.execution_interval;})
                                 )
                             }
                         },
                         fieldset{{_class{"fieldset p-4 rounded-box shadow w-full h-full flex flex-col"}},
-                            legend{{_class{"fieldset-legend"}}, "Conditions"},
+                            legend{{_class{"fieldset-legend"}}, "Conditions"_},
 
-                            label{{_class{"fieldset-label"}}, "Minimum age"},
-                            components::duration_picker("dialog_add_rule_minimum_age", "Minimum age",
-                                dv{{_class{"validator-hint w-[200%]"}}, "Minimum age must be a positive number."},
+                            label{{_class{"fieldset-label"}}, "Minimum age"_},
+                            components::duration_picker("dialog_add_rule_minimum_age", "Minimum age"_,
+                                dv{{_class{"validator-hint w-[200%]"}}, "Minimum age must be a positive number."_},
                                 rule.transform([](const auto& v){return v.filter_minimum_age;})
                             )
                         },
@@ -140,7 +143,7 @@ export class settings : public page {
                         }
                         auto new_rule_expected = glz::read<common::beve_opts, common::cleanup_rule>(co_await res.co_bytes());
                         if(!new_rule_expected) {
-                            error("Failed to parse rule", glz::format_error(new_rule_expected.error()));
+                            error("Failed to parse rule"_s, glz::format_error(new_rule_expected.error()));
                             co_return;
                         }
 
@@ -156,21 +159,21 @@ export class settings : public page {
 
         Webxx::dialog render_alert_rule_dialog(event_context& ctx, std::optional<common::alert_rule> rule = std::nullopt) {
             return components::dialog_add(ctx, "dialog_add_rule", components::dialog_add_ctx{
-                .what = "Alert Rule",
+                .what = "Alert Rule"_s,
                 .edit = rule.has_value(),
                 .object_id = rule.has_value() ? rule->id : 0,
                 .object_name = rule.has_value() ? rule->name : "",
                 .object_description = rule.has_value() ? rule->description : "",
                 .name_validator = [this](components::dialog_add_ctx& ctx, const std::string& name) -> std::optional<std::string> {
                     if(name.empty()) {
-                        return "Rule name must be non-empty.";
+                        return "Rule name must be non-empty."_s;
                     }
                     if(ctx.edit && ctx.object_name == name) {
                         return std::nullopt;
                     }
                     for(const auto& r : alert_rules.rules) {
                         if(r.second.name == name) {
-                            return "Rule name must be unique.";
+                            return "Rule name must be unique."_s;
                         }
                     }
                     return std::nullopt;
@@ -214,7 +217,7 @@ export class settings : public page {
                     return fragment{
                         dv{{_class{"flex flex-row gap-16 w-full"}},
                             dv{{_class{"flex flex-col"}},
-                                label{{_class{"fieldset-label"}}, "Enabled"},
+                                label{{_class{"fieldset-label"}}, "Enabled"_},
                                 dv{{_class{"flex grow items-center"}},
                                     (dctx.edit && rule->enabled) ?
                                         input{{_id{"dialog_add_rule_enabled"}, _type{"checkbox"}, _class{"toggle toggle-xl toggle-primary"}, _checked{}}} :
@@ -223,9 +226,9 @@ export class settings : public page {
                                 dv{{_class{"validator-hint invisible"}}, "&nbsp;"},
                             },
                             dv{{_class{"grow"}},
-                                label{{_class{"fieldset-label"}}, "Notification Provider"},
+                                label{{_class{"fieldset-label"}}, "Notification Provider"_},
                                 ctx.on_change(select{{_id{"dialog_add_rule_notification_provider"}, _class{"select w-full"}},
-                                    option{{_class{"italic"}, _value{""}}, "Select a provider"},
+                                    option{{_class{"italic"}, _value{""}}, "Select a provider"_},
                                     each(shared_settings.notification_providers, [&](const auto& provider) {
                                         if(dctx.edit && provider.first == rule->notification_provider) {
                                             return option{{_value{provider.first}, _selected{}}, provider.second.name};
@@ -252,9 +255,9 @@ export class settings : public page {
                             }
                         },
                         fieldset{{_class{"fieldset p-4 rounded-box shadow w-full h-full flex flex-col"}},
-                            legend{{_class{"fieldset-legend"}}, "Notification Settings"},
+                            legend{{_class{"fieldset-legend"}}, "Notification Settings"_},
                             dv{{_id{"dialog_add_rule_notification_options_error"}, _class{dctx.edit && !rule->notification_provider.empty() ? "hidden" : ""}},
-                                p{{_class{"text-error"}}, "Please select a notification provider first."},
+                                p{{_class{"text-error"}}, "Please select a notification provider first."_},
                             },
                             dv{{_id{"dialog_add_rule_notification_options"}, _class{"flex flex-col gap-4"}},
                                 maybe(dctx.edit && !rule->notification_provider.empty(), [this, &rule](){
@@ -264,7 +267,7 @@ export class settings : public page {
                             },
                         },
                         fieldset{{_class{"fieldset p-4 rounded-box shadow w-full h-full flex flex-col"}},
-                            legend{{_class{"fieldset-legend"}}, "Conditions"},
+                            legend{{_class{"fieldset-legend"}}, "Conditions"_},
                         },
                     };
                 },
@@ -292,11 +295,11 @@ export class settings : public page {
                                 case common::notification_provider_option_type::OBJECT: {
                                     auto v = glz::read_json<glz::json_t>(value);
                                     if(!v) {
-                                        error(std::format("Invalid JSON for option", option.name), glz::format_error(v.error()));
+                                        error("Invalid JSON for option {}"_(option.name), glz::format_error(v.error()));
                                         co_return;
                                     }
                                     if(!v->is_object()) {
-                                        error(std::format("Invalid JSON for option", option.name), "Expected an object.");
+                                        error("Invalid JSON for option {}"_(option.name), "Expected an object.");
                                         co_return;
                                     }
                                     new_rule.notification_options[option.id] = *v;
@@ -305,18 +308,18 @@ export class settings : public page {
                                 case common::notification_provider_option_type::ARRAY: {
                                     auto v = glz::read_json<glz::json_t>(value);
                                     if(!v) {
-                                        error(std::format("Invalid JSON for option", option.name), glz::format_error(v.error()));
+                                        error("Invalid JSON for option {}"_(option.name), glz::format_error(v.error()));
                                         co_return;
                                     }
                                     if(!v->is_array()) {
-                                        error(std::format("Invalid JSON for option", option.name), "Expected an array.");
+                                        error("Invalid JSON for option {}"_(option.name), "Expected an array."_s);
                                         co_return;
                                     }
                                     new_rule.notification_options[option.id] = *v;
                                     break;
                                 }
                                 default:
-                                    error("Unknown option type", "The notification provider option type is not supported yet.");
+                                    error("Unknown option type"_s, "The notification provider option type is not supported yet."_s);
                                     co_return;
                             }
                         }
@@ -343,7 +346,7 @@ export class settings : public page {
                         }
                         auto new_rule_expected = glz::read<common::beve_opts, common::alert_rule>(co_await res.co_bytes());
                         if(!new_rule_expected) {
-                            error("Failed to parse rule", glz::format_error(new_rule_expected.error()));
+                            error("Failed to parse rule"_s, glz::format_error(new_rule_expected.error()));
                             co_return;
                         }
 
@@ -396,7 +399,7 @@ export class settings : public page {
         void delete_rule(const common::cleanup_rule& rule) {
             static event_context ctx; ctx.clear();
             webpp::get_element_by_id("dialog_placeholder")->inner_html(Webxx::render(
-                render_rule_delete_dialog(ctx, "Cleanup Rule", "/api/v1/settings/cleanup_rules", rule, cleanup_rules)));
+                render_rule_delete_dialog(ctx, "Cleanup Rule"_s, "/api/v1/settings/cleanup_rules", rule, cleanup_rules)));
             webpp::eval("document.getElementById('dialog_delete_rule').showModal();");
         }
         void toggle_rule(common::cleanup_rule rule) {
@@ -455,7 +458,7 @@ export class settings : public page {
                 }
                 auto new_rule_expected = glz::read<common::beve_opts, common::alert_rule>(co_await res.co_bytes());
                 if(!new_rule_expected) {
-                    components::show_alert("settings_alert_rules_error", "Failed to parse rule", glz::format_error(new_rule_expected.error()));
+                    components::show_alert("settings_alert_rules_error", "Failed to parse rule"_s, glz::format_error(new_rule_expected.error()));
                     co_return;
                 }
 
@@ -510,6 +513,7 @@ export class settings : public page {
         rule_callbacks cb_alert_rules{this, alert_rules};
 
         std::string describe_filters(const common::standard_filters& filters) {
+            // TODO: localize this
             using std::string_view_literals::operator""sv;
 
             std::string generated_decription{};
@@ -562,27 +566,27 @@ export class settings : public page {
             checkbox = events::on_change(std::move(checkbox), cb_cleanup_rules.toggle.get());
 
             std::string run_info = rule.last_execution ?
-                std::format("Last run: {}", *rule.last_execution) :
-                "Never run";
-            std::string generated_decription = "Delete logs older than " + common::format_duration(rule.filter_minimum_age);
+                "Last run: {}"_(*rule.last_execution) :
+                "Never run"_s;
+            std::string generated_decription = "Delete logs older than {}"_(common::format_duration(rule.filter_minimum_age));
             generated_decription += describe_filters(rule.filters);
             generated_decription += ".";
 
             return li{{_class{"list-row items-center"}},
-                dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Enable/Disable rule"}}, std::move(checkbox)},
+                dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Enable/Disable rule"_}}, std::move(checkbox)},
                 dv{{_class{"list-col-grow flex flex-row items-center gap-4"}},
                     h3{{_class{"text-lg font-bold"}}, rule.name},
-                    p{{_class{"text-sm text-base-content/80"}}, std::format("Execution interval: {}", common::format_duration(rule.execution_interval))},
+                    p{{_class{"text-sm text-base-content/80"}}, "Execution interval: {}"_(common::format_duration(rule.execution_interval))},
                 },
                 dv{{_class{"text-sm text-base-content/80 list-col-wrap"}},
-                    p{rule.description.empty() ? fragment{i{"No description"}} : fragment{b{rule.description}}},
+                    p{rule.description.empty() ? fragment{i{"No description"_}} : fragment{b{rule.description}}},
                     p{generated_decription}
                 },
                 p{{_class{"text-sm text-base-content/80"}}, run_info},
-                dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Edit rule"}},
+                dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Edit rule"_}},
                     events::on_click(button{{_class{"btn btn-secondary btn-square"}, _dataRuleId{std::to_string(rule.id)}}, assets::icons::edit}, cb_cleanup_rules.edit.get()),
                 },
-                dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Delete rule"}},
+                dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Delete rule"_}},
                     events::on_click(button{{_class{"btn btn-secondary btn-square"}, _dataRuleId{std::to_string(rule.id)}}, assets::icons::delete_}, cb_cleanup_rules.delete_.get()),
                 },
             };
@@ -601,27 +605,27 @@ export class settings : public page {
             checkbox = events::on_change(std::move(checkbox), cb_alert_rules.toggle.get());
 
             std::string run_info = rule.last_alert ?
-                std::format("Last alert: {}", *rule.last_alert) :
-                "Never triggered";
+                "Last alert: {}"_(*rule.last_alert) :
+                "Never triggered"_s;
             std::string generated_decription = "Alert for logs";
             generated_decription += describe_filters(rule.filters);
             generated_decription += ".";
 
             return li{{_class{"list-row items-center"}},
-                dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Enable/Disable rule"}}, std::move(checkbox)},
+                dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Enable/Disable rule"_}}, std::move(checkbox)},
                 dv{{_class{"list-col-grow flex flex-row items-center gap-4"}},
                     h3{{_class{"text-lg font-bold"}}, rule.name},
-                    p{{_class{"text-sm text-base-content/80"}}, std::format("Provider: {}", rule.notification_provider)},
+                    p{{_class{"text-sm text-base-content/80"}}, "Provider: {}"_(rule.notification_provider)},
                 },
                 dv{{_class{"text-sm text-base-content/80 list-col-wrap"}},
-                    p{rule.description.empty() ? fragment{i{"No description"}} : fragment{b{rule.description}}},
+                    p{rule.description.empty() ? fragment{i{"No description"_}} : fragment{b{rule.description}}},
                     p{generated_decription}
                 },
                 p{{_class{"text-sm text-base-content/80"}}, run_info},
-                dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Edit rule"}},
+                dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Edit rule"_}},
                     events::on_click(button{{_class{"btn btn-secondary btn-square"}, _dataRuleId{std::to_string(rule.id)}}, assets::icons::edit}, cb_alert_rules.edit.get()),
                 },
-                dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Delete rule"}},
+                dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Delete rule"_}},
                     events::on_click(button{{_class{"btn btn-secondary btn-square"}, _dataRuleId{std::to_string(rule.id)}}, assets::icons::delete_}, cb_alert_rules.delete_.get()),
                 },
             };
@@ -635,7 +639,7 @@ export class settings : public page {
             return fragment{
                 components::alert("settings_cleanup_rules_error", "mb-4"),
                 dv{{_class{"flex flex-col gap-4 w-fit mb-4"}},
-                    ctx.on_click(button{{_class{"btn btn-primary"}}, assets::icons::add, "Add cleanup rule"},
+                    ctx.on_click(button{{_class{"btn btn-primary"}}, assets::icons::add, "Add cleanup rule"_},
                         [this](webpp::event e) {
                             static event_context sctx;
                             sctx.clear();
@@ -650,8 +654,8 @@ export class settings : public page {
                     }),
                     maybe(cleanup_rules.rules.empty(), [&]() {
                         return li{{_class{"list-row items-center"}},
-                            h3{{_class{"text-lg font-bold text-base-content/80"}}, "No cleanup rules found"},
-                            p{{_class{"text-sm text-base-content/80 list-col-grow"}}, "You can add a new rule by clicking the button above."}
+                            h3{{_class{"text-lg font-bold text-base-content/80"}}, "No cleanup rules found"_},
+                            p{{_class{"text-sm text-base-content/80 list-col-grow"}}, "You can add a new rule by clicking the button above."_}
                         };
                     })
                 },
@@ -666,7 +670,7 @@ export class settings : public page {
             return fragment{
                 components::alert("settings_alert_rules_error", "mb-4"),
                 dv{{_class{"flex flex-col gap-4 w-fit mb-4"}},
-                    ctx.on_click(button{{_class{"btn btn-primary"}}, assets::icons::add, "Add alert rule"},
+                    ctx.on_click(button{{_class{"btn btn-primary"}}, assets::icons::add, "Add alert rule"_},
                         [this](webpp::event e) {
                             static event_context sctx;
                             sctx.clear();
@@ -681,8 +685,8 @@ export class settings : public page {
                     }),
                     maybe(alert_rules.rules.empty(), [&]() {
                         return li{{_class{"list-row items-center"}},
-                            h3{{_class{"text-lg font-bold text-base-content/80"}}, "No alert rules found"},
-                            p{{_class{"text-sm text-base-content/80 list-col-grow"}}, "You can add a new rule by clicking the button above."}
+                            h3{{_class{"text-lg font-bold text-base-content/80"}}, "No alert rules found"_},
+                            p{{_class{"text-sm text-base-content/80 list-col-grow"}}, "You can add a new rule by clicking the button above."_}
                         };
                     })
                 },
@@ -696,10 +700,10 @@ export class settings : public page {
             using namespace Webxx;
             return Webxx::fragment {
                 dv{{_class{"tabs tabs-border tabs-lg"}},
-                    input{{_type{"radio"}, _name{"settings_tab"}, _class{"tab"}, _ariaLabel{"Cleanup rules"}, _checked{}}},
+                    input{{_type{"radio"}, _name{"settings_tab"}, _class{"tab"}, _ariaLabel{"Cleanup rules"_}, _checked{}}},
                     dv{{_id{"settings_cleanup_rules"}, _class{"tab-content border-base-300 bg-base-100 p-10"}}, render_cleanup_rules()},
 
-                    input{{_type{"radio"}, _name{"settings_tab"}, _class{"tab"}, _ariaLabel{"Alert rules"}}},
+                    input{{_type{"radio"}, _name{"settings_tab"}, _class{"tab"}, _ariaLabel{"Alert rules"_}}},
                     dv{{_id{"settings_alert_rules"}, _class{"tab-content border-base-300 bg-base-100 p-10"}}, render_alert_rules()},
                 },
                 dv{{_id{"dialog_placeholder"}}},

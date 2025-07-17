@@ -20,6 +20,7 @@ export namespace Webxx {
 
     namespace internal {
         using Webxx::internal::HtmlAttribute;
+        using Webxx::internal::HtmlNodeDefined;
     }
 
     using Webxx::a;

@@ -4,6 +4,7 @@ import std;
 import webpp;
 import webxx;
 import glaze;
+import i18n;
 
 import :page;
 
@@ -11,6 +12,8 @@ import common;
 import frontend.assets;
 import frontend.components;
 import frontend.utils;
+
+using namespace mfk::i18n::literals;
 
 namespace frontend::pages {
 
@@ -108,7 +111,10 @@ export class table : public page {
                 constexpr static char dataColumnPosAttr[] = "data-column-pos";
                 using _dataColumnPos = Webxx::attr<dataColumnPosAttr>;
 
-                if(text.starts_with(':') || text.starts_with("^")) {
+                if(text.starts_with(':')) {
+                    text = text.substr(3);
+                }
+                if(text.starts_with("^")) {
                     text = text.substr(1);
                 }
 
@@ -137,16 +143,19 @@ export class table : public page {
 
                     return tr{
                         each(table_column_order, [&](const std::string& attr) {
-                            if(attr == ":Timestamp") {
-                                return td{e_timestamp};
-                            } else if(attr == ":Resource") {
-                                return td{e_resource};
-                            } else if(attr == ":Scope") {
-                                return td{e_scope};
-                            } else if(attr == ":Severity") {
-                                return td{e_severity};
-                            } else if(attr == ":Body") {
-                                return td{e_body};
+                            if(attr.starts_with(":") && attr.size() > 1) {
+                                switch(attr[1]) {
+                                    case 'T': // Timestamp
+                                        return td{e_timestamp};
+                                    case 'R': // Resource
+                                        return td{e_resource};
+                                    case 'S': // Scope
+                                        return td{e_scope};
+                                    case 'V': // Severity
+                                        return td{e_severity};
+                                    case 'B': // Body
+                                        return td{e_body};
+                                }
                             }
                             if(attr.starts_with("^")) {
                                 auto name = attr.substr(1);
@@ -156,13 +165,13 @@ export class table : public page {
                                     if(r) {
                                         return td{*r};
                                     } else {
-                                        return td{{_class{"text-error"}}, std::format("error: {}", r.error())};
+                                        return td{{_class{"text-error"}}, "error: {}"_(r.error())};
                                     }
                                 }
                             }
 
                             if(!attributes.contains(attr)) {
-                                return td{{_class{"text-error"}}, "missing"};
+                                return td{{_class{"text-error"}}, "missing"_};
                             }
                             return td{attributes.at(attr).is_string() ? attributes.at(attr).get_string() : attributes.at(attr).dump().value_or("error")};
                         })
@@ -189,7 +198,16 @@ export class table : public page {
                 }), order.end());
 
             if(order.empty()) {
-                order = {":Timestamp", ":Resource", ":Scope", ":Severity"};
+                order = {
+                    // note for translator: keep the :T:
+                    ":T:Timestamp"_(),
+                    // note for translator: keep the :R:
+                    ":R:Resource"_(),
+                    // note for translator: keep the :S:
+                    ":S:Scope"_(),
+                    // note for translator: keep the :V:
+                    ":V:Severity"_(),
+                };
             }
             for(const auto& a : attributes_set) {
                 if(std::find(order.begin(), order.end(), a) == order.end()) {
@@ -204,8 +222,11 @@ export class table : public page {
             }
             for(const auto& entry : logs.logs) {
                 if(!entry.body.is_null() && (!entry.body.is_string() || !entry.body.get_string().empty())) {
-                    if(std::find(order.begin(), order.end(), ":Body") == order.end()) {
-                        order.push_back(":Body");
+                    if(std::find_if(order.begin(), order.end(), [](const std::string& str){
+                        return str.starts_with(":B:");
+                    }) == order.end()) {
+                        // note for translator: keep the :B:
+                        order.push_back(":B:Body"_());
                     }
                     break;
                 }
@@ -253,7 +274,7 @@ export class table : public page {
             std::transform(attributes->attributes.begin(), attributes->attributes.end(), std::inserter(selected_attributes, selected_attributes.end()),
                 [](const auto& attr) { return std::pair{attr.first, false}; }); // all attributes are deselected by default
             webpp::get_element_by_id("attributes")->inner_html(Webxx::render(
-                components::selection<"attributes">("Select Attributes",
+                components::selection<"attributes">("Select Attributes"_,
                     attributes->attributes, selected_attributes, &profile, attributes->total_logs, true)));
         }
         void update_scopes() {
@@ -261,11 +282,11 @@ export class table : public page {
             std::transform(scopes->scopes.begin(), scopes->scopes.end(), std::inserter(selected_scopes, selected_scopes.end()),
                 [](const auto& scope) { return std::pair{scope.first, true}; }); // all scopes are selected by default
             webpp::get_element_by_id("scopes")->inner_html(Webxx::render(
-                components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, &profile, 1, false)));
+                components::selection<"scopes">("Filter Scopes"_, scopes->scopes, selected_scopes, &profile, 1, false)));
         }
 
         std::string resource_name(unsigned int id, const common::log_resource& resource) {
-            return resource.guess_name().value_or(std::format("Resource #{}", id));
+            return resource.guess_name().value_or("Resource #{}"_(id));
         }
         void update_resources() {
             transformed_resources.clear();
@@ -276,7 +297,7 @@ export class table : public page {
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
                 [](const auto& res) { return std::pair{res.first, false}; }); // all resources are deselected by default
             webpp::get_element_by_id("resources")->inner_html(Webxx::render(
-                components::selection_detail<"resources">("Filter Resources", transformed_resources, selected_resources, &profile, 1, false, "resource")));
+                components::selection_detail<"resources">("Filter Resources"_, transformed_resources, selected_resources, &profile, 1, false, "resource")));
         }
 
         profile_data& profile;
@@ -321,10 +342,10 @@ export class table : public page {
                     form{{_method{"dialog"}},
                         button{{_class{"btn btn-sm btn-circle btn-ghost absolute right-2 top-2"}}, "x"}
                     },
-                    h3{{_class{"text-lg font-bold"}}, "Add custom column"},
+                    h3{{_class{"text-lg font-bold"}}, "Add custom column"_},
                     fieldset{{_class{"fieldset w-full"}},
-                        label{{_class{"fieldset-label"}}, "Column name"},
-                        ctx.on_input(input{{_id{"column_name"}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"}}},
+                        label{{_class{"fieldset-label"}}, "Column name"_},
+                        ctx.on_input(input{{_id{"column_name"}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"_}}},
                             [this](webpp::event e){
                                 auto name = *e.target().as<webpp::element>()->get_property<std::string>("value");
                                 bool valid = !name.empty() && !table_custom_columns.contains(name);
@@ -333,14 +354,14 @@ export class table : public page {
                                     webpp::eval("document.getElementById('column_name').setCustomValidity('');");
                                 } else {
                                     webpp::get_element_by_id("column_add")->add_class("btn-disabled");
-                                    webpp::eval("document.getElementById('column_name').setCustomValidity('Column name must be non-empty and unique.');");
+                                    webpp::eval("document.getElementById('column_name').setCustomValidity('{}');", "Column name must be non-empty and unique."_sv);
                                 }
                             }
                         ),
-                        dv{{_id{"column_name_validator"}, _class{"validator-hint"}}, "Column name must be non-empty and unique."},
+                        dv{{_id{"column_name_validator"}, _class{"validator-hint"}}, "Column name must be non-empty and unique."_},
 
-                        label{{_class{"fieldset-label"}}, "Stencil"},
-                        ctx.on_input(textarea{{_id{"column_stencil"}, _class{"textarea w-full min-h-[2.5rem]"}, _rows{"1"}, _placeholder{"Column stencil. Use {...} to insert values."}}},
+                        label{{_class{"fieldset-label"}}, "Stencil"_},
+                        ctx.on_input(textarea{{_id{"column_stencil"}, _class{"textarea w-full min-h-[2.5rem]"}, _rows{"1"}, _placeholder{"Column stencil. Use {{...}} to insert values."_}}},
                             [this](webpp::event) {
                                 webpp::coro::submit([this]() -> webpp::coroutine<void> {
                                     co_await webpp::coro::next_tick();
@@ -356,7 +377,7 @@ export class table : public page {
                                         textarea.remove_class("textarea-error");
                                         textarea.add_class("textarea-success");
                                     } else {
-                                        validator.inner_text(std::format("Stencil invalid: \"{}\"", r.error()));
+                                        validator.inner_text("Stencil invalid: \"{}\""_(r.error()));
                                         validator.add_class("text-error");
                                         validator.add_class("font-bold");
 
@@ -368,11 +389,11 @@ export class table : public page {
                             }
                         ),
 
-                        label{{_class{"fieldset-label"}}, "Preview"},
+                        label{{_class{"fieldset-label"}}, "Preview"_},
                         textarea{{_id{"column_stencil_validator"}, _class{"textarea w-full min-h-[2.5rem]"}, _rows{"1"}, _readonly{}}},
 
                         ctx.on_click(button{{_id{"column_add"}, _class{"btn btn-success mt-4 w-fit btn-disabled"}},
-                            assets::icons::add, "Add column"},
+                            assets::icons::add, "Add column"_},
                             [this](webpp::event e) {
                                 auto el_name = *webpp::get_element_by_id("column_name");
                                 auto el_stencil = *webpp::get_element_by_id("column_stencil");
@@ -417,15 +438,15 @@ export class table : public page {
             return Webxx::fragment {
                 dv{{_class{"flex flex-col m-0 p-0"}},
                     dv{{_class{"flex flex-col md:flex-row gap-4"}},
-                        dv{{_id{"attributes"}, _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"attributes">("Select Attributes", attributes->attributes, selected_attributes, &profile, attributes->total_logs, true)},
-                        dv{{_id{"resources"},  _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"resources">("Filter Resources", {}, selected_resources, &profile)},
-                        dv{{_id{"scopes"},     _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"scopes">("Filter Scopes", scopes->scopes, selected_scopes, &profile, 1, false)},
+                        dv{{_id{"attributes"}, _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"attributes">("Select Attributes"_, attributes->attributes, selected_attributes, &profile, attributes->total_logs, true)},
+                        dv{{_id{"resources"},  _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"resources">("Filter Resources"_, {}, selected_resources, &profile)},
+                        dv{{_id{"scopes"},     _class{"md:basis-0 md:grow *:max-h-60"}}, components::selection<"scopes">("Filter Scopes"_, scopes->scopes, selected_scopes, &profile, 1, false)},
                     },
                     dv{{_class{"flex flex-col md:flex-row gap-4 mt-4 justify-center"}},
                         ctx.on_click(button{{_class{"btn btn-primary"}},
                             span{{_id{"run_button_loading"}, _class{"loading loading-spinner hidden"}}},
                             span{{_id{"run_button_icon"}}, assets::icons::run},
-                            "Query"
+                            "Query"_
                         }, [this](webpp::event) {
                             webpp::get_element_by_id("run_button_icon")->add_class("hidden");
                             webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
@@ -433,7 +454,7 @@ export class table : public page {
                         }),
                         ctx.on_click(button{{_id{"reset_table_button"}, _class{"btn btn-secondary btn-disabled"}},
                             assets::icons::reset,
-                            "Reset table"
+                            "Reset table"_
                         }, [this](webpp::event e) {
                             table_column_order.clear();
                             render_table();
@@ -441,7 +462,7 @@ export class table : public page {
                         button{{_id{"add_custom_column_button"}, _class{"btn btn-secondary"},
                                 _onClick("document.getElementById('dialog_add_custom_column').showModal()")},
                             assets::icons::add,
-                            "Add custom column"
+                            "Add custom column"_
                         },
                     },
                     dv{{_id{"table"}, _class{"mt-4 overflow-x-auto"}}},

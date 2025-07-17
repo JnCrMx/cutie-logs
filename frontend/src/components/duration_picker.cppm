@@ -2,9 +2,12 @@ export module frontend.components:duration_picker;
 
 import std;
 import webxx;
+import i18n;
 
 import :utils;
 import common;
+
+using namespace mfk::i18n::literals;
 
 namespace frontend::components {
 
@@ -12,7 +15,7 @@ export auto duration_picker(std::string_view id, std::string_view placeholder, a
     using namespace Webxx;
 
     constexpr std::array indices = {0, 1, 2, 3};
-    constexpr std::array units = {"seconds", "minutes", "hours", "days"};
+    std::array<std::string_view, indices.size()> units = {"seconds"_, "minutes"_, "hours"_, "days"_};
     constexpr std::array unit_values = {1, 60, 3600, 86400};
     unsigned int selected_unit = std::numeric_limits<unsigned int>::max();
     double value = 0;

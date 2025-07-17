@@ -2,6 +2,7 @@ export module frontend.components:theme_button;
 
 import std;
 import webxx;
+import i18n;
 
 import frontend.assets;
 
@@ -10,6 +11,7 @@ import :utils;
 namespace frontend::components {
 
 using namespace Webxx;
+using namespace mfk::i18n::literals;
 
 constexpr static std::array themes = {
     "light", "dark", "cupcake", "bumblebee", "emerald",
@@ -22,7 +24,7 @@ constexpr static std::array themes = {
 };
 export struct theme_button : component<theme_button> {
     theme_button(event_context& ctx, profile_data& profile) : component<theme_button>{
-        dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Themes"}},
+        dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Themes"_}},
             dv{{_class{"dropdown dropdown-end dropdown-bottom"}},
                 dv{{_class{"btn btn-square m-1"}, _tabindex{"0"}, _role{"button"}}, assets::icons::themes},
                 ul{{_class{"dropdown-content bg-base-300 rounded-box z-[1] w-52 p-2 shadow-2xl h-80 overflow-y-auto"}, _tabindex{"0"}},

@@ -1,0 +1,29 @@
+buildType:
+  default: debug
+  choices:
+    debug:
+      short: Debug
+      long: Emit debug information
+      buildType: Debug
+    release:
+      short: Release
+      long: Optimize generated code
+      buildType: Release
+    relWithDebInfo:
+      short: RelWithDebInfo
+      long: Optimize generated code and generate debug information
+      buildType: RelWithDebInfo
+
+generatePOT:
+  default: no
+  choices:
+    yes:
+      short: GeneratePOT
+      long: Generate .pot file
+      settings:
+        GENERATE_POT: true
+    no:
+      short: NoPOT
+      long: Do not generate .pot file
+      settings:
+        GENERATE_POT: false
