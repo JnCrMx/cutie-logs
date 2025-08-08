@@ -1,11 +1,11 @@
-# Polish translations for frontend package.
-# Copyright (C) 2025 THE frontend'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the frontend package.
+# Polish translations for cutie-logs-frontend package.
+# Copyright (C) 2025 THE cutie-logs-frontend'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the cutie-logs-frontend package.
 # Cyndi <cyndi@jcm.re>, 2025.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: frontend \n"
+"Project-Id-Version: cutie-logs-frontend \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2017-07-14 02:40+0000\n"
 "PO-Revision-Date: 2025-07-16 18:22+0200\n"

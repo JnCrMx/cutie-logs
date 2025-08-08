@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
 
-project(frontend)
+project("${TOP_LEVEL_PROJECT_NAME}-frontend" VERSION "${TOP_LEVEL_PROJECT_VERSION}")
 set(BUILD_TARGET frontend)
 
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)

@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
 
-project(backend)
+project("${TOP_LEVEL_PROJECT_NAME}-backend" VERSION "${TOP_LEVEL_PROJECT_VERSION}")
 set(BUILD_TARGET backend)
 
 find_package(Protobuf REQUIRED)
