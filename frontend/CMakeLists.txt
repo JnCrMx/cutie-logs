@@ -25,8 +25,8 @@ FetchContent_Declare(webpp
   GIT_REPOSITORY https://github.com/JnCrMx/webpp.git
   GIT_TAG main)
 FetchContent_Declare(webxx
-  GIT_REPOSITORY https://github.com/rthrfrd/webxx.git
-  GIT_TAG v0.9.2)
+  GIT_REPOSITORY https://github.com/JnCrMx/webxx.git
+  GIT_TAG main)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
   GIT_TAG        v5.7.1

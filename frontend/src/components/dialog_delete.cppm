@@ -46,7 +46,7 @@ export Webxx::dialog dialog_delete(event_context& ctx, const std::string& id, st
                         }
                     }
                 ),
-                dv{{_id{"{}_name_validator"}, _class{"validator-hint"}}, "Name must match."_},
+                dv{{_id{std::format("{}_name_validator", id)}, _class{"validator-hint"}}, "Name must match."_},
 
                 ctx.on_click(button{{_id{std::format("{}_button", id)}, _class{"btn btn-error mt-4 w-fit btn-disabled"}},
                     // the scheme is "Delete [what]"; example: "Delete cleanup rule"
