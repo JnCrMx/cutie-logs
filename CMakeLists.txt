@@ -32,8 +32,8 @@ ExternalProject_Add(frontend
         -DTOP_LEVEL_PROJECT_NAME:STRING=${TOP_LEVEL_PROJECT_NAME}
         -DTOP_LEVEL_PROJECT_VERSION:STRING=${TOP_LEVEL_PROJECT_VERSION}
         -DGENERATE_POT:BOOL=${GENERATE_POT}
-        -Di18n-merge-pot_LOCATION:FILEPATH=$<TARGET_FILE:i18n::i18n-merge-pot>
-        -Di18n-plugin_LOCATION:FILEPATH=$<TARGET_FILE:$<INSTALL_INTERFACE:i18n::>plugin>
+        -Di18n-merge-pot_LOCATION:FILEPATH=$<$<BOOL:${GENERATE_POT}>:$<TARGET_FILE:i18n::i18n-merge-pot>>
+        -Di18n-plugin_LOCATION:FILEPATH=$<$<BOOL:${GENERATE_POT}>:$<TARGET_FILE:$<INSTALL_INTERFACE:i18n::>plugin>>
 )
 
 function(AddExternalProjectFileDependency
