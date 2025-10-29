@@ -86,7 +86,7 @@ namespace pqxx {
             return std::copy(str, str + size, begin);
         }
         constexpr static std::size_t size_buffer(common::filter_type const &value) noexcept {
-            return sizeof("include");
+            return sizeof("INCLUDE");
         }
         static common::filter_type from_string(std::string_view text) {
             for(std::underlying_type_t<common::filter_type> i{}; i < common::filter_type_names.size(); i++) {
@@ -95,6 +95,42 @@ namespace pqxx {
                 }
             }
             throw pqxx::conversion_error{std::format("Could not convert {} to filter_type", text)};
+        }
+    };
+
+    export template<> std::string const type_name<common::rule_action>{"rule_action"};
+    export template<> struct nullness<common::rule_action> : pqxx::no_null<common::rule_action> {};
+    export template<> struct string_traits<common::rule_action> {
+        static constexpr bool converts_to_string{true};
+        static constexpr bool converts_from_string{true};
+
+        static constexpr zview to_buf(char *begin, char *end, common::rule_action const &value) {
+            if(std::to_underlying(value) >= common::rule_action_names.size()) {
+                throw pqxx::conversion_error{std::format("Could not convert {} to rule_action", std::to_underlying(value))};
+            }
+            return common::rule_action_names[static_cast<std::underlying_type_t<common::rule_action>>(value)];
+        }
+        static char *into_buf(char *begin, char *end, common::rule_action const &value) {
+            if(std::to_underlying(value) >= common::rule_action_names.size()) {
+                throw pqxx::conversion_error{std::format("Could not convert {} to rule_action", std::to_underlying(value))};
+            }
+            const char* str = common::rule_action_names[static_cast<std::underlying_type_t<common::rule_action>>(value)];
+            auto size = std::char_traits<char>::length(str)+1;
+            if(static_cast<std::size_t>(end - begin) < size) {
+                throw pqxx::conversion_error{std::format("Buffer too small for rule_action")};
+            }
+            return std::copy(str, str + size, begin);
+        }
+        constexpr static std::size_t size_buffer(common::rule_action const &value) noexcept {
+            return sizeof("TRANSFORM");
+        }
+        static common::rule_action from_string(std::string_view text) {
+            for(std::underlying_type_t<common::rule_action> i{}; i < common::rule_action_names.size(); i++) {
+                if(text == common::rule_action_names[i]) {
+                    return static_cast<common::rule_action>(i);
+                }
+            }
+            throw pqxx::conversion_error{std::format("Could not convert {} to rule_action", text)};
         }
     };
 
@@ -259,6 +295,9 @@ export class Database {
                     std::chrono::duration<double>{row["filter_minimum_age_s"].as<double>()});
                 rule.filters = parse_filters(row, txn.conn());
 
+                rule.action = row["action"].as<common::rule_action>();
+                rule.action_options = row["action_options"].as<std::optional<glz::json_t>>();
+
                 rule.created_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::duration<double>{row["created_at_s"].as<double>()})};
                 rule.updated_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
@@ -341,6 +380,7 @@ export class Database {
                 "filter_severities, filter_severities_type, "
                 "filter_attributes, filter_attributes_type, "
                 "filter_attribute_values, filter_attribute_values_type, "
+                "action, action_options, "
                 "extract(epoch from created_at) AS created_at_s, extract(epoch from updated_at) AS updated_at_s, "
                 "extract(epoch from last_execution) AS last_execution_s "
                 "FROM cleanup_rules");
@@ -348,17 +388,18 @@ export class Database {
                 "INSERT INTO cleanup_rules (name, description, enabled, execution_interval, filter_minimum_age, "
                 "filter_resources, filter_resources_type, filter_scopes, filter_scopes_type, "
                 "filter_severities, filter_severities_type, filter_attributes, filter_attributes_type, "
-                "filter_attribute_values, filter_attribute_values_type) "
+                "filter_attribute_values, filter_attribute_values_type, action, action_options) "
                 "VALUES ($1, $2, $3, $4*'1 second'::interval, $5*'1 second'::interval, "
-                "$6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15) "
+                "$6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16, $17::jsonb) "
                 "RETURNING id, extract(epoch from created_at) AS created_at_s, extract(epoch from updated_at) AS updated_at_s");
             conn.prepare("update_cleanup_rule",
                 "UPDATE cleanup_rules SET name = $1, description = $2, enabled = $3, "
                 "execution_interval = $4*'1 second'::interval, filter_minimum_age = $5*'1 second'::interval, "
                 "filter_resources = $6, filter_resources_type = $7, filter_scopes = $8, filter_scopes_type = $9, "
                 "filter_severities = $10, filter_severities_type = $11, filter_attributes = $12, filter_attributes_type = $13, "
-                "filter_attribute_values = $14::jsonb, filter_attribute_values_type = $15, updated_at = now() "
-                "WHERE id = $16 "
+                "filter_attribute_values = $14::jsonb, filter_attribute_values_type = $15, "
+                "action = $16, action_options = $17::jsonb, updated_at = now() "
+                "WHERE id = $18 "
                 "RETURNING id, extract(epoch from created_at) AS created_at_s, extract(epoch from updated_at) AS updated_at_s, extract(epoch from last_execution) AS last_execution_s");
             conn.prepare("delete_cleanup_rule",
                 "DELETE FROM cleanup_rules WHERE id = $1");

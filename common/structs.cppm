@@ -141,6 +141,23 @@ export namespace common {
     };
     static_assert(serializable<standard_filters>);
 
+    enum class rule_action {
+        DROP, TRANSFORM
+    };
+    constexpr std::array rule_action_names = {
+        "DROP", "TRANSFORM"
+    };
+
+    enum class transform_action_type {
+        DROP_ATTRIBUTE, TRANSFORM_ATTRIBUTE, ADD_ATTRIBUTE
+    };
+    struct transform_action {
+        transform_action_type type;
+        std::string attribute;
+        std::optional<std::string> stencil;
+    };
+    static_assert(serializable<transform_action>);
+
     struct cleanup_rule {
         unsigned int id;
         std::string name;
@@ -150,6 +167,9 @@ export namespace common {
 
         std::chrono::seconds filter_minimum_age;
         standard_filters filters;
+
+        rule_action action = rule_action::DROP;
+        std::optional<glz::json_t> action_options;
 
         std::chrono::sys_seconds created_at;
         std::chrono::sys_seconds updated_at;

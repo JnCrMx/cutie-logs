@@ -44,8 +44,18 @@ export class settings : public page {
             auto alert_rules_future = webpp::coro::fetch("/api/v1/settings/alert_rules", utils::fetch_options)
                 .then(std::mem_fn(&webpp::response::co_bytes));
 
-            cleanup_rules = glz::read<common::beve_opts, common::cleanup_rules_response>(co_await cleanup_rules_future).value_or(common::cleanup_rules_response{});
-            alert_rules = glz::read<common::beve_opts, common::alert_rules_response>(co_await alert_rules_future).value_or(common::alert_rules_response{});
+            if(auto r = glz::read<common::beve_opts, common::cleanup_rules_response>(co_await cleanup_rules_future)) {
+                cleanup_rules = *r;
+            } else {
+                cleanup_rules = common::cleanup_rules_response{};
+                webpp::log("Failed to fetch cleanup rules: {}", glz::format_error(r.error()));
+            }
+            if(auto r = glz::read<common::beve_opts, common::alert_rules_response>(co_await alert_rules_future)) {
+                alert_rules = *r;
+            } else {
+                alert_rules = common::alert_rules_response{};
+                webpp::log("Failed to fetch alert rules: {}", glz::format_error(r.error()));
+            }
 
             webpp::get_element_by_id("settings_cleanup_rules")->inner_html(Webxx::render(render_cleanup_rules()));
             webpp::get_element_by_id("settings_alert_rules")->inner_html(Webxx::render(render_alert_rules()));

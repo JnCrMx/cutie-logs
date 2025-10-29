@@ -369,6 +369,13 @@ void Server::setup_api_routes() {
                             filter_severities, rule.filters.severities.type,
                             filter_attributes, rule.filters.attributes.type,
                             filter_attribute_values, rule.filters.attribute_values.type,
+                            rule.action, rule.action_options.and_then([](const glz::json_t& v) -> std::optional<std::string> {
+                                if(auto r = glz::write_json(v)) {
+                                    return r.value();
+                                } else {
+                                    return std::nullopt;
+                                }
+                            }),
                             id
                         }
                     );
@@ -381,7 +388,14 @@ void Server::setup_api_routes() {
                             filter_scopes, rule.filters.scopes.type,
                             filter_severities, rule.filters.severities.type,
                             filter_attributes, rule.filters.attributes.type,
-                            filter_attribute_values, rule.filters.attribute_values.type
+                            filter_attribute_values, rule.filters.attribute_values.type,
+                            rule.action, rule.action_options.and_then([](const glz::json_t& v) -> std::optional<std::string> {
+                                if(auto r = glz::write_json(v)) {
+                                    return r.value();
+                                } else {
+                                    return std::nullopt;
+                                }
+                            }),
                         }
                     );
                 }
