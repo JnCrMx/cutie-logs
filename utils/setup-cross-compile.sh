@@ -14,9 +14,37 @@ fi
 
 VERSION_CODENAME=$(cat /etc/os-release | grep VERSION_CODENAME | cut -d'=' -f2)
 if [ "$TARGETARCH" == "amd64" ]; then
-    echo "deb [arch=$TARGETARCH] http://archive.ubuntu.com/ubuntu/ $VERSION_CODENAME main universe multiverse" >> /etc/apt/sources.list.d/forein.list
+    cat > /etc/apt/sources.list.d/ubuntu-$TARGETARCH.sources <<-EOF
+        Types: deb deb-src
+        Architectures: $TARGETARCH
+        URIs: http://de.archive.ubuntu.com/ubuntu/
+        Suites: $VERSION_CODENAME $VERSION_CODENAME-updates $VERSION_CODENAME-backports
+        Components: main restricted universe multiverse
+        Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+        Types: deb deb-src
+        Architectures: amd64
+        URIs: http://security.ubuntu.com/ubuntu/
+        Suites: $VERSION_CODENAME-security
+        Components: main restricted universe multiverse
+        Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+EOF
 else
-    echo "deb [arch=$TARGETARCH] http://ports.ubuntu.com/ $VERSION_CODENAME main universe multiverse" >> /etc/apt/sources.list.d/forein.list
+    cat > /etc/apt/sources.list.d/ubuntu-$TARGETARCH.sources <<-EOF
+        Types: deb
+        Architectures: $TARGETARCH
+        URIs: http://ports.ubuntu.com/ubuntu-ports/
+        Suites: $VERSION_CODENAME $VERSION_CODENAME-updates $VERSION_CODENAME-backports
+        Components: main universe restricted multiverse
+        Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+        Types: deb
+        Architectures: $TARGETARCH
+        URIs: http://ports.ubuntu.com/ubuntu-ports/
+        Suites: $VERSION_CODENAME-security
+        Components: main universe restricted multiverse
+        Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+EOF
 fi
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends dpkg-dev
