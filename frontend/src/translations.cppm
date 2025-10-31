@@ -38,8 +38,8 @@ export class mo_file {
                     return std::unexpected(error::out_of_bounds_access);
                 }
 
-                const char* original_str = &data[original_offset];
-                const char* translation_str = &data[translation_offset];
+                const char* original_str = reinterpret_cast<const char*>(&data[original_offset]);
+                const char* translation_str = reinterpret_cast<const char*>(&data[translation_offset]);
 
                 if(std::string_view(original_str) == original) {
                     return translation_str;
@@ -49,7 +49,7 @@ export class mo_file {
             return std::unexpected(error::not_found);
         }
 
-        constexpr static std::expected<mo_file, error> create(std::span<const char> data) {
+        constexpr static std::expected<mo_file, error> create(std::span<const unsigned char> data) {
             if(data.size() < 28) {
                 return std::unexpected(error::invalid_header);
             }
@@ -82,7 +82,7 @@ export class mo_file {
             );
         }
     private:
-        mo_file(std::span<const char> data,
+        mo_file(std::span<const unsigned char> data,
                 bool little_endian,
                 std::uint32_t number_of_strings,
                 std::uint32_t original_table_offset,
@@ -97,7 +97,7 @@ export class mo_file {
             hash_table_size(hash_table_size),
             hash_table_offset(hash_table_offset) {}
 
-        std::span<const char> data{};
+        std::span<const unsigned char> data{};
         bool little_endian;
         std::uint32_t number_of_strings;
         std::uint32_t original_table_offset;
@@ -109,7 +109,7 @@ export class mo_file {
             return read_u32(data, offset, little_endian);
         }
 
-        constexpr static std::expected<std::uint32_t, error> read_u32(std::span<const char> data, std::size_t offset, bool little_endian) {
+        constexpr static std::expected<std::uint32_t, error> read_u32(std::span<const unsigned char> data, std::size_t offset, bool little_endian) {
             if (offset + 4 > data.size()) {
                 return std::unexpected(error::out_of_bounds_access);
             }

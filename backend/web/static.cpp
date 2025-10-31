@@ -4,6 +4,7 @@ module;
 #include <fstream>
 #include <string>
 #include <string_view>
+#include <span>
 
 module backend.web;
 
@@ -56,25 +57,25 @@ constexpr auto etag = std::string_view{etag_array};
 
 struct entry {
     std::string_view path;
-    std::string_view data;
+    std::span<const unsigned char> data;
     std::string_view type;
     std::string_view dev_path{};
 };
 
-constexpr char style_css[] = {
+constexpr unsigned char style_css[] = {
     #embed "style.css"
 };
-constexpr char mainpage_html[] = {
+constexpr unsigned char mainpage_html[] = {
     #embed "mainpage.html"
 };
-constexpr char mainpage_wasm[] = {
+constexpr unsigned char mainpage_wasm[] = {
     #ifdef NDEBUG
         #embed "mainpage.opt.wasm"
     #else
         #embed "mainpage.wasm"
     #endif
 };
-constexpr char webpp_js[] = {
+constexpr unsigned char webpp_js[] = {
     #embed "webpp.js"
 };
 
@@ -118,7 +119,7 @@ void Server::setup_static_routes() {
                 }
 
                 response.headers().add<Pistache::Http::Header::ETag>(std::string{etag});
-                response.send(Pistache::Http::Code::Ok, data.data(), data.size());
+                response.send(Pistache::Http::Code::Ok, reinterpret_cast<const char*>(data.data()), data.size());
                 return Pistache::Rest::Route::Result::Ok;
             });
         logger->debug("Registered static route: {} -> {}", path, type);

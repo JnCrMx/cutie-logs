@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.31.6)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
@@ -47,7 +47,7 @@ FetchContent_MakeAvailable(webxx glaze webpp i18n++)
 add_library(stdModule STATIC)
 target_sources(stdModule PUBLIC FILE_SET CXX_MODULES BASE_DIRS /usr/lib/llvm-19/share/libc++/v1/
     FILES /usr/lib/llvm-19/share/libc++/v1/std.cppm)
-target_compile_features(stdModule PUBLIC cxx_std_23)
+target_compile_features(stdModule PUBLIC cxx_std_26)
 target_compile_options(stdModule PRIVATE -Wno-reserved-identifier)
 target_compile_definitions(stdModule PRIVATE _LIBCPP_CSETJMP _LIBCPP_CSIGNAL)
 
@@ -89,7 +89,7 @@ set(MODULE_SOURCES
 
 add_executable(mainpage ${SOURCES})
 target_sources(mainpage PUBLIC FILE_SET CXX_MODULES FILES ${MODULE_SOURCES})
-target_compile_features(mainpage PRIVATE cxx_std_23)
+target_compile_features(mainpage PRIVATE cxx_std_26)
 target_link_libraries(mainpage PRIVATE common stdModule webxxModule glazeModule i18nModule webpp::webpp)
 target_link_options(mainpage PRIVATE -Wl,--no-entry)
 target_link_options(mainpage PRIVATE -nostartfiles)
