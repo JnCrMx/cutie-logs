@@ -1,5 +1,5 @@
 variables:
-  - &buildx_plugin 'docker.io/woodpeckerci/plugin-docker-buildx:5.2.1'
+  - &buildx_plugin 'docker.io/woodpeckerci/plugin-docker-buildx:latest'
   - &platforms 'linux/arm64, linux/amd64'
   - &repositories ['git.jcm.re/jcm/cutie-logs', 'ghcr.io/jncrmx/cutie-logs']
   - publish_logins: &publish_logins
@@ -22,6 +22,7 @@ when:
 steps:
   docker:
     image: *buildx_plugin
+    pull: true
     settings:
       repo: *repositories
       dockerfile: Dockerfile
