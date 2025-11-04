@@ -133,7 +133,7 @@ export class table : public page {
                     auto timestamp_double = sys_seconds_double{std::chrono::duration<double>{entry.timestamp}};
                     auto timestamp = std::chrono::time_point_cast<std::chrono::sys_seconds::duration>(timestamp_double);
 
-                    auto attributes = entry.attributes.is_object() ? entry.attributes.get_object() : glz::json_t::object_t{};
+                    auto attributes = entry.attributes.is_object() ? entry.attributes.get_object() : glz::generic::object_t{};
                     auto e_timestamp = std::format("{:%Y-%m-%d %H:%M:%S}", timestamp);
                     auto e_resource = a{{_class{"link"}, _onClick{std::format("document.getElementById('modal_resource_{}').showModal()", entry.resource)}},
                         resource_name(entry.resource, std::get<0>(resources->resources[entry.resource]))};

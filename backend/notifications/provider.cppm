@@ -44,12 +44,12 @@ public:
         return instance;
     }
 
-    using func = std::function<std::expected<std::unique_ptr<provider>, error>(spdlog::logger& logger, const glz::json_t& options)>;
+    using func = std::function<std::expected<std::unique_ptr<provider>, error>(spdlog::logger& logger, const glz::generic& options)>;
     void register_provider(std::string&& name, func&& f, common::notification_provider_info&& info = {}) {
         m_providers.emplace(std::move(name), std::make_pair(std::move(f), std::move(info)));
     }
 
-    std::expected<std::unique_ptr<provider>, error> create_provider(const std::string& name, spdlog::logger& logger, const glz::json_t& options) {
+    std::expected<std::unique_ptr<provider>, error> create_provider(const std::string& name, spdlog::logger& logger, const glz::generic& options) {
         auto it = m_providers.find(name);
         if (it != m_providers.end()) {
             return it->second.first(logger, options);
@@ -84,7 +84,7 @@ export class register_provider {
             registry::instance().register_provider(std::move(name), std::move(f), std::move(info));
         }
 };
-export template<typename T> auto default_provider_factory = [](spdlog::logger& logger, const glz::json_t& options) -> std::expected<std::unique_ptr<provider>, error> {
+export template<typename T> auto default_provider_factory = [](spdlog::logger& logger, const glz::generic& options) -> std::expected<std::unique_ptr<provider>, error> {
     static_assert(std::is_base_of_v<provider, T>, "T must be derived from provider");
     try {
         return std::make_unique<T>(logger, options);

@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
         std::cerr << "Failed to lookup: " << res.error() << std::endl;
         return 1;
     }
-    glz::json_t j = res->to_json();
+    glz::generic j = res->to_json();
 
     auto test = common::stencil("{}", j);
     if(!test) {

@@ -43,11 +43,11 @@ uint32_t parse_ipv4(std::string_view x) {
     return result;
 }
 
-glz::json_t get_path(glz::json_t x, std::string_view path) {
+glz::generic get_path(glz::generic x, std::string_view path) {
     if(path.empty()) {
         return x;
     }
-    glz::json_t y;
+    glz::generic y;
     for(auto part : path | std::views::split('.')) {
         std::string_view sv{part};
         if(x.is_array()) {
@@ -56,16 +56,16 @@ glz::json_t get_path(glz::json_t x, std::string_view path) {
                 index = x.size() + index;
             }
             if(index < 0 || index >= x.size()) {
-                return glz::json_t{};
+                return glz::generic{};
             }
             y = x.get_array()[index];
         } else if(x.is_object()) {
             if(!x.contains(sv)) {
-                return glz::json_t{};
+                return glz::generic{};
             }
             y = x[sv];
         } else {
-            return glz::json_t{};
+            return glz::generic{};
         }
         x = y;
     }
@@ -79,45 +79,45 @@ concept log_with_resource = requires(T t) {
 };
 
 export struct stencil_functions {
-    std::add_pointer_t<double(glz::json_t)> get_number = [](glz::json_t x){
+    std::add_pointer_t<double(glz::generic)> get_number = [](glz::generic x){
         if(!x.is_number()) {
             return 0.0;
         }
         return x.get_number();
     };
-    std::add_pointer_t<std::string(glz::json_t)> get_string = [](glz::json_t x){
+    std::add_pointer_t<std::string(glz::generic)> get_string = [](glz::generic x){
         if(!x.is_string()) {
             return std::string{};
         }
         return x.get_string();
     };
-    std::add_pointer_t<bool(glz::json_t)> get_boolean = [](glz::json_t x){
+    std::add_pointer_t<bool(glz::generic)> get_boolean = [](glz::generic x){
         if(!x.is_boolean()) {
             return false;
         }
         return x.get_boolean();
     };
 
-    std::add_pointer_t<glz::json_t(glz::json_t, std::string_view)> at = [](glz::json_t x, std::string_view arg){
+    std::add_pointer_t<glz::generic(glz::generic, std::string_view)> at = [](glz::generic x, std::string_view arg){
         if(x.is_array()) {
             int index = parse_int(arg).value_or(0);
             if(index < 0) {
                 index = x.size() + index;
             }
             if(index < 0 || index >= x.size()) {
-                return glz::json_t{};
+                return glz::generic{};
             }
             return x.get_array()[index];
         } else if(x.is_object()) {
             if(!x.contains(arg)) {
-                return glz::json_t{};
+                return glz::generic{};
             }
             return x[arg];
         } else {
-            return glz::json_t{};
+            return glz::generic{};
         }
     };
-    std::add_pointer_t<glz::json_t(glz::json_t, std::string_view)> get = [](glz::json_t x, std::string_view arg){
+    std::add_pointer_t<glz::generic(glz::generic, std::string_view)> get = [](glz::generic x, std::string_view arg){
         return get_path(x, arg);
     };
 
@@ -147,7 +147,7 @@ export struct stencil_functions {
         std::string operator()(bool x) const {
             return x ? "true" : "false";
         }
-        std::string operator()(const glz::json_t& x) const {
+        std::string operator()(const glz::generic& x) const {
             return x.dump().value_or("null");
         }
         std::string operator()(uint32_t x) const {
@@ -292,8 +292,8 @@ export struct advanced_stencil_functions {
     struct {
         std::vector<std::pair<std::string_view, mmdb*>> m_mmdbs;
 
-        glz::json_t operator()(uint32_t x) const {
-            glz::json_t result = glz::json_t::object_t{};
+        glz::generic operator()(uint32_t x) const {
+            glz::generic result = glz::generic::object_t{};
             for(auto& [mmdb_name, mmdb] : m_mmdbs) {
                 auto res = mmdb->lookup_v4(x);
                 if(res) {
@@ -302,8 +302,8 @@ export struct advanced_stencil_functions {
             }
             return result;
         }
-        glz::json_t operator()(__uint128_t x) const {
-            glz::json_t result = glz::json_t::object_t{};
+        glz::generic operator()(__uint128_t x) const {
+            glz::generic result = glz::generic::object_t{};
             for(auto& [mmdb_name, mmdb] : m_mmdbs) {
                 auto res = mmdb->lookup_v6(x);
                 if(res) {
@@ -312,13 +312,13 @@ export struct advanced_stencil_functions {
             }
             return result;
         }
-        glz::json_t operator()(std::string x) const {
+        glz::generic operator()(std::string x) const {
             if(x.contains(":")) {
-                return glz::json_t{};
+                return glz::generic{};
             } else if(x.contains(".")) {
                 return (*this)(parse_ipv4(x));
             }
-            return glz::json_t{};
+            return glz::generic{};
         }
     } lookup{m_mmdbs};
 };

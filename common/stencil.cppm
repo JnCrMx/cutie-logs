@@ -41,7 +41,7 @@ namespace common {
     std::expected<std::string, std::string> format_if_possible(const T& obj) {
         if constexpr (trivially_formattable<T>) {
             return std::format("{}", obj);
-        } else if constexpr (std::is_same_v<T, glz::json_t>) {
+        } else if constexpr (std::is_same_v<T, glz::generic>) {
             if(obj.is_string()) {
                 return obj.get_string();
             } else if(obj.is_number()) {
@@ -59,7 +59,7 @@ namespace common {
     }
 
     template<typename T>
-    concept can_get_field = glz::reflectable<T> || std::same_as<T, glz::json_t>;
+    concept can_get_field = glz::reflectable<T> || std::same_as<T, glz::generic>;
 
     template<can_get_field T>
     auto get_keys(const T& obj) {
@@ -67,7 +67,7 @@ namespace common {
             return glz::reflect<T>::keys;
         } else {
             if(obj.is_object()) {
-                const glz::json_t::object_t& o = obj.get_object();
+                const glz::generic::object_t& o = obj.get_object();
                 std::vector<std::string_view> keys{};
                 keys.reserve(o.size());
                 for(auto& [key, _] : o) {
@@ -85,7 +85,7 @@ namespace common {
             glz::for_each_field(obj, std::forward<Callable>(func));
         } else {
             if(obj.is_object()) {
-                const glz::json_t::object_t& o = obj.get_object();
+                const glz::generic::object_t& o = obj.get_object();
                 for(auto& [_, value] : o) {
                     func(value);
                 }
@@ -288,12 +288,12 @@ namespace common {
     }
 
     export template<can_stencil T, glz::reflectable Functions = stencil_functions>
-    glz::json_t stencil_json(glz::json_t stencil_object, const T& obj, const Functions& functions = stencil_functions{}) {
+    glz::generic stencil_json(glz::generic stencil_object, const T& obj, const Functions& functions = stencil_functions{}) {
         struct visitor {
             const T& obj;
             const Functions& functions;
 
-            void operator()(glz::json_t::null_t&) const {}
+            void operator()(glz::generic::null_t&) const {}
             void operator()(double&) const {}
             void operator()(bool&) const {}
 
@@ -306,29 +306,29 @@ namespace common {
                 }
             }
 
-            void operator()(glz::json_t::array_t& array) const {
+            void operator()(glz::generic::array_t& array) const {
                 for(auto& value : array) {
                     (*this)(value);
                 }
             }
-            void operator()(glz::json_t::object_t& obj) const {
+            void operator()(glz::generic::object_t& obj) const {
                 for(auto& [key, value] : obj) {
                     (*this)(value);
                 }
             }
 
-            void operator()(glz::json_t& json) const {
+            void operator()(glz::generic& json) const {
                 if(json.is_string() && json.get_string().ends_with("!json")) {
                     std::string str = json.get_string();
                     str = str.substr(0, str.size() - 5); // remove the "!json" suffix
 
                     auto r = stencil(str, this->obj, this->functions);
                     if(!r) {
-                        json = glz::json_t::null_t{};
-                    } else if(auto p = glz::read_json<glz::json_t>(r.value())) {
+                        json = glz::generic::null_t{};
+                    } else if(auto p = glz::read_json<glz::generic>(r.value())) {
                         json = std::move(p.value());
                     } else {
-                        json = glz::json_t::null_t{};
+                        json = glz::generic::null_t{};
                     }
                 } else {
                     std::visit(*this, *json);
@@ -341,5 +341,5 @@ namespace common {
         return stencil_object;
     }
 
-    static_assert(can_get_field<glz::json_t>);
+    static_assert(can_get_field<glz::generic>);
 }

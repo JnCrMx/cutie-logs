@@ -15,7 +15,7 @@ export namespace glz {
     using glz::error_code;
     using glz::error_ctx;
 
-    using glz::json_t;
+    using glz::generic;
 
     using glz::write;
     using glz::read;

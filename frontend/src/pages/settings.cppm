@@ -194,7 +194,7 @@ export class settings : public page {
                     static auto render_provider_options = [](const common::notification_provider_info& info, std::optional<common::alert_rule> rule) -> Webxx::fragment {
                         return fragment{each(info.options, [&](const common::notification_provider_option& option) {
                             fragment input_field = [&]() -> fragment {
-                                std::optional<glz::json_t> value = option.default_value;
+                                std::optional<glz::generic> value = option.default_value;
                                 if(rule && rule->notification_options.contains(option.id)) {
                                     value = rule->notification_options[option.id];
                                 }
@@ -205,12 +205,12 @@ export class settings : public page {
                                     case common::notification_provider_option_type::OBJECT:
                                         return fragment{textarea{{_id{std::format("dialog_add_rule_notification_option_{}", option.id)},
                                             _class{"input w-full"}, _placeholder{option.description}},
-                                            glz::write<glz::opts{.prettify=true}>(value.value_or(glz::json_t::object_t{})).value_or("{}")
+                                            glz::write<glz::opts{.prettify=true}>(value.value_or(glz::generic::object_t{})).value_or("{}")
                                         }};
                                     case common::notification_provider_option_type::ARRAY:
                                         return fragment{textarea{{_id{std::format("dialog_add_rule_notification_option_{}", option.id)},
                                             _class{"input w-full"}, _placeholder{option.description}},
-                                            glz::write<glz::opts{.prettify=true}>(value.value_or(glz::json_t::array_t{})).value_or("[]")
+                                            glz::write<glz::opts{.prettify=true}>(value.value_or(glz::generic::array_t{})).value_or("[]")
                                         }};
                                     default:
                                         return fragment{};
@@ -291,7 +291,7 @@ export class settings : public page {
                         new_rule.notification_provider = webpp::get_element_by_id("dialog_add_rule_notification_provider")->get_property<std::string>("value").value_or("");
 
                         const auto& info = shared_settings.notification_providers[new_rule.notification_provider];
-                        new_rule.notification_options = glz::json_t::object_t{};
+                        new_rule.notification_options = glz::generic::object_t{};
                         for(const auto& option : info.options) {
                             auto value = webpp::get_element_by_id(std::format("dialog_add_rule_notification_option_{}", option.id))
                                 ->get_property<std::string>("value").value_or("");
@@ -303,7 +303,7 @@ export class settings : public page {
                                     new_rule.notification_options[option.id] = value;
                                     break;
                                 case common::notification_provider_option_type::OBJECT: {
-                                    auto v = glz::read_json<glz::json_t>(value);
+                                    auto v = glz::read_json<glz::generic>(value);
                                     if(!v) {
                                         error("Invalid JSON for option {}"_(option.name), glz::format_error(v.error()));
                                         co_return;
@@ -316,7 +316,7 @@ export class settings : public page {
                                     break;
                                 }
                                 case common::notification_provider_option_type::ARRAY: {
-                                    auto v = glz::read_json<glz::json_t>(value);
+                                    auto v = glz::read_json<glz::generic>(value);
                                     if(!v) {
                                         error("Invalid JSON for option {}"_(option.name), glz::format_error(v.error()));
                                         co_return;

@@ -50,27 +50,27 @@ export class mmdb {
         struct data : data_base {
             using data_base::data_base;
 
-            glz::json_t to_json() const {
-                return std::visit([](const auto& v) -> glz::json_t {
+            glz::generic to_json() const {
+                return std::visit([](const auto& v) -> glz::generic {
                     using T = std::decay_t<decltype(v)>;
                     if constexpr (std::is_same_v<T, string>) {
                         return v;
                     } else if constexpr (std::is_same_v<T, double>) {
                         return v;
                     } else if constexpr (std::is_same_v<T, bytes>) {
-                        glz::json_t::array_t arr;
+                        glz::generic::array_t arr;
                         arr.reserve(v.size());
                         for (const auto& byte : v) {
                             arr.push_back(static_cast<int>(byte));
                         }
                     } else if constexpr (std::is_same_v<T, map>) {
-                        glz::json_t::object_t obj;
+                        glz::generic::object_t obj;
                         for (const auto& [key, value] : v) {
                             obj[key] = value.to_json();
                         }
                         return obj;
                     } else if constexpr (std::is_same_v<T, array>) {
-                        glz::json_t::array_t arr;
+                        glz::generic::array_t arr;
                         arr.reserve(v.size());
                         for (const auto& item : v) {
                             arr.push_back(item.to_json());
@@ -87,9 +87,9 @@ export class mmdb {
                     } else if constexpr (std::is_same_v<T, __uint128_t>) {
                         return static_cast<uint64_t>(v);
                     } else if constexpr (std::is_same_v<T, data_cache_container>) {
-                        return glz::json_t::null_t{};
+                        return glz::generic::null_t{};
                     } else if constexpr (std::is_same_v<T, end_marker>) {
-                        return glz::json_t::null_t{};
+                        return glz::generic::null_t{};
                     } else if constexpr (std::is_same_v<T, bool>) {
                         return v;
                     } else if constexpr (std::is_same_v<T, float>) {
@@ -97,7 +97,7 @@ export class mmdb {
                     } else {
                         static_assert(!std::is_same_v<T, T>, "Unsupported type");
                     }
-                    return glz::json_t::null_t{};
+                    return glz::generic::null_t{};
                 }, *this);
             }
         };

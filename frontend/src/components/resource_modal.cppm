@@ -28,7 +28,7 @@ std::string resource_name(unsigned int id, const common::log_resource& resource)
 }
 
 export struct resource_modal : component<resource_modal> {
-    static Webxx::fragment render_attribute_value(const glz::json_t& v) {
+    static Webxx::fragment render_attribute_value(const glz::generic& v) {
         using namespace Webxx;
         if(v.is_boolean()) {
             return fragment{

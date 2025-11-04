@@ -134,15 +134,15 @@ namespace pqxx {
         }
     };
 
-    export template<> std::string const type_name<glz::json_t>{"glz::json_t"};
-    export template<> struct nullness<glz::json_t> : pqxx::no_null<glz::json_t> {};
-    export template<> struct string_traits<glz::json_t> {
+    export template<> std::string const type_name<glz::generic>{"glz::generic"};
+    export template<> struct nullness<glz::generic> : pqxx::no_null<glz::generic> {};
+    export template<> struct string_traits<glz::generic> {
         static constexpr bool converts_from_string{true};
 
-        static glz::json_t from_string(std::string_view text) {
-            auto ret = glz::read_json<glz::json_t>(text);
+        static glz::generic from_string(std::string_view text) {
+            auto ret = glz::read_json<glz::generic>(text);
             if(!ret) {
-                throw pqxx::conversion_error{std::format("Could not convert {} to glz::json_t: {}", text, glz::format_error(ret.error()))};
+                throw pqxx::conversion_error{std::format("Could not convert {} to glz::generic: {}", text, glz::format_error(ret.error()))};
             }
             return *ret;
         }
@@ -167,7 +167,7 @@ common::standard_filters parse_filters(const pqxx::row& row, const pqxx::connect
     filters.severities.type = row["filter_severities_type"].as<common::filter_type>();
     filters.attributes.values = parse_array<std::set<std::string>>(row["filter_attributes"].as<std::string>(), conn);
     filters.attributes.type = row["filter_attributes_type"].as<common::filter_type>();
-    filters.attribute_values.values = row["filter_attribute_values"].as<glz::json_t>();
+    filters.attribute_values.values = row["filter_attribute_values"].as<glz::generic>();
     filters.attribute_values.type = row["filter_attribute_values_type"].as<common::filter_type>();
     return filters;
 }
@@ -208,7 +208,7 @@ export class Database {
 
             return queue.back().second.get_future();
         }
-        unsigned int ensure_resource(pqxx::connection& conn, const glz::json_t& attributes, unsigned int tries = 3) {
+        unsigned int ensure_resource(pqxx::connection& conn, const glz::generic& attributes, unsigned int tries = 3) {
             try {
                 pqxx::work txn(conn);
                 pqxx::result res = txn.exec(pqxx::prepped{"ensure_resource"}, pqxx::params{attributes.dump().value()});
@@ -224,7 +224,7 @@ export class Database {
             }
         };
         void insert_log(pqxx::connection& conn, unsigned int resource, std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> timestamp,
-            const std::string& scope, common::log_severity severity, const glz::json_t& attributes, const glz::json_t& body, unsigned int tries = 3)
+            const std::string& scope, common::log_severity severity, const glz::generic& attributes, const glz::generic& body, unsigned int tries = 3)
         {
             try {
                 pqxx::work txn(conn);
@@ -296,7 +296,7 @@ export class Database {
                 rule.filters = parse_filters(row, txn.conn());
 
                 rule.action = row["action"].as<common::rule_action>();
-                rule.action_options = row["action_options"].as<std::optional<glz::json_t>>();
+                rule.action_options = row["action_options"].as<std::optional<glz::generic>>();
 
                 rule.created_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::duration<double>{row["created_at_s"].as<double>()})};
@@ -325,7 +325,7 @@ export class Database {
                 rule.filters = parse_filters(row, txn.conn());
 
                 rule.notification_provider = row["notification_provider"].as<std::string>();
-                rule.notification_options = row["notification_options"].as<glz::json_t>();
+                rule.notification_options = row["notification_options"].as<glz::generic>();
 
                 rule.created_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::duration<double>{row["created_at_s"].as<double>()})};

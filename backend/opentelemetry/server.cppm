@@ -18,7 +18,7 @@ import backend.utils;
 import backend.database;
 import backend.notifications;
 
-glz::json_t to_json(const ::opentelemetry::proto::common::v1::AnyValue& v) {
+glz::generic to_json(const ::opentelemetry::proto::common::v1::AnyValue& v) {
     if(v.has_bool_value()) {
         return v.bool_value();
     } else if(v.has_int_value()) {
@@ -31,22 +31,22 @@ glz::json_t to_json(const ::opentelemetry::proto::common::v1::AnyValue& v) {
         s.erase(std::remove_if(s.begin(), s.end(), [](unsigned char c) { return !std::isprint(c); }), s.end());
         return s;
     } else if(v.has_kvlist_value()) {
-        auto obj = glz::json_t::object_t{};
+        auto obj = glz::generic::object_t{};
         for(auto& kv : v.kvlist_value().values()) {
             obj[kv.key()] = to_json(kv.value());
         }
         return obj;
     } else if(v.has_array_value()) {
-        auto arr = glz::json_t::array_t{};
+        auto arr = glz::generic::array_t{};
         for(auto& elem : v.array_value().values()) {
             arr.push_back(to_json(elem));
         }
         return arr;
     }
-    return glz::json_t::null_t{};
+    return glz::generic::null_t{};
 }
-glz::json_t::object_t to_json(const ::google::protobuf::RepeatedPtrField<::opentelemetry::proto::common::v1::KeyValue>& kv) {
-    auto obj = glz::json_t::object_t{};
+glz::generic::object_t to_json(const ::google::protobuf::RepeatedPtrField<::opentelemetry::proto::common::v1::KeyValue>& kv) {
+    auto obj = glz::generic::object_t{};
     for(const auto& elem : kv) {
         obj[elem.key()] = to_json(elem.value());
     }
@@ -175,7 +175,7 @@ namespace backend::opentelemetry {
                             static uint64_t timestamp_fix_offset = 0;
 
                             for(auto& resourceLog : req.resource_logs()) {
-                                glz::json_t::object_t resource_attributes = to_json(resourceLog.resource().attributes());
+                                glz::generic::object_t resource_attributes = to_json(resourceLog.resource().attributes());
                                 unsigned int resource = db.ensure_resource(conn, resource_attributes);
                                 common::log_resource log_resource{
                                     .attributes = std::move(resource_attributes),
@@ -196,8 +196,8 @@ namespace backend::opentelemetry {
                                         }
                                         seen_timestamps.insert(ts.time_since_epoch().count());
 
-                                        glz::json_t::object_t attributes = to_json(log.attributes());
-                                        glz::json_t body = to_json(log.body());
+                                        glz::generic::object_t attributes = to_json(log.attributes());
+                                        glz::generic body = to_json(log.body());
                                         common::log_severity severity = static_cast<common::log_severity>(log.severity_number());
                                         db.insert_log(conn, resource, ts, scopeLog.scope().name(), severity, attributes, body);
 

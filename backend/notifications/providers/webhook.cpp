@@ -15,7 +15,7 @@ namespace backend::notifications {
 
 class webhook_provider : public provider {
     public:
-        webhook_provider(spdlog::logger&, const glz::json_t& options, const glz::json_t& default_template) {
+        webhook_provider(spdlog::logger&, const glz::generic& options, const glz::generic& default_template) {
             if(!options.contains("url")) {
                 throw error(error_code::invalid_options, "Webhook provider requires 'url' option");
             }
@@ -27,7 +27,7 @@ class webhook_provider : public provider {
             }
 
             if(options.contains("overrides")) {
-                for(const auto& o : options["overrides"].get<glz::json_t::array_t>()) {
+                for(const auto& o : options["overrides"].get<glz::generic::array_t>()) {
                     if(!glz::set(m_template, o["key"].get<std::string>(), o["value"])) {
                         throw error(error_code::invalid_options, "Failed to apply override: " + o["key"].get_string());
                     }
@@ -36,7 +36,7 @@ class webhook_provider : public provider {
         }
 
         std::expected<void, error> notify(const common::alert_stencil_object& msg) override {
-            glz::json_t payload = common::stencil_json(m_template, msg);
+            glz::generic payload = common::stencil_json(m_template, msg);
             auto json_payload = glz::write_json(payload);
             if(!json_payload) {
                 return std::unexpected<error>(std::in_place, error_code::internal_error,
@@ -57,10 +57,10 @@ class webhook_provider : public provider {
         }
     private:
         std::string m_url;
-        glz::json_t m_template;
+        glz::generic m_template;
 };
-auto webhook_factory(const glz::json_t& default_template) -> registry::func {
-    return [default_template](spdlog::logger& logger, const glz::json_t& options) -> std::expected<std::unique_ptr<provider>, error> {
+auto webhook_factory(const glz::generic& default_template) -> registry::func {
+    return [default_template](spdlog::logger& logger, const glz::generic& options) -> std::expected<std::unique_ptr<provider>, error> {
         try {
             return std::make_unique<webhook_provider>(logger, options, default_template);
         } catch (const error& e) {
@@ -73,37 +73,37 @@ auto webhook_factory(const glz::json_t& default_template) -> registry::func {
     };
 }
 
-const auto discord_template = glz::json_t::object_t{
-    {"content", glz::json_t::null_t{}},
-    {"embeds", glz::json_t::array_t{
-        glz::json_t::object_t{
+const auto discord_template = glz::generic::object_t{
+    {"content", glz::generic::null_t{}},
+    {"embeds", glz::generic::array_t{
+        glz::generic::object_t{
             {"title", "Alert: {.severity}"},
             {"description", "{.body} ({.attributes})"},
             {"timestamp", "{.timestamp | from_timestamp | iso_8601}"},
             {"color", "{.severity | severity_color}!json"},
-            {"author", glz::json_t::object_t{
+            {"author", glz::generic::object_t{
                 {"name", "{| resource_name}"}
             }},
-            {"footer", glz::json_t::object_t{
+            {"footer", glz::generic::object_t{
                 {"text", "{rule.name} • {rule.description}"}
             }},
-            {"fields", glz::json_t::array_t{
-                glz::json_t::object_t{
+            {"fields", glz::generic::array_t{
+                glz::generic::object_t{
                     {"name", "Timestamp"},
                     {"value", "{.timestamp | from_timestamp | iso_date_time}"},
                     {"inline", true}
                 },
-                glz::json_t::object_t{
+                glz::generic::object_t{
                     {"name", "Resource"},
                     {"value", "{| resource_name}"},
                     {"inline", true}
                 },
-                glz::json_t::object_t{
+                glz::generic::object_t{
                     {"name", "Scope"},
                     {"value", "{.scope}"},
                     {"inline", true}
                 },
-                glz::json_t::object_t{
+                glz::generic::object_t{
                     {"name", "Severity"},
                     {"value", "{.severity}"},
                     {"inline", true}
@@ -119,7 +119,7 @@ const common::notification_provider_info discord_info{
     .options = {
         {"url", "URL", "Webhook URL from Discord", common::notification_provider_option_type::STRING},
         {"template", "Template", "JSON template for the message payload", common::notification_provider_option_type::OBJECT, discord_template},
-        {"overrides", "Overrides", "List of key-value pairs to override template values", common::notification_provider_option_type::ARRAY, glz::json_t::array_t{}}
+        {"overrides", "Overrides", "List of key-value pairs to override template values", common::notification_provider_option_type::ARRAY, glz::generic::array_t{}}
     }
 };
 register_provider discord_reg("discord", webhook_factory(discord_template), discord_info);

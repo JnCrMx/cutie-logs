@@ -24,7 +24,7 @@ export namespace common {
     concept serializable = serializable_beve<T> && serializable_json<T>;
 
     struct log_resource {
-        glz::json_t attributes;
+        glz::generic attributes;
         double created_at;
 
         std::optional<std::string> guess_name() const {
@@ -65,8 +65,8 @@ export namespace common {
         double timestamp;
         std::string scope;
         common::log_severity severity;
-        glz::json_t attributes;
-        glz::json_t body;
+        glz::generic attributes;
+        glz::generic body;
     };
     static_assert(serializable<log_entry>);
 
@@ -117,7 +117,7 @@ export namespace common {
         filter<std::set<std::string>> scopes;
         filter<std::set<log_severity>> severities;
         filter<std::set<std::string>> attributes;
-        filter<glz::json_t> attribute_values = {{}, glz::json_t::object_t{}};
+        filter<glz::generic> attribute_values = {{}, glz::generic::object_t{}};
 
         bool match(const log_entry& entry) const {
             if(resources.type == filter_type::INCLUDE && !resources.values.contains(entry.resource)) { return false; }
@@ -169,7 +169,7 @@ export namespace common {
         standard_filters filters;
 
         rule_action action = rule_action::DROP;
-        std::optional<glz::json_t> action_options;
+        std::optional<glz::generic> action_options;
 
         std::chrono::sys_seconds created_at;
         std::chrono::sys_seconds updated_at;
@@ -191,7 +191,7 @@ export namespace common {
         standard_filters filters;
 
         std::string notification_provider;
-        glz::json_t notification_options;
+        glz::generic notification_options;
 
         std::chrono::sys_seconds created_at;
         std::chrono::sys_seconds updated_at;
@@ -229,7 +229,7 @@ export namespace common {
         std::string name;
         std::string description;
         notification_provider_option_type type;
-        std::optional<glz::json_t> default_value;
+        std::optional<glz::generic> default_value;
         std::optional<std::set<std::string>> allowed_values;
         std::optional<double> min_value;
         std::optional<double> max_value;

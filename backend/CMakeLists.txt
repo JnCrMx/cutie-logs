@@ -13,7 +13,7 @@ find_package(ZLIB REQUIRED)
 
 FetchContent_Declare(opentelemetry-proto
   GIT_REPOSITORY https://github.com/open-telemetry/opentelemetry-proto.git
-  GIT_TAG        v1.8.0)
+  GIT_TAG        v1.9.0)
 FetchContent_Declare(pistache
   GIT_REPOSITORY https://github.com/JnCrMx/pistache.git
   GIT_TAG        cmake-optional-rapidjson)
@@ -29,7 +29,7 @@ FetchContent_Declare(argparse
   GIT_TAG        v3.2)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG        v5.7.1
+  GIT_TAG        v6.0.1
   GIT_SHALLOW TRUE)
 FetchContent_Declare(cpr
   GIT_REPOSITORY https://github.com/libcpr/cpr.git

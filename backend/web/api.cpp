@@ -142,14 +142,14 @@ std::vector<common::log_entry> get_logs(pqxx::transaction_base& txn, const std::
             row["scope"].as<std::string>(),
             row["severity"].as<common::log_severity>()
         );
-        l.body = row["body"].as<std::optional<glz::json_t>>().value_or(glz::json_t::null_t{});
+        l.body = row["body"].as<std::optional<glz::generic>>().value_or(glz::generic::null_t{});
         unsigned int i=row.column_number("body")+1;
         if(attributes == "*") {
-            l.attributes = row["attributes"].as<glz::json_t>();
+            l.attributes = row["attributes"].as<glz::generic>();
         } else {
             for(const auto& attr : attributes | std::views::split(',')) {
                 auto sv = std::string_view{attr};
-                auto json = row[i].as<std::optional<glz::json_t>>();
+                auto json = row[i].as<std::optional<glz::generic>>();
                 if(json) {
                     l.attributes[sv] = std::move(*json);
                 }
@@ -241,7 +241,7 @@ void Server::setup_api_routes() {
                 query += " OFFSET " + std::to_string(std::stoi(offset));
 
                 for(auto [resource, timestamp, scope, severity, attributes, body] :
-                    txn.stream<unsigned int, double, std::string, common::log_severity, glz::json_t, glz::json_t>(query))
+                    txn.stream<unsigned int, double, std::string, common::log_severity, glz::generic, glz::generic>(query))
                 {
                     common::log_entry log{resource, timestamp, scope, severity, attributes, body};
                     std::string line = *common::stencil(stencil, log)
@@ -298,7 +298,7 @@ void Server::setup_api_routes() {
                 unsigned int id = row["id"].as<unsigned int>();
                 unsigned int count = row["count"].as<unsigned int>();
                 common::log_resource r;
-                r.attributes = row["attributes"].as<glz::json_t>();
+                r.attributes = row["attributes"].as<glz::generic>();
                 r.created_at = row["created_at"].as<double>();
                 res.resources[id] = {r, count};
             }
@@ -369,7 +369,7 @@ void Server::setup_api_routes() {
                             filter_severities, rule.filters.severities.type,
                             filter_attributes, rule.filters.attributes.type,
                             filter_attribute_values, rule.filters.attribute_values.type,
-                            rule.action, rule.action_options.and_then([](const glz::json_t& v) -> std::optional<std::string> {
+                            rule.action, rule.action_options.and_then([](const glz::generic& v) -> std::optional<std::string> {
                                 if(auto r = glz::write_json(v)) {
                                     return r.value();
                                 } else {
@@ -389,7 +389,7 @@ void Server::setup_api_routes() {
                             filter_severities, rule.filters.severities.type,
                             filter_attributes, rule.filters.attributes.type,
                             filter_attribute_values, rule.filters.attribute_values.type,
-                            rule.action, rule.action_options.and_then([](const glz::json_t& v) -> std::optional<std::string> {
+                            rule.action, rule.action_options.and_then([](const glz::generic& v) -> std::optional<std::string> {
                                 if(auto r = glz::write_json(v)) {
                                     return r.value();
                                 } else {
