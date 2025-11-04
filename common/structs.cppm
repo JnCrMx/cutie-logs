@@ -293,8 +293,8 @@ export namespace glz {
     };
 }
 
-export template<>
-struct std::formatter<common::log_severity> {
+export template<typename CharT>
+struct std::formatter<common::log_severity, CharT> {
     template<class ParseContext>
     constexpr ParseContext::iterator parse(ParseContext& ctx) {
         return ctx.begin();
@@ -306,8 +306,8 @@ struct std::formatter<common::log_severity> {
     }
 };
 
-export template<>
-struct std::formatter<common::filter_type> {
+export template<typename CharT>
+struct std::formatter<common::filter_type, CharT> {
     template<class ParseContext>
     constexpr ParseContext::iterator parse(ParseContext& ctx) {
         return ctx.begin();

@@ -45,8 +45,8 @@ set(NO_LIBINTL ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(webxx glaze webpp i18n++)
 
 add_library(stdModule STATIC)
-target_sources(stdModule PUBLIC FILE_SET CXX_MODULES BASE_DIRS /usr/lib/llvm-19/share/libc++/v1/
-    FILES /usr/lib/llvm-19/share/libc++/v1/std.cppm)
+target_sources(stdModule PUBLIC FILE_SET CXX_MODULES BASE_DIRS /usr/lib/llvm-20/share/libc++/v1/
+    FILES /usr/lib/llvm-20/share/libc++/v1/std.cppm)
 target_compile_features(stdModule PUBLIC cxx_std_23)
 target_compile_options(stdModule PRIVATE -Wno-reserved-identifier)
 target_compile_definitions(stdModule PRIVATE _LIBCPP_CSETJMP _LIBCPP_CSIGNAL)

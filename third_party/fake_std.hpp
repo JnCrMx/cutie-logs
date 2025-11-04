@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <ostream>
 
 _LIBCPP_BEGIN_NAMESPACE_STD
         namespace filesystem {
