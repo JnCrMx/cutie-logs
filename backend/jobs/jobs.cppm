@@ -21,7 +21,7 @@ export class Jobs {
 
         void start() {
             logger->info("Starting jobs thread");
-            thread = std::jthread(std::bind_front(&Jobs::job_thread, this));
+            thread = std::jthread(std::bind(&Jobs::job_thread, this, std::placeholders::_1));
         }
     private:
         static constexpr auto job_interval = std::chrono::minutes(1);
