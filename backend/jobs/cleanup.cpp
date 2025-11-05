@@ -1,5 +1,6 @@
 module;
 #include <chrono>
+#include <expected>
 #include <future>
 #include <map>
 #include <utility>
@@ -13,9 +14,8 @@ import common;
 
 namespace backend::jobs {
 
-std::string craft_cleanup_job_sql(const common::cleanup_rule& rule, pqxx::connection& conn) {
-    std::string sql = "DELETE FROM logs WHERE ";
-    sql += "timestamp < NOW() - '" + std::to_string(rule.filter_minimum_age.count()) + " seconds'::interval";
+std::string craft_cleanup_job_filter_sql(const common::cleanup_rule& rule, pqxx::connection& conn) {
+    std::string sql = "timestamp < NOW() - '" + std::to_string(rule.filter_minimum_age.count()) + " seconds'::interval";
     if(!rule.filters.resources.values.empty()) {
         if(rule.filters.resources.type == common::filter_type::INCLUDE) {
             sql += " AND resource IN (";
@@ -70,6 +70,26 @@ std::string craft_cleanup_job_sql(const common::cleanup_rule& rule, pqxx::connec
     return sql;
 }
 
+std::expected<int, std::string> execute_drop_cleanup_job(const common::cleanup_rule& rule, pqxx::connection& conn, spdlog::logger& logger) {
+    std::string sql = "DELETE FROM logs WHERE " + craft_cleanup_job_filter_sql(rule, conn);
+    if(sql.ends_with(" WHERE ")) {
+        logger.warn("Filter crafting failed for cleanup job {}:{}: {}", rule.id, rule.name, sql);
+        return std::unexpected("Failed to craft SQL for cleanup job");
+    }
+    logger.debug("Executing cleanup job {}:{} with SQL: {}", rule.id, rule.name, sql);
+
+    try {
+        pqxx::work txn(conn);
+        std::size_t affected_rows = txn.exec(sql).affected_rows();
+        txn.exec("UPDATE cleanup_rules SET last_execution = NOW() WHERE id = $1", pqxx::params{rule.id});
+        txn.commit();
+
+        return affected_rows;
+    } catch(const std::exception& e) {
+        return std::unexpected(std::string("Error executing cleanup job: ") + e.what());
+    }
+}
+
 void Jobs::run_cleanup_jobs() {
     logger->debug("Running cleanup jobs");
 
@@ -108,25 +128,22 @@ void Jobs::run_cleanup_jobs() {
                 continue;
             }
 
-            std::string sql = craft_cleanup_job_sql(rule, conn);
-            if(sql.empty()) {
-                logger->warn("Cleanup job {}:{} has no SQL to execute", rule.id, rule.name);
-                continue;
+            std::expected<int, std::string> result{};
+            switch(rule.action) {
+                case common::rule_action::DROP:
+                    result = execute_drop_cleanup_job(rule, conn, *logger);
+                    break;
+                default:
+                    logger->error("Unsupported cleanup action {} for job {}:{}", std::to_underlying(rule.action), rule.id, rule.name);
+                    continue;
             }
-            logger->debug("Executing cleanup job {}:{} with SQL: {}", rule.id, rule.name, sql);
-
-            try {
-                pqxx::work txn(conn);
-                std::size_t affected_rows = txn.exec(sql).affected_rows();
-                txn.exec("UPDATE cleanup_rules SET last_execution = NOW() WHERE id = $1", pqxx::params{rule.id});
-                txn.commit();
-                logger->info("Executed cleanup job {}:{} successfully, affected rows: {}", rule.id, rule.name, affected_rows);
-
-                if(affected_rows > 0) {
+            if(result) {
+                logger->info("Executed cleanup job {}:{} successfully, affected rows: {}", rule.id, rule.name, *result);
+                if(*result > 0) {
                     any_jobs_ran = true;
                 }
-            } catch(const std::exception& e) {
-                logger->error("Error executing cleanup job {}:{}: {}", rule.id, rule.name, e.what());
+            } else {
+                logger->error("Error executing cleanup job {}:{}: {}", rule.id, rule.name, result.error());
             }
         }
         logger->debug("Finished executing cleanup jobs");
