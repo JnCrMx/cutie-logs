@@ -436,6 +436,10 @@ export class Database {
                 "extract(epoch from last_alert) AS last_alert_s, last_alert_successful, last_alert_message");
             conn.prepare("delete_alert_rule",
                 "DELETE FROM alert_rules WHERE id = $1");
+            conn.prepare("complete_cleanup_rule",
+                "UPDATE cleanup_rules SET last_execution = NOW() WHERE id = $1");
+            conn.prepare("update_log_attributes",
+                "UPDATE logs SET attributes = $4::jsonb WHERE resource = $1 AND timestamp = to_timestamp($2::double precision) AND scope = $3");
         }
 
         void worker(unsigned int id, pqxx::connection& conn, std::stop_token st) {

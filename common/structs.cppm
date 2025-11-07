@@ -149,7 +149,7 @@ export namespace common {
     };
 
     enum class transform_action_type {
-        DROP_ATTRIBUTE, TRANSFORM_ATTRIBUTE, ADD_ATTRIBUTE
+        REMOVE_ATTRIBUTE, SET_ATTRIBUTE
     };
     struct transform_action {
         transform_action_type type;

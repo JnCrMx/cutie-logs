@@ -73,21 +73,102 @@ std::string craft_cleanup_job_filter_sql(const common::cleanup_rule& rule, pqxx:
 std::expected<int, std::string> execute_drop_cleanup_job(const common::cleanup_rule& rule, pqxx::connection& conn, spdlog::logger& logger) {
     std::string sql = "DELETE FROM logs WHERE " + craft_cleanup_job_filter_sql(rule, conn);
     if(sql.ends_with(" WHERE ")) {
-        logger.warn("Filter crafting failed for cleanup job {}:{}: {}", rule.id, rule.name, sql);
-        return std::unexpected("Failed to craft SQL for cleanup job");
+        logger.warn("Filter crafting failed for drop cleanup job {}:{}: {}", rule.id, rule.name, sql);
+        return std::unexpected("Failed to craft SQL for drop cleanup job");
     }
-    logger.debug("Executing cleanup job {}:{} with SQL: {}", rule.id, rule.name, sql);
+    logger.debug("Executing drop cleanup job {}:{} with SQL: {}", rule.id, rule.name, sql);
 
     try {
         pqxx::work txn(conn);
         std::size_t affected_rows = txn.exec(sql).affected_rows();
-        txn.exec("UPDATE cleanup_rules SET last_execution = NOW() WHERE id = $1", pqxx::params{rule.id});
+        txn.exec(pqxx::prepped{"complete_cleanup_rule"}, pqxx::params{rule.id});
         txn.commit();
 
         return affected_rows;
     } catch(const std::exception& e) {
-        return std::unexpected(std::string("Error executing cleanup job: ") + e.what());
+        return std::unexpected(std::string("Error executing drop cleanup job: ") + e.what());
     }
+}
+
+std::expected<int, std::string> execute_transform_cleanup_job(const common::cleanup_rule& rule, pqxx::connection& conn, spdlog::logger& logger) {
+    if(!rule.action_options) {
+        return std::unexpected("No action options provided for transform cleanup job");
+    }
+    constexpr auto json_options = glz::opts{ // extra opts for safety
+        .format = glz::JSON,
+        .error_on_unknown_keys = true,
+        .error_on_missing_keys = true
+    };
+    auto actions_expected = glz::read<json_options, std::vector<common::transform_action>>(*rule.action_options);
+    if(!actions_expected) {
+        return std::unexpected(std::string("Error parsing action options for transform cleanup job: ") + glz::format_error(actions_expected.error()));
+    }
+    const auto& actions = *actions_expected;
+    if(actions.empty()) {
+        return std::unexpected("No actions provided for transform cleanup job");
+    }
+
+    std::string sql = "SELECT * FROM logs WHERE " + craft_cleanup_job_filter_sql(rule, conn);
+    if(sql.ends_with(" WHERE ")) {
+        logger.warn("Filter crafting failed for transform cleanup job {}:{}: {}", rule.id, rule.name, sql);
+        return std::unexpected("Failed to craft SQL for transform cleanup job");
+    }
+    logger.debug("Executing transform cleanup job {}:{} with SQL: {}", rule.id, rule.name, sql);
+
+    try {
+        pqxx::work txn(conn);
+
+        int total_affected_rows = 0;
+        for(auto [resource, timestamp, scope, severity, attributes, body] :
+            txn.stream<unsigned int, double, std::string, common::log_severity, glz::generic, glz::generic>(sql))
+        {
+            common::log_entry log{resource, timestamp, scope, severity, attributes, body};
+            auto& attrs_obj = log.attributes.get_object();
+
+            for(const auto& action : actions) {
+                switch(action.type) {
+                    case common::transform_action_type::REMOVE_ATTRIBUTE:
+                        attrs_obj.erase(action.attribute);
+                        break;
+                    case common::transform_action_type::SET_ATTRIBUTE:
+                        if(!action.stencil) {
+                            logger.warn("No stencil provided for transform action in cleanup job {}:{}", rule.id, rule.name);
+                            continue;
+                        }
+                        if(auto value_expected = common::stencil(*action.stencil, log); value_expected) {
+                            attrs_obj[action.attribute] = std::move(*value_expected);
+                        } else {
+                            logger.warn("Error applying stencil for transform action in cleanup job {}:{}: {}", rule.id, rule.name, value_expected.error());
+                        }
+                        break;
+                    default:
+                        logger.error("Unsupported transform action type {} in cleanup job {}:{}", std::to_underlying(action.type), rule.id, rule.name);
+                        continue;
+                }
+            }
+            int affected_rows = txn.exec(pqxx::prepped{"update_log_attributes"},
+                pqxx::params{
+                    log.resource, log.timestamp, log.scope,
+                    glz::write_json(log.attributes).value_or("{}")
+                }
+            ).affected_rows();
+
+            if(affected_rows > 0) {
+                total_affected_rows += affected_rows;
+            } else {
+                logger.warn("No rows affected when updating log in transform cleanup job {}:{}", rule.id, rule.name);
+            }
+        }
+
+        txn.exec(pqxx::prepped{"complete_cleanup_rule"}, pqxx::params{rule.id});
+        txn.commit();
+
+        return total_affected_rows;
+    } catch(const std::exception& e) {
+        return std::unexpected(std::string("Error executing transform cleanup job: ") + e.what());
+    }
+
+    return 0;
 }
 
 void Jobs::run_cleanup_jobs() {
@@ -132,6 +213,9 @@ void Jobs::run_cleanup_jobs() {
             switch(rule.action) {
                 case common::rule_action::DROP:
                     result = execute_drop_cleanup_job(rule, conn, *logger);
+                    break;
+                case common::rule_action::TRANSFORM:
+                    result = execute_transform_cleanup_job(rule, conn, *logger);
                     break;
                 default:
                     logger->error("Unsupported cleanup action {} for job {}:{}", std::to_underlying(rule.action), rule.id, rule.name);
