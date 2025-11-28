@@ -59,12 +59,12 @@ namespace common {
     }
 
     template<typename T>
-    concept can_get_field = glz::reflectable<T> || std::same_as<T, glz::generic>;
+    concept can_get_field = glz::reflectable<std::remove_pointer_t<std::decay_t<T>>> || std::same_as<T, glz::generic>;
 
     template<can_get_field T>
     auto get_keys(const T& obj) {
-        if constexpr (glz::reflectable<T>) {
-            return glz::reflect<T>::keys;
+        if constexpr (glz::reflectable<std::remove_pointer_t<std::decay_t<T>>>) {
+            return glz::reflect<std::remove_pointer_t<std::decay_t<T>>>::keys;
         } else {
             if(obj.is_object()) {
                 const glz::generic::object_t& o = obj.get_object();
@@ -81,8 +81,13 @@ namespace common {
     }
     template<can_get_field T, typename Callable>
     void for_each_field(const T& obj, Callable&& func) {
-        if constexpr (glz::reflectable<T>) {
+        if constexpr (glz::reflectable<std::decay_t<T>>) {
             glz::for_each_field(obj, std::forward<Callable>(func));
+        } else if constexpr (glz::reflectable<std::remove_pointer_t<std::decay_t<T>>>) {
+            if(obj == nullptr) {
+                return; // TODO: return error?
+            }
+            glz::for_each_field(*obj, std::forward<Callable>(func));
         } else {
             if(obj.is_object()) {
                 const glz::generic::object_t& o = obj.get_object();
