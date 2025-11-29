@@ -8,14 +8,14 @@ RUN TARGETARCH=$TARGETARCH BUILDARCH=$BUILDARCH /setup-cross-compile.sh
 
 # Install dependencies
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    build-essential cmake ninja-build git \
+    build-essential cmake ninja-build git curl \
     clang-20 clang-tools-20 lld-20 llvm-20 wabt protobuf-compiler gettext \
     libc++-20-dev libc++-20-dev-wasm32 libclang-rt-20-dev-wasm32 libstdc++-14-dev:$TARGETARCH \
     libpq-dev:$TARGETARCH libspdlog-dev:$TARGETARCH libprotobuf-dev:$TARGETARCH libcurl4-openssl-dev:$TARGETARCH
 # Force the use of lld, since it supports cross-compilation out of the box
 RUN ln -sf /usr/bin/ld.lld-20 /usr/bin/ld
 
-ADD https://gitlab.kitware.com/cmake/cmake/-/commit/1dc1d000a0e8bc024ec9769d13101b36e13dbcfa.diff /fix-cmake-find-protobuf.diff
+RUN curl https://gitlab.kitware.com/cmake/cmake/-/commit/1dc1d000a0e8bc024ec9769d13101b36e13dbcfa.diff > /fix-cmake-find-protobuf.diff
 RUN cd /usr/share/cmake-3.28 && patch -p1 --batch < /fix-cmake-find-protobuf.diff || true
 
 ADD . /src
