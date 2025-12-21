@@ -54,7 +54,7 @@ export Webxx::dialog dialog_add(event_context& ctx, const std::string& id, dialo
             },
             h3{{_class{"text-lg font-bold"}}, params->edit ?
                 // note for translator: the scheme is "Edit [what] "[name]" ([id])"; example: "Edit cleanup rule "My Rule" (123)"
-                "Edit {} \"{}\" ({})"_(params->what, params->object_name, params->object_id) :
+                "Edit {} \"{}\" ({})"_(params->what, sanitize(params->object_name), params->object_id) :
                 // note for translator: the scheme is "Add [what]"; example: "Add cleanup rule"
                 "Add {}"_(params->what)
             },
@@ -69,7 +69,7 @@ export Webxx::dialog dialog_add(event_context& ctx, const std::string& id, dialo
                         if(!error) {
                             webpp::eval("document.getElementById('{}_name').setCustomValidity('');", id);
                         } else {
-                            webpp::get_element_by_id(std::format("{}_name_validator", id))->inner_text(*error);
+                            webpp::get_element_by_id(std::format("{}_name_validator", id))->inner_text(sanitize(*error));
                             webpp::eval("document.getElementById('{}_name').setCustomValidity({});", id, glz::write_json(*error).value_or("\"error\""));
                         }
                         params->name_valid = !error.has_value();
@@ -84,7 +84,7 @@ export Webxx::dialog dialog_add(event_context& ctx, const std::string& id, dialo
 
                 // note for translator: the scheme is "[what] description"; example: "Cleanup rule description"
                 label{{_class{"fieldset-label"}}, "{} description"_(params->what)},
-                textarea{{_id{std::format("{}_description", id)}, _class{"textarea w-full"}, _placeholder{"Description"_}}, params->object_description},
+                textarea{{_id{std::format("{}_description", id)}, _class{"textarea w-full"}, _placeholder{"Description"_}}, sanitize(params->object_description)},
                 dv{{_class{"validator-hint invisible"}}, "&nbsp;"},
 
                 params->content(*params, [params, id](bool valid) {
@@ -113,7 +113,7 @@ export Webxx::dialog dialog_add(event_context& ctx, const std::string& id, dialo
                                 webpp::eval("document.getElementById('{}').close();", id);
                             },
                             [id](std::string title, std::string message) {
-                                components::show_alert(std::format("{}_error", id), title, message);
+                                components::show_alert(std::format("{}_error", id), sanitize(title), sanitize(message));
                             }
                         );
                     }

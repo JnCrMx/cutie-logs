@@ -99,8 +99,8 @@ auto selection_detail(std::string_view title,
                 return fragment{label{{_id{id}, _class{"fieldset-label flex flex-row w-full"}},
                     std::move(checkbox),
                     span{{_class{"grow"}},show_percent ?
-                        std::format("{} ({}%)", name, count*100/total) :
-                        std::format("{} ({})", name, count)},
+                        std::format("{} ({}%)", sanitize(name), count*100/total) :
+                        std::format("{} ({})", sanitize(name), count)},
                     maybe(!info_modal_key.empty(), [key, info_modal_key]() {
                         return button{{_class{"btn btn-xs btn-outline btn-circle mr-2"},
                             _onClick{std::format("document.getElementById('modal_{}_{}').showModal()", info_modal_key, key)}},

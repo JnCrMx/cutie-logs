@@ -36,14 +36,14 @@ export class logs : public page {
                             stencil_format = textarea["value"].as<std::string>().value_or("");
                             profile.set_data("stencil", stencil_format);
                             if(auto r = common::stencil(stencil_format, *example_entry, stencil_functions)) {
-                                validator.inner_text(*r);
+                                validator.inner_text(sanitize(*r));
                                 validator.remove_class("text-error");
                                 validator.remove_class("font-bold");
 
                                 textarea.remove_class("textarea-error");
                                 textarea.add_class("textarea-success");
                             } else {
-                                validator.inner_text("Stencil invalid: \"{}\""_(r.error()));
+                                validator.inner_text("Stencil invalid: \"{}\""_(sanitize(r.error())));
                                 validator.add_class("text-error");
                                 validator.add_class("font-bold");
 
@@ -110,7 +110,7 @@ export class logs : public page {
                     auto r = common::stencil(stencil_format, entry, stencil_functions);
                     return li{{_class{"list-item"}},
                         code{{_class{r ? "whitespace-pre" : "whitespace-pre text-error font-bold"}},
-                            *r.or_else([](auto err) -> decltype(r) { return std::format("Stencil invalid: \"{}\"", err); })}
+                            sanitize(*r.or_else([](auto err) -> decltype(r) { return std::format("Stencil invalid: \"{}\"", err); }))}
                     };
                 })
             };

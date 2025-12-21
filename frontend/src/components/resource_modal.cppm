@@ -57,7 +57,7 @@ export struct resource_modal : component<resource_modal> {
                 table{{_class{"table table-zebra w-full border-l-3 border-base-300"}},
                     each(keys, [&](const auto& key){
                         return tr{
-                            td{{_class{"font-bold w-0"}}, key},
+                            td{{_class{"font-bold w-0"}}, sanitize(key)},
                             td{render_attribute_value(v[key])}
                         };
                     })
@@ -70,7 +70,7 @@ export struct resource_modal : component<resource_modal> {
             };
         }
         // this will handle strings (quoted :D) and numbers
-        return fragment{v.dump().value_or("error")};
+        return fragment{sanitize(v.dump().value_or("error"))};
     }
 
     resource_modal(unsigned int id, const common::log_resource& resource) : component<resource_modal>{
@@ -85,7 +85,7 @@ export struct resource_modal : component<resource_modal> {
                     form{{_method{"dialog"}},
                         button{{_class{"btn btn-sm btn-circle btn-ghost absolute right-2 top-2"}}, "x"}
                     },
-                    h3{{_class{"text-lg font-bold"}}, std::format("Resource \"{}\" ({})", resource_name(id, resource), id)},
+                    h3{{_class{"text-lg font-bold"}}, std::format("Resource \"{}\" ({})", sanitize(resource_name(id, resource)), id)},
                     dv{{_class{"overflow-auto"}},
                         table{{_class{"table table-zebra w-full"}},
                             thead{tr{
@@ -95,7 +95,7 @@ export struct resource_modal : component<resource_modal> {
                             Webxx::each(attributes, [&resource](auto& key){
                                 auto attr = resource.attributes[key];
                                 return tr{
-                                    td{{_class{"font-bold w-0"}}, key},
+                                    td{{_class{"font-bold w-0"}}, sanitize(key)},
                                     td{render_attribute_value(attr)}
                                 };
                             })

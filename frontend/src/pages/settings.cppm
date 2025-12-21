@@ -205,12 +205,12 @@ export class settings : public page {
                                     case common::notification_provider_option_type::OBJECT:
                                         return fragment{textarea{{_id{std::format("dialog_add_rule_notification_option_{}", option.id)},
                                             _class{"input w-full"}, _placeholder{option.description}},
-                                            glz::write<glz::opts{.prettify=true}>(value.value_or(glz::generic::object_t{})).value_or("{}")
+                                            sanitize(glz::write<glz::opts{.prettify=true}>(value.value_or(glz::generic::object_t{})).value_or("{}"))
                                         }};
                                     case common::notification_provider_option_type::ARRAY:
                                         return fragment{textarea{{_id{std::format("dialog_add_rule_notification_option_{}", option.id)},
                                             _class{"input w-full"}, _placeholder{option.description}},
-                                            glz::write<glz::opts{.prettify=true}>(value.value_or(glz::generic::array_t{})).value_or("[]")
+                                            sanitize(glz::write<glz::opts{.prettify=true}>(value.value_or(glz::generic::array_t{})).value_or("[]"))
                                         }};
                                     default:
                                         return fragment{};
@@ -585,12 +585,12 @@ export class settings : public page {
             return li{{_class{"list-row items-center"}},
                 dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Enable/Disable rule"_}}, std::move(checkbox)},
                 dv{{_class{"list-col-grow flex flex-row items-center gap-4"}},
-                    h3{{_class{"text-lg font-bold"}}, rule.name},
+                    h3{{_class{"text-lg font-bold"}}, sanitize(rule.name)},
                     p{{_class{"text-sm text-base-content/80"}}, "Execution interval: {}"_(common::format_duration(rule.execution_interval))},
                 },
                 dv{{_class{"text-sm text-base-content/80 list-col-wrap"}},
-                    p{rule.description.empty() ? fragment{i{"No description"_}} : fragment{b{rule.description}}},
-                    p{generated_decription}
+                    p{rule.description.empty() ? fragment{i{"No description"_}} : fragment{b{sanitize(rule.description)}}},
+                    p{sanitize(generated_decription)}
                 },
                 p{{_class{"text-sm text-base-content/80"}}, run_info},
                 dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Edit rule"_}},
@@ -624,12 +624,12 @@ export class settings : public page {
             return li{{_class{"list-row items-center"}},
                 dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Enable/Disable rule"_}}, std::move(checkbox)},
                 dv{{_class{"list-col-grow flex flex-row items-center gap-4"}},
-                    h3{{_class{"text-lg font-bold"}}, rule.name},
+                    h3{{_class{"text-lg font-bold"}}, sanitize(rule.name)},
                     p{{_class{"text-sm text-base-content/80"}}, "Provider: {}"_(rule.notification_provider)},
                 },
                 dv{{_class{"text-sm text-base-content/80 list-col-wrap"}},
-                    p{rule.description.empty() ? fragment{i{"No description"_}} : fragment{b{rule.description}}},
-                    p{generated_decription}
+                    p{rule.description.empty() ? fragment{i{"No description"_}} : fragment{b{sanitize(rule.description)}}},
+                    p{sanitize(generated_decription)}
                 },
                 p{{_class{"text-sm text-base-content/80"}}, run_info},
                 dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Edit rule"_}},

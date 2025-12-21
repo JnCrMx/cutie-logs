@@ -27,7 +27,7 @@ export Webxx::dialog dialog_delete(event_context& ctx, const std::string& id, st
                 button{{_class{"btn btn-sm btn-circle btn-ghost absolute right-2 top-2"}}, "x"}
             },
             // the scheme is "Delete [what] "[name]" ([id])"; example: "Delete cleanup rule "My Rule" (123)"
-            h3{{_class{"text-lg font-bold"}}, "Delete {} \"{}\" ({})"_(what, object_name, object_id)},
+            h3{{_class{"text-lg font-bold"}}, "Delete {} \"{}\" ({})"_(what, sanitize(object_name), object_id)},
             fieldset{{_class{"fieldset w-full"}},
                 components::alert(std::format("{}_error", id)),
 
@@ -56,7 +56,7 @@ export Webxx::dialog dialog_delete(event_context& ctx, const std::string& id, st
                             components::hide_alert(std::format("{}_error", id));
                             webpp::eval("document.getElementById('{}').close();", id);
                         }, [id](std::string title, std::string message) {
-                            components::show_alert(std::format("{}_error", id), title, message);
+                            components::show_alert(std::format("{}_error", id), sanitize(title), sanitize(message));
                         });
                     }
                 ),

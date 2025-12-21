@@ -120,7 +120,7 @@ export class table : public page {
 
                 std::string_view heading_classes = "cursor-grab hover:bg-base-300 box-border";
                 return ctx.on_events<drag_start_event, drag_end_event, drag_over_event, drag_leave_event>(
-                        th{{_draggable{"true"}, _class{heading_classes}, _dataColumnPos{std::to_string(column_pos++)}}, text},
+                        th{{_draggable{"true"}, _class{heading_classes}, _dataColumnPos{std::to_string(column_pos++)}}, sanitize(text)},
                     dragstart, dragend, dragover, dragleave);
             };
 
@@ -136,10 +136,10 @@ export class table : public page {
                     auto attributes = entry.attributes.is_object() ? entry.attributes.get_object() : glz::generic::object_t{};
                     auto e_timestamp = std::format("{:%Y-%m-%d %H:%M:%S}", timestamp);
                     auto e_resource = a{{_class{"link"}, _onClick{std::format("document.getElementById('modal_resource_{}').showModal()", entry.resource)}},
-                        resource_name(entry.resource, std::get<0>(resources->resources[entry.resource]))};
-                    auto e_scope = entry.scope;
+                        sanitize(resource_name(entry.resource, std::get<0>(resources->resources[entry.resource])))};
+                    auto e_scope = sanitize(entry.scope);
                     auto e_severity = common::log_severity_names[std::to_underlying(entry.severity)];
-                    auto e_body = entry.body.is_string() ? entry.body.get_string() : entry.body.dump().value_or("error");
+                    auto e_body = sanitize(entry.body.is_string() ? entry.body.get_string() : entry.body.dump().value_or("error"));
 
                     return tr{
                         each(table_column_order, [&](const std::string& attr) {
@@ -163,9 +163,9 @@ export class table : public page {
                                     const auto& stencil = table_custom_columns.at(name);
                                     auto r = common::stencil(stencil, entry, stencil_functions);
                                     if(r) {
-                                        return td{*r};
+                                        return td{sanitize(*r)};
                                     } else {
-                                        return td{{_class{"text-error"}}, "error: {}"_(r.error())};
+                                        return td{{_class{"text-error"}}, "error: {}"_(sanitize(r.error()))};
                                     }
                                 }
                             }
@@ -173,7 +173,7 @@ export class table : public page {
                             if(!attributes.contains(attr)) {
                                 return td{{_class{"text-error"}}, "missing"_};
                             }
-                            return td{attributes.at(attr).is_string() ? attributes.at(attr).get_string() : attributes.at(attr).dump().value_or("error")};
+                            return td{sanitize(attributes.at(attr).is_string() ? attributes.at(attr).get_string() : attributes.at(attr).dump().value_or("error"))};
                         })
                     };
                 })
@@ -370,14 +370,14 @@ export class table : public page {
                                     auto validator = *webpp::get_element_by_id("column_stencil_validator");
                                     stencil_format = textarea["value"].as<std::string>().value_or("");
                                     if(auto r = common::stencil(stencil_format, *example_entry, stencil_functions)) {
-                                        validator.inner_text(*r);
+                                        validator.inner_text(sanitize(*r));
                                         validator.remove_class("text-error");
                                         validator.remove_class("font-bold");
 
                                         textarea.remove_class("textarea-error");
                                         textarea.add_class("textarea-success");
                                     } else {
-                                        validator.inner_text("Stencil invalid: \"{}\""_(r.error()));
+                                        validator.inner_text("Stencil invalid: \"{}\""_(sanitize(r.error())));
                                         validator.add_class("text-error");
                                         validator.add_class("font-bold");
 

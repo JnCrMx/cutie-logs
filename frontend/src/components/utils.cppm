@@ -298,4 +298,25 @@ export class profile_data {
         std::vector<std::function<void(profile_data&)>> callbacks;
 };
 
+export std::string sanitize(std::string_view sv) {
+    std::string out{};
+    out.reserve(sv.size());
+    for(auto c : sv) {
+        switch(c) {
+            case '<':
+                out.append("&lt;");
+                break;
+            case '>':
+                out.append("&gt;");
+                break;
+            case '&':
+                out.append("&amp;");
+                break;
+            default:
+                out.append({c});
+        }
+    }
+    return out;
+}
+
 }

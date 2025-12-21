@@ -211,9 +211,9 @@ Webxx::dv profile_selector() {
         ctx.on_change(select{{_id{std::format("profile_selector_{}", identifier.sv())}, _class{"select select-lg grow"}},
             each(profiles_list, [](auto& p) {
                 if(p == profile.get_current_profile()) {
-                    return option{{_selected{}}, p};
+                    return option{{_selected{}}, sanitize(p)};
                 }
-                return option{p};
+                return option{sanitize(p)};
             }),
             option{{_class{"italic"}}, "Create New Profile..."_},
             option{{_class{"italic"}}, "Import Profile..."_},
@@ -262,7 +262,7 @@ Webxx::dv profile_selector() {
         }),
         dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Rename profile"_}},
             ctx.on_click(button{{_class{button_classes}}, assets::icons::edit}, [](webpp::event e) {
-                webpp::get_element_by_id("dialog_rename_profile_title")->inner_html("Rename profile \"{}\""_(profile.get_current_profile()));
+                webpp::get_element_by_id("dialog_rename_profile_title")->inner_html("Rename profile \"{}\""_(sanitize(profile.get_current_profile())));
                 webpp::get_element_by_id("new_profile_name")->set_property("value", profile.get_current_profile());
                 webpp::get_element_by_id("profile_rename")->add_class("btn-disabled");
                 webpp::eval("document.getElementById('dialog_rename_profile').showModal();");
@@ -287,7 +287,7 @@ Webxx::dv profile_selector() {
         },
         dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Delete profile"_}},
             ctx.on_click(button{{_class{button_classes}}, assets::icons::delete_}, [](webpp::event e) {
-                webpp::get_element_by_id("dialog_delete_profile_title")->inner_html("Delete profile \"{}\""_(profile.get_current_profile()));
+                webpp::get_element_by_id("dialog_delete_profile_title")->inner_html("Delete profile \"{}\""_(sanitize(profile.get_current_profile())));
                 webpp::get_element_by_id("delete_profile_name")->set_property("placeholder", profile.get_current_profile());
                 webpp::get_element_by_id("delete_profile_name")->set_property("value", "");
                 webpp::get_element_by_id("profile_delete")->add_class("btn-disabled");
