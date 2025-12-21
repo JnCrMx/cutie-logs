@@ -438,6 +438,14 @@ Webxx::dialog dialog_delete_profile(event_context& ctx) {
     };
 }
 
+auto theme_button() {
+    using namespace Webxx;
+
+    static event_context ctx;
+    ctx.clear();
+    return components::theme_button{ctx, profile};
+}
+
 auto page() {
     using namespace Webxx;
 
@@ -462,7 +470,7 @@ auto page() {
             dv{{_id{"stats"}, _class{"ml-2 mr-2 grow flex flex-row justify-center items-center"}}, page_stats({})},
             dv{{_class{"flex items-center mr-4 gap-8"}},
                 dv{{_id{"profile_selector_desktop_container"}, _class{"hidden md:flex"}}, profile_selector<"desktop">()},
-                components::theme_button{ctx, profile}
+                dv{{_id{"theme_button"}}, theme_button()},
             }
         },
         dv{{_class{"w-full mx-auto my-2 px-4 md:w-auto md:mx-[10vw]"}, {_id{"page"}}}},
@@ -554,6 +562,7 @@ int main() {
     profile.add_callback([](const auto& profile) {
         std::string theme = profile.get_data("theme").value_or("light");
         webpp::eval("document.body.setAttribute('data-theme', '{}');", theme);
+        webpp::get_element_by_id("theme_button")->inner_html(Webxx::render(theme_button()));
     });
 
     auto_select_page();
