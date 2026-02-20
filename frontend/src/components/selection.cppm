@@ -4,6 +4,7 @@ import std;
 import glaze;
 import webpp;
 import i18n;
+import frontend.assets;
 
 import :utils;
 
@@ -43,12 +44,34 @@ auto selection_detail(std::string_view title,
     }
 
     auto toggle_id = std::format("select_{}_toggle", identifier.sv());
+    auto show_only_selected_id = std::format("select_{}_only_selected", identifier.sv());
+
+    auto filter_ = [attributes /*this copy hurts, but is hard to avoid*/, &selections, search_id, show_only_selected_id]() {
+        auto search = webpp::get_element_by_id(search_id)->template get_property<std::string>("value").value_or("");
+        std::transform(search.begin(), search.end(), search.begin(), [](char c){return std::tolower(c);});
+        bool show_only_selected = webpp::get_element_by_id(show_only_selected_id)->template get_property<bool>("checked").value_or(false);
+
+        for(const auto& [attr, e] : attributes) {
+            std::string name = std::get<0>(e);
+            std::transform(name.begin(), name.end(), name.begin(), [](char c){return std::tolower(c);});
+
+            auto id = std::format("select_{}_entry_{}", identifier.sv(), attr);
+            bool show = (name.find(search) != std::string::npos) && (!show_only_selected || (selections.contains(attr) && selections[attr]));
+            if(show) {
+                webpp::get_element_by_id(id)->remove_class("hidden");
+            } else {
+                webpp::get_element_by_id(id)->add_class("hidden");
+            }
+        }
+    };
+    // store filter in a shared_ptr, so we don't have to copy the entire lambda (including attributes) every time we use it in an event handler
+    auto filter = std::make_shared<decltype(filter_)>(std::move(filter_));
 
     using namespace Webxx;
     return fieldset{{_class{"fieldset p-4 rounded-box shadow h-full flex flex-col"}},
         legend{{_class{"fieldset-legend"}}, title},
         dv{{_class{"flex flex-row mb-2 p-0 gap-2 items-center"}},
-            ctx.on_change(input{{_id{toggle_id}, _type{"checkbox"}, _class{"checkbox"}}}, [toggle_id, &selections, profile](webpp::event){
+            ctx.on_change(input{{_id{toggle_id}, _type{"checkbox"}, _class{"checkbox"}}}, [toggle_id, &selections, profile, filter](webpp::event){
                 bool checked = webpp::get_element_by_id(toggle_id)->template get_property<bool>("checked").value_or(false);
                 for(auto& [key, value] : selections) {
                     value = checked;
@@ -59,23 +82,21 @@ auto selection_detail(std::string_view title,
             }),
             label{{_class{"input w-full flex flex-col"}},
                 ctx.on_input(input{{_id{search_id}, _type{"search"}, _class{"grow basis-[3rem] md:basis-[3.5rem]"}, _placeholder{"Search..."_}}},
-                    [search_id, attributes](webpp::event) {
-                        auto search = webpp::get_element_by_id(search_id)->template get_property<std::string>("value").value_or("");
-                        std::transform(search.begin(), search.end(), search.begin(), [](char c){return std::tolower(c);});
-
-                        for(const auto& [attr, e] : attributes) {
-                            std::string name = std::get<0>(e);
-                            std::transform(name.begin(), name.end(), name.begin(), [](char c){return std::tolower(c);});
-
-                            auto id = std::format("select_{}_entry_{}", identifier.sv(), attr);
-                            if(name.find(search) != std::string::npos) {
-                                webpp::get_element_by_id(id)->remove_class("hidden");
-                            } else {
-                                webpp::get_element_by_id(id)->add_class("hidden");
-                            }
-                        }
+                    [filter](webpp::event) {
+                        (*filter)();
                     })
             },
+            dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Only show selected"_}},
+                label{{_class{"swap"}},
+                    ctx.on_change(input{{_id{show_only_selected_id}, _type{"checkbox"}, _class{"hidden"}}},
+                        [filter](webpp::event){
+                            (*filter)();
+                        }
+                    ),
+                    dv{{_class{"swap-off btn btn-sm btn-square"}},               assets::icons::filter_selected},
+                    dv{{_class{"swap-on  btn btn-sm btn-square btn-secondary"}}, assets::icons::filter_selected},
+                }
+            }
         },
         dv{{_class{"overflow-y-auto h-full flex flex-col gap-1"}},
             each(sorted_attributes, [total, show_percent, &attributes, &selections, info_modal_key, profile](const auto& attr) {

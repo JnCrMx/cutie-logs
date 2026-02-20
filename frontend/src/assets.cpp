@@ -83,5 +83,10 @@ namespace frontend::assets {
             #embed "assets/icons/export.svg"
         };
         const std::string_view export_{export_data, sizeof(export_data)};
+
+        constexpr char filter_selected_data[] = {
+            #embed "assets/icons/filter_selected.svg"
+        };
+        const std::string_view filter_selected{filter_selected_data, sizeof(filter_selected_data)};
     }
 }
