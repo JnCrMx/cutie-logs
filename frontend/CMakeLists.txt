@@ -114,8 +114,16 @@ add_custom_command(
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/public/style.css
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/public/style.css ${CMAKE_CURRENT_BINARY_DIR}/style.css
 )
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/favicon.svg
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/public/favicon.svg
+  COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/public/favicon.svg ${CMAKE_CURRENT_BINARY_DIR}/favicon.svg
+)
 add_custom_target(mainpage_public ALL DEPENDS
-  ${CMAKE_CURRENT_BINARY_DIR}/mainpage.html ${CMAKE_CURRENT_BINARY_DIR}/style.css)
+  ${CMAKE_CURRENT_BINARY_DIR}/mainpage.html
+  ${CMAKE_CURRENT_BINARY_DIR}/style.css
+  ${CMAKE_CURRENT_BINARY_DIR}/favicon.svg
+)
 
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/mainpage.opt.wasm

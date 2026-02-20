@@ -62,11 +62,14 @@ struct entry {
     std::string_view dev_path{};
 };
 
+constexpr unsigned char mainpage_html[] = {
+    #embed "mainpage.html"
+};
 constexpr unsigned char style_css[] = {
     #embed "style.css"
 };
-constexpr unsigned char mainpage_html[] = {
-    #embed "mainpage.html"
+constexpr unsigned char favicon_svg[] = {
+    #embed "favicon.svg"
 };
 constexpr unsigned char mainpage_wasm[] = {
     #ifdef NDEBUG
@@ -80,8 +83,9 @@ constexpr unsigned char webpp_js[] = {
 };
 
 constexpr std::array entries = {
-    entry{"/style.css", {style_css, sizeof(style_css)}, "text/css"},
     entry{"/", {mainpage_html, sizeof(mainpage_html)}, "text/html", "/mainpage.html"},
+    entry{"/style.css", {style_css, sizeof(style_css)}, "text/css"},
+    entry{"/favicon.svg", {favicon_svg, sizeof(favicon_svg)}, "image/svg+xml"},
     entry{"/mainpage.wasm", {mainpage_wasm, sizeof(mainpage_wasm)}, "application/wasm"},
     entry{"/webpp.js", {webpp_js, sizeof(webpp_js)}, "application/javascript"},
 };
