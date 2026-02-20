@@ -31,4 +31,5 @@ export namespace pqxx {
     using pqxx::sql_error;
     using pqxx::unexpected_rows;
     using pqxx::unique_violation;
+    using pqxx::check_violation;
 }

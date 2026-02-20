@@ -223,6 +223,29 @@ export class Database {
                 throw;
             }
         };
+        void create_partition(pqxx::connection& conn, std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> timestamp) {
+            std::chrono::sys_days day = std::chrono::floor<std::chrono::days>(timestamp);
+            std::chrono::year_month_day ymd{day};
+            std::string partition_name = std::format("logs_{:04}{:02}{:02}",
+                static_cast<int>(ymd.year()),
+                static_cast<unsigned int>(ymd.month()),
+                static_cast<unsigned int>(ymd.day()));
+
+            auto from = std::chrono::time_point_cast<std::chrono::seconds>(day);
+            auto to = std::chrono::time_point_cast<std::chrono::seconds>(day + std::chrono::days{1});
+
+            std::string create_partition_sql = std::format(
+                "CREATE TABLE IF NOT EXISTS {} PARTITION OF logs FOR VALUES FROM (to_timestamp({})) TO (to_timestamp({}))",
+                partition_name,
+                from.time_since_epoch().count(),
+                to.time_since_epoch().count()
+            );
+            logger->info("Creating partition with SQL: {}", create_partition_sql);
+
+            pqxx::work txn(conn);
+            txn.exec(create_partition_sql);
+            txn.commit();
+        }
         void insert_log(pqxx::connection& conn, unsigned int resource, std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> timestamp,
             const std::string& scope, common::log_severity severity, const glz::generic& attributes, const glz::generic& body, unsigned int tries = 3)
         {
@@ -273,6 +296,11 @@ export class Database {
                     return;
                 }
                 logger->error("Unique violation detected in insert_log, giving up");
+            } catch (const pqxx::check_violation& c) {
+                logger->debug("No partition for timestamp {}, creating partition and retrying", timestamp);
+                create_partition(conn, timestamp);
+                insert_log(conn, resource, timestamp, scope, severity, attributes, body, tries); // do not decrease tries, because this error is expected
+                return;
             }
         }
 
