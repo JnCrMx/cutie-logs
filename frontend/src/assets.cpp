@@ -49,6 +49,11 @@ namespace frontend::assets {
         };
         const std::string_view reset{reset_data, sizeof(reset_data)};
 
+        constexpr char success_data[] = {
+            #embed "assets/icons/success.svg"
+        };
+        const std::string_view success{success_data, sizeof(success_data)};
+
         constexpr char warning_data[] = {
             #embed "assets/icons/warning.svg"
         };

@@ -1,14 +1,14 @@
 # English translations for cutie-logs-frontend package.
 # Copyright (C) 2025 THE cutie-logs-frontend'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the cutie-logs-frontend package.
-# JCM <jcm@jcm.re>, 2025.
+# JCM <jcm@jcm.re>, 2025-2026.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: cutie-logs-frontend \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2017-07-14 02:40+0000\n"
-"PO-Revision-Date: 2026-02-22 05:39+0100\n"
+"PO-Revision-Date: 2026-02-22 19:25+0100\n"
 "Last-Translator: JCM <jcm@jcm.re>\n"
 "Language-Team: English\n"
 "Language: en\n"
@@ -16,6 +16,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Gtranslator 49.0\n"
 
 #: src/components/dialog_add.cppm:57
 msgid "Edit {} \"{}\" ({})"
@@ -30,7 +31,7 @@ msgid "{} name"
 msgstr "{} name"
 
 #: src/components/dialog_add.cppm:65 src/components/dialog_delete.cppm:36
-#: src/mainpage.cpp:311 src/pages/table.cppm:348
+#: src/mainpage.cpp:333 src/pages/table.cppm:348
 msgid "Name"
 msgstr "Name"
 
@@ -107,89 +108,89 @@ msgstr "Only show selected"
 msgid "Themes"
 msgstr "Themes"
 
-#: src/mainpage.cpp:71
+#: src/mainpage.cpp:81
 msgid "Text View"
 msgstr "Text View"
 
-#: src/mainpage.cpp:72
+#: src/mainpage.cpp:82
 msgid "Table View"
 msgstr "Table View"
 
 #. page_tuple{"analysis", "Analysis", assets::icons::analysis, &logs_page},
-#: src/mainpage.cpp:74
+#: src/mainpage.cpp:84
 msgid "Settings"
 msgstr "Settings"
 
-#: src/mainpage.cpp:129
+#: src/mainpage.cpp:151
 msgid "Total Log Entries"
 msgstr "Total Log Entries"
 
-#: src/mainpage.cpp:133
+#: src/mainpage.cpp:155
 msgid "Total Attributes"
 msgstr "Total Attributes"
 
-#: src/mainpage.cpp:137
+#: src/mainpage.cpp:159
 msgid "Total Resources"
 msgstr "Total Resources"
 
-#: src/mainpage.cpp:141
+#: src/mainpage.cpp:163
 msgid "Total Scopes"
 msgstr "Total Scopes"
 
-#: src/mainpage.cpp:218
+#: src/mainpage.cpp:240
 msgid "Create New Profile..."
 msgstr "Create New Profile..."
 
-#: src/mainpage.cpp:219
+#: src/mainpage.cpp:241
 msgid "Import Profile..."
 msgstr "Import Profile..."
 
-#: src/mainpage.cpp:263 src/mainpage.cpp:356 src/mainpage.cpp:375
+#: src/mainpage.cpp:285 src/mainpage.cpp:382 src/mainpage.cpp:401
 msgid "Rename profile"
 msgstr "Rename profile"
 
-#: src/mainpage.cpp:265
+#: src/mainpage.cpp:287
 msgid "Rename profile \"{}\""
 msgstr "Rename profile \"{}\""
 
-#: src/mainpage.cpp:271
+#: src/mainpage.cpp:293
 msgid "Export profile"
 msgstr "Export profile"
 
-#: src/mainpage.cpp:288 src/mainpage.cpp:404 src/mainpage.cpp:423
+#: src/mainpage.cpp:310 src/mainpage.cpp:430 src/mainpage.cpp:449
 msgid "Delete profile"
 msgstr "Delete profile"
 
-#: src/mainpage.cpp:290
+#: src/mainpage.cpp:312
 msgid "Delete profile \"{}\""
 msgstr "Delete profile \"{}\""
 
-#: src/mainpage.cpp:308 src/mainpage.cpp:327
+#: src/mainpage.cpp:330 src/mainpage.cpp:349
 msgid "Add profile"
 msgstr "Add profile"
 
-#: src/mainpage.cpp:310
+#: src/mainpage.cpp:332
 msgid "Profile name"
 msgstr "Profile name"
 
-#: src/mainpage.cpp:320 src/mainpage.cpp:324 src/mainpage.cpp:368
-#: src/mainpage.cpp:372
+#: src/mainpage.cpp:342 src/mainpage.cpp:346 src/mainpage.cpp:394
+#: src/mainpage.cpp:398
 msgid "Profile name must be non-empty and unique."
 msgstr "Profile name must be non-empty and unique."
 
-#: src/mainpage.cpp:358
+#: src/mainpage.cpp:384
 msgid "New name"
 msgstr "New name"
 
-#: src/mainpage.cpp:406
+#: src/mainpage.cpp:432
 msgid "Please type the name of the profile to confirm deletion."
 msgstr "Please type the name of the profile to confirm deletion."
 
-#: src/mainpage.cpp:416 src/mainpage.cpp:420
+#: src/mainpage.cpp:442 src/mainpage.cpp:446
 msgid "Profile name must match."
 msgstr "Profile name must match."
 
-#: src/mainpage.cpp:459
+#: src/mainpage.cpp:478
 msgid "version {}"
 msgstr "version {}"
 
@@ -378,31 +379,81 @@ msgstr "Never triggered"
 msgid "Provider: {}"
 msgstr "Provider: {}"
 
-#: src/pages/settings.cppm:652
+#: src/pages/settings.cppm:658
+msgid "Use system language"
+msgstr "Use system language"
+
+#: src/pages/settings.cppm:659
+msgid "English"
+msgstr "English"
+
+#: src/pages/settings.cppm:660
+msgid "German"
+msgstr "German"
+
+#: src/pages/settings.cppm:670
+msgid ""
+"These settings only apply to this browser and will not affect other sessions."
+msgstr ""
+"These settings only apply to this browser and will not affect other sessions."
+
+#: src/pages/settings.cppm:673
+msgid "Language"
+msgstr "Language"
+
+#: src/pages/settings.cppm:683
+msgid "Please refresh the page after changing the language."
+msgstr "Please refresh the page after changing the language."
+
+#: src/pages/settings.cppm:685
+msgid "Default theme"
+msgstr "Default theme"
+
+#: src/pages/settings.cppm:698
+msgid "The default theme only applies to newly created profiles."
+msgstr "The default theme only applies to newly created profiles."
+
+#: src/pages/settings.cppm:700
+msgid "Save"
+msgstr "Save"
+
+#: src/pages/settings.cppm:708
+msgid "Settings saved"
+msgstr "Settings saved"
+
+#: src/pages/settings.cppm:709
+msgid "Your UI settings have been saved successfully."
+msgstr "Your UI settings have been saved successfully."
+
+#: src/pages/settings.cppm:727
 msgid "Add cleanup rule"
 msgstr "Add cleanup rule"
 
-#: src/pages/settings.cppm:667
+#: src/pages/settings.cppm:742
 msgid "No cleanup rules found"
 msgstr "No cleanup rules found"
 
-#: src/pages/settings.cppm:668 src/pages/settings.cppm:699
+#: src/pages/settings.cppm:743 src/pages/settings.cppm:774
 msgid "You can add a new rule by clicking the button above."
 msgstr "You can add a new rule by clicking the button above."
 
-#: src/pages/settings.cppm:683
+#: src/pages/settings.cppm:758
 msgid "Add alert rule"
 msgstr "Add alert rule"
 
-#: src/pages/settings.cppm:698
+#: src/pages/settings.cppm:773
 msgid "No alert rules found"
 msgstr "No alert rules found"
 
-#: src/pages/settings.cppm:713
+#: src/pages/settings.cppm:788
+msgid "User interface"
+msgstr "User interface"
+
+#: src/pages/settings.cppm:791
 msgid "Cleanup rules"
 msgstr "Cleanup rules"
 
-#: src/pages/settings.cppm:716
+#: src/pages/settings.cppm:794
 msgid "Alert rules"
 msgstr "Alert rules"
 

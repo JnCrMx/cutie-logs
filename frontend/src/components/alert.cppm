@@ -12,6 +12,14 @@ namespace alert_types {
         constexpr static std::string_view class_name = "alert-error";
         constexpr static std::string_view const* icon = &assets::icons::error;
     };
+    export struct warning {
+        constexpr static std::string_view class_name = "alert-warning";
+        constexpr static std::string_view const* icon = &assets::icons::warning;
+    };
+    export struct success {
+        constexpr static std::string_view class_name = "alert-success";
+        constexpr static std::string_view const* icon = &assets::icons::success;
+    };
 };
 
 export template<typename type = alert_types::error> auto alert(const std::string& id, std::string_view extra_classes = "") {

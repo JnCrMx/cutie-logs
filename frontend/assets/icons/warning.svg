@@ -3,4 +3,5 @@
  <path d="m12 3-9 17h18z" stroke-linecap="round" stroke-linejoin="round"/>
  <path d="m12 8v6" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/>
  <circle cx="12" cy="16.75" r="1.25" stroke="none"/>
+ <circle cx="12" cy="16.591" r="1.25" fill="currentColor" stroke="none"/>
 </svg>

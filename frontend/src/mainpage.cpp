@@ -15,7 +15,17 @@ using namespace mfk::i18n::literals;
 
 namespace frontend {
     static mo_file translations_file = [](){
-        std::string lang = *webpp::eval("let lang = window.navigator.language; if(lang === undefined) lang = 'en'; lang = lang.split('-')[0]; lang").get_property<std::string>("result");
+        std::string lang = *webpp::eval(R"(
+            let lang = localStorage.getItem('language');
+            if(lang === null || lang === undefined || lang === 'auto') {
+                lang = window.navigator.language;
+                if(lang === null || lang === undefined) {
+                    lang = 'en';
+                }
+            }
+            lang = lang.split('-')[0];
+            lang
+        )").get_property<std::string>("result");
 
         auto mo = load_translation(lang);
         if(mo) {
@@ -117,6 +127,18 @@ auto refresh() -> webpp::coroutine<void> {
     refresh_button.remove_class("*:animate-spin");
     webpp::get_element_by_id("stats")->remove_class("animate-pulse");
     co_return;
+}
+
+auto theme_button() {
+    using namespace Webxx;
+
+    static event_context ctx;
+    ctx.clear();
+    return components::theme_button{ctx, profile};
+}
+void apply_theme(const std::string& theme) {
+    webpp::eval("document.body.setAttribute('data-theme', '{}');", theme);
+    webpp::get_element_by_id("theme_button")->inner_html(Webxx::render(theme_button()));
 }
 
 Webxx::dv page_stats(const stats_data& data) {
@@ -332,7 +354,11 @@ Webxx::dialog dialog_add_profile(event_context& ctx) {
                         if(name.empty()) {
                             return;
                         }
-                        profile.switch_profile(name);
+                        profile.switch_profile(name); // this will create the profile since it doesn't exist yet
+
+                        std::string default_theme = *webpp::eval("let t = localStorage.getItem('default_theme'); if(t === null) {t = 'light';}; t").get_property<std::string>("result");
+                        profile.set_data("theme", default_theme);
+                        apply_theme(default_theme);
 
                         webpp::get_element_by_id("profile_selector_mobile_container")->inner_html(Webxx::render(profile_selector<"mobile">()));
                         webpp::get_element_by_id("profile_selector_desktop_container")->inner_html(Webxx::render(profile_selector<"desktop">()));
@@ -436,14 +462,6 @@ Webxx::dialog dialog_delete_profile(event_context& ctx) {
             button{"close"}
         },
     };
-}
-
-auto theme_button() {
-    using namespace Webxx;
-
-    static event_context ctx;
-    ctx.clear();
-    return components::theme_button{ctx, profile};
 }
 
 auto page() {
@@ -561,8 +579,7 @@ int main() {
     main.inner_html(Webxx::render(page()));
     profile.add_callback([](const auto& profile) {
         std::string theme = profile.get_data("theme").value_or("light");
-        webpp::eval("document.body.setAttribute('data-theme', '{}');", theme);
-        webpp::get_element_by_id("theme_button")->inner_html(Webxx::render(theme_button()));
+        apply_theme(theme);
     });
 
     auto_select_page();

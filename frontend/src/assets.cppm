@@ -14,6 +14,7 @@ export namespace frontend::assets {
         extern const std::string_view download;
         extern const std::string_view refresh;
         extern const std::string_view reset;
+        extern const std::string_view success;
         extern const std::string_view warning;
         extern const std::string_view error;
         extern const std::string_view add;

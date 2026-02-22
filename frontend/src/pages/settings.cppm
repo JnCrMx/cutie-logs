@@ -641,6 +641,81 @@ export class settings : public page {
             };
         }
 
+        Webxx::fragment render_ui_settings() {
+            static event_context ctx;
+            ctx.clear();
+
+            constexpr static std::array themes = {
+                "light", "dark", "cupcake", "bumblebee", "emerald",
+                "corporate", "synthwave", "retro", "cyberpunk", "valentine",
+                "halloween", "garden", "forest", "aqua", "lofi",
+                "pastel", "fantasy", "wireframe", "black", "luxury",
+                "dracula", "cmyk", "autumn", "business", "acid",
+                "lemonade", "night", "coffee", "winter", "dim",
+                "nord", "sunset", "caramellatte", "abyss", "silk",
+            };
+            static std::array languages = {
+                std::make_pair("auto", std::string_view{"Use system language"_}),
+                std::make_pair("en", std::string_view{"English"_}),
+                std::make_pair("de", std::string_view{"German"_}),
+            };
+
+            std::string current_language = *webpp::eval("let l = localStorage.getItem('language'); if(l === null) {l = 'auto';}; l").get_property<std::string>("result");
+            std::string current_default_theme = *webpp::eval("let t = localStorage.getItem('default_theme'); if(t === null) {t = 'light';}; t").get_property<std::string>("result");
+
+            using namespace Webxx;
+            return fragment{
+                p{{_class{"text-lg font-bold flex items-center gap-2 mb-4 [&_svg]:size-[1.5em]"}},
+                    assets::icons::warning,
+                    "These settings only apply to this browser and will not affect other sessions."_
+                },
+                fieldset{{_class{"fieldset w-fit min-w-[33%]"}},
+                    legend{{_class{"fieldset-legend"}}, "Language"_},
+                    select{{_id{"ui_language"}, _class{"select w-full"}},
+                        each(languages, [&](const auto& lang) {
+                            if(lang.first == current_language) {
+                                return option{{_value{lang.first}, _selected{}}, lang.second};
+                            } else {
+                                return option{{_value{lang.first}}, lang.second};
+                            }
+                        })
+                    },
+                    p{{_class{"label mb-4"}}, "Please refresh the page after changing the language."_},
+
+                    legend{{_class{"fieldset-legend"}}, "Default theme"_},
+                    select{{_id{"ui_default_theme"}, _class{"select w-full"}},
+                        each(themes, [&](const auto& theme) {
+                            std::string display_name = std::string{theme};
+                            display_name[0] = std::toupper(display_name[0]);
+
+                            if(theme == current_default_theme) {
+                                return option{{_value{theme}, _selected{}}, display_name};
+                            } else {
+                                return option{{_value{theme}}, display_name};
+                            }
+                        })
+                    },
+                    p{{_class{"label mb-4"}}, "The default theme only applies to newly created profiles."_},
+
+                    ctx.on_click(button{{_class{"btn btn-primary w-full mt-4"}}, "Save"_},
+                        [](webpp::event){
+                            std::string language = webpp::get_element_by_id("ui_language")->get_property<std::string>("value").value_or("auto");
+                            std::string default_theme = webpp::get_element_by_id("ui_default_theme")->get_property<std::string>("value").value_or("light");
+
+                            webpp::eval("localStorage.setItem('language', '{}');", language);
+                            webpp::eval("localStorage.setItem('default_theme', '{}');", default_theme);
+
+                            components::show_alert("settings_ui_alert", std::string{"Settings saved"_},
+                                std::string{"Your UI settings have been saved successfully."_});
+                            webpp::set_timeout(std::chrono::seconds(3), [](){
+                                components::hide_alert("settings_ui_alert");
+                            });
+                        }),
+                },
+                components::alert<components::alert_types::success>("settings_ui_alert", "mt-4"),
+            };
+        }
+
         Webxx::fragment render_cleanup_rules() {
             static event_context ctx;
             ctx.clear();
@@ -710,7 +785,10 @@ export class settings : public page {
             using namespace Webxx;
             return Webxx::fragment {
                 dv{{_class{"tabs tabs-border tabs-lg"}},
-                    input{{_type{"radio"}, _name{"settings_tab"}, _class{"tab"}, _ariaLabel{"Cleanup rules"_}, _checked{}}},
+                    input{{_type{"radio"}, _name{"settings_tab"}, _class{"tab"}, _ariaLabel{"User interface"_}, _checked{}}},
+                    dv{{_id{"settings_ui"}, _class{"tab-content border-base-300 bg-base-100 p-10"}}, render_ui_settings()},
+
+                    input{{_type{"radio"}, _name{"settings_tab"}, _class{"tab"}, _ariaLabel{"Cleanup rules"_}}},
                     dv{{_id{"settings_cleanup_rules"}, _class{"tab-content border-base-300 bg-base-100 p-10"}}, render_cleanup_rules()},
 
                     input{{_type{"radio"}, _name{"settings_tab"}, _class{"tab"}, _ariaLabel{"Alert rules"_}}},
