@@ -309,7 +309,7 @@ export class settings : public page {
                                         co_return;
                                     }
                                     if(!v->is_object()) {
-                                        error("Invalid JSON for option {}"_(option.name), "Expected an object.");
+                                        error("Invalid JSON for option {}"_(option.name), std::string{"Expected an object."_});
                                         co_return;
                                     }
                                     new_rule.notification_options[option.id] = *v;
@@ -428,7 +428,8 @@ export class settings : public page {
                 }
                 auto new_rule_expected = glz::read<common::beve_opts, common::cleanup_rule>(co_await res.co_bytes());
                 if(!new_rule_expected) {
-                    components::show_alert("settings_cleanup_rules_error", "Failed to parse rule", glz::format_error(new_rule_expected.error()));
+                    components::show_alert("settings_cleanup_rules_error", std::string{"Failed to parse rule"_},
+                        glz::format_error(new_rule_expected.error()));
                     co_return;
                 }
 
@@ -468,7 +469,8 @@ export class settings : public page {
                 }
                 auto new_rule_expected = glz::read<common::beve_opts, common::alert_rule>(co_await res.co_bytes());
                 if(!new_rule_expected) {
-                    components::show_alert("settings_alert_rules_error", std::string{"Failed to parse rule"_}, glz::format_error(new_rule_expected.error()));
+                    components::show_alert("settings_alert_rules_error", std::string{"Failed to parse rule"_},
+                        glz::format_error(new_rule_expected.error()));
                     co_return;
                 }
 
@@ -570,8 +572,8 @@ export class settings : public page {
             using _dataRuleId = Webxx::attr<dataRuleIdAttr>;
 
             auto checkbox = rule.enabled ?
-                input{{_type{"checkbox"}, _class{"toggle toggle-primary"}, _checked{}}} :
-                input{{_type{"checkbox"}, _class{"toggle toggle-primary"}}};
+                input{{_type{"checkbox"}, _class{"toggle toggle-secondary"}, _checked{}}} :
+                input{{_type{"checkbox"}, _class{"toggle toggle-secondary"}}};
             checkbox.data.attributes.emplace_back(_dataRuleId{std::to_string(rule.id)});
             checkbox = events::on_change(std::move(checkbox), cb_cleanup_rules.toggle.get());
 
@@ -609,8 +611,8 @@ export class settings : public page {
             using _dataRuleId = Webxx::attr<dataRuleIdAttr>;
 
             auto checkbox = rule.enabled ?
-                input{{_type{"checkbox"}, _class{"toggle toggle-primary"}, _checked{}}} :
-                input{{_type{"checkbox"}, _class{"toggle toggle-primary"}}};
+                input{{_type{"checkbox"}, _class{"toggle toggle-secondary"}, _checked{}}} :
+                input{{_type{"checkbox"}, _class{"toggle toggle-secondary"}}};
             checkbox.data.attributes.emplace_back(_dataRuleId{std::to_string(rule.id)});
             checkbox = events::on_change(std::move(checkbox), cb_alert_rules.toggle.get());
 

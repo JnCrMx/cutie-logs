@@ -110,7 +110,7 @@ export class logs : public page {
                     auto r = common::stencil(stencil_format, entry, stencil_functions);
                     return li{{_class{"list-item"}},
                         code{{_class{r ? "whitespace-pre" : "whitespace-pre text-error font-bold"}},
-                            sanitize(*r.or_else([](auto err) -> decltype(r) { return std::format("Stencil invalid: \"{}\"", err); }))}
+                            sanitize(*r.or_else([](auto err) -> decltype(r) { return "Stencil invalid: \"{}\""_(err); }))}
                     };
                 })
             };

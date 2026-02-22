@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: cutie-logs-frontend \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2017-07-14 02:40+0000\n"
-"PO-Revision-Date: 2026-02-22 19:27+0100\n"
+"PO-Revision-Date: 2026-02-22 21:23+0100\n"
 "Last-Translator: JCM <jcm@jcm.re>\n"
 "Language-Team: German <translation-team-de@lists.sourceforge.net>\n"
 "Language: de\n"
@@ -31,7 +31,7 @@ msgid "{} name"
 msgstr "{}-Name"
 
 #: src/components/dialog_add.cppm:65 src/components/dialog_delete.cppm:36
-#: src/mainpage.cpp:333 src/pages/table.cppm:348
+#: src/mainpage.cpp:334 src/pages/table.cppm:348
 msgid "Name"
 msgstr "Name"
 
@@ -88,11 +88,23 @@ msgstr "Sekunden"
 msgid "Resource #{}"
 msgstr "Ressource #{}"
 
-#: src/components/resource_modal.cppm:92
+#: src/components/resource_modal.cppm:36
+msgid "false"
+msgstr "falsch"
+
+#: src/components/resource_modal.cppm:36
+msgid "true"
+msgstr "wahr"
+
+#: src/components/resource_modal.cppm:90
+msgid "Resource \"{}\" (#{})"
+msgstr "Ressource \"{}\" (#{})"
+
+#: src/components/resource_modal.cppm:94
 msgid "Attribute"
 msgstr "Attribut"
 
-#: src/components/resource_modal.cppm:93
+#: src/components/resource_modal.cppm:95
 msgid "Value"
 msgstr "Wert"
 
@@ -137,60 +149,68 @@ msgstr "Gesamte Ressourcen"
 msgid "Total Scopes"
 msgstr "Gesamte Bereiche"
 
-#: src/mainpage.cpp:240
+#: src/mainpage.cpp:217
+msgid "Invalid profile file"
+msgstr "Ungültige Profildatei"
+
+#: src/mainpage.cpp:222
+msgid "Empty profile file"
+msgstr "Leere Profildatein"
+
+#: src/mainpage.cpp:241
 msgid "Create New Profile..."
 msgstr "Neues Profil anlegen..."
 
-#: src/mainpage.cpp:241
+#: src/mainpage.cpp:242
 msgid "Import Profile..."
 msgstr "Profil importieren..."
 
-#: src/mainpage.cpp:285 src/mainpage.cpp:382 src/mainpage.cpp:401
+#: src/mainpage.cpp:286 src/mainpage.cpp:383 src/mainpage.cpp:402
 msgid "Rename profile"
 msgstr "Profil umbenennen"
 
-#: src/mainpage.cpp:287
+#: src/mainpage.cpp:288
 msgid "Rename profile \"{}\""
 msgstr "Profil \"{}\" umbenennen"
 
-#: src/mainpage.cpp:293
+#: src/mainpage.cpp:294
 msgid "Export profile"
 msgstr "Profil exportieren"
 
-#: src/mainpage.cpp:310 src/mainpage.cpp:430 src/mainpage.cpp:449
+#: src/mainpage.cpp:311 src/mainpage.cpp:431 src/mainpage.cpp:450
 msgid "Delete profile"
 msgstr "Profil löschen"
 
-#: src/mainpage.cpp:312
+#: src/mainpage.cpp:313
 msgid "Delete profile \"{}\""
 msgstr "Profil \"{}\" löschen"
 
-#: src/mainpage.cpp:330 src/mainpage.cpp:349
+#: src/mainpage.cpp:331 src/mainpage.cpp:350
 msgid "Add profile"
 msgstr "Profil erstellen"
 
-#: src/mainpage.cpp:332
+#: src/mainpage.cpp:333
 msgid "Profile name"
 msgstr "Profilname"
 
-#: src/mainpage.cpp:342 src/mainpage.cpp:346 src/mainpage.cpp:394
-#: src/mainpage.cpp:398
+#: src/mainpage.cpp:343 src/mainpage.cpp:347 src/mainpage.cpp:395
+#: src/mainpage.cpp:399
 msgid "Profile name must be non-empty and unique."
 msgstr "Der Name des Profils darf nicht leer und muss einzigartig sein."
 
-#: src/mainpage.cpp:384
+#: src/mainpage.cpp:385
 msgid "New name"
 msgstr "Neuer Name"
 
-#: src/mainpage.cpp:432
+#: src/mainpage.cpp:433
 msgid "Please type the name of the profile to confirm deletion."
 msgstr "Geben Sie den Namen des Profils zur Bestätigung ein."
 
-#: src/mainpage.cpp:442 src/mainpage.cpp:446
+#: src/mainpage.cpp:443 src/mainpage.cpp:447
 msgid "Profile name must match."
 msgstr "Der Profilname muss übereinstimmen."
 
-#: src/mainpage.cpp:478
+#: src/mainpage.cpp:479
 msgid "version {}"
 msgstr "Version {}"
 
@@ -202,7 +222,7 @@ msgstr "Anzeigeoptionen"
 msgid "Log line stencil. Use {{...}} to insert values."
 msgstr "Format der Protokollzeile. Nutzen Sie {{...}} um Werte einzusetzen."
 
-#: src/pages/logs.cppm:46 src/pages/table.cppm:380
+#: src/pages/logs.cppm:46 src/pages/logs.cppm:113 src/pages/table.cppm:380
 msgid "Stencil invalid: \"{}\""
 msgstr "Format ungültig: \"{}\""
 
@@ -294,11 +314,11 @@ msgid "Minimum age must be a positive number."
 msgstr "Das minimale Alter muss positiv sein."
 
 #: src/pages/settings.cppm:156 src/pages/settings.cppm:359
-#: src/pages/settings.cppm:471
+#: src/pages/settings.cppm:431 src/pages/settings.cppm:472
 msgid "Failed to parse rule"
 msgstr "Konnte die Regel nicht einlesen."
 
-#: src/pages/settings.cppm:172 src/pages/settings.cppm:452
+#: src/pages/settings.cppm:172 src/pages/settings.cppm:453
 msgid "Alert Rule"
 msgstr "Alarmregeln"
 
@@ -323,6 +343,10 @@ msgstr "Wählen Sie zuerst einen Benachrichtungstyp aus."
 msgid "Invalid JSON for option {}"
 msgstr "Ungültiges JSON für die Option {}"
 
+#: src/pages/settings.cppm:312
+msgid "Expected an object."
+msgstr "Es wurde ein Objekt erwartet."
+
 #: src/pages/settings.cppm:325
 msgid "Expected an array."
 msgstr "Es wurde ein Array erwartet."
@@ -336,127 +360,127 @@ msgstr ""
 msgid "Unknown option type"
 msgstr "Unbekannter Optionstyp"
 
-#: src/pages/settings.cppm:579
+#: src/pages/settings.cppm:581
 msgid "Last run: {}"
 msgstr "Zuletzt ausgeführt: {}"
 
-#: src/pages/settings.cppm:580
+#: src/pages/settings.cppm:582
 msgid "Never run"
 msgstr "Niemals aufgeführt"
 
-#: src/pages/settings.cppm:581
+#: src/pages/settings.cppm:583
 msgid "Delete logs older than {}"
 msgstr "Lösche Einträge älter als {}"
 
-#: src/pages/settings.cppm:586 src/pages/settings.cppm:625
+#: src/pages/settings.cppm:588 src/pages/settings.cppm:627
 msgid "Enable/Disable rule"
 msgstr "Regel (de)aktivieren"
 
-#: src/pages/settings.cppm:589
+#: src/pages/settings.cppm:591
 msgid "Execution interval: {}"
 msgstr "Ausführungsintervall: {}"
 
-#: src/pages/settings.cppm:592 src/pages/settings.cppm:631
+#: src/pages/settings.cppm:594 src/pages/settings.cppm:633
 msgid "No description"
 msgstr "Keine Beschreibung"
 
-#: src/pages/settings.cppm:596 src/pages/settings.cppm:635
+#: src/pages/settings.cppm:598 src/pages/settings.cppm:637
 msgid "Edit rule"
 msgstr "Regel bearbeiten"
 
-#: src/pages/settings.cppm:599 src/pages/settings.cppm:638
+#: src/pages/settings.cppm:601 src/pages/settings.cppm:640
 msgid "Delete rule"
 msgstr "Regel löschen"
 
-#: src/pages/settings.cppm:618
+#: src/pages/settings.cppm:620
 msgid "Last alert: {}"
 msgstr "Letzter Alarm: {}"
 
-#: src/pages/settings.cppm:619
+#: src/pages/settings.cppm:621
 msgid "Never triggered"
 msgstr "Niemals ausgelöst"
 
-#: src/pages/settings.cppm:628
+#: src/pages/settings.cppm:630
 msgid "Provider: {}"
 msgstr "Typ: {}"
 
-#: src/pages/settings.cppm:658
+#: src/pages/settings.cppm:660
 msgid "Use system language"
 msgstr "Systemsprache verwenden"
 
-#: src/pages/settings.cppm:659
+#: src/pages/settings.cppm:661
 msgid "English"
 msgstr "Englisch"
 
-#: src/pages/settings.cppm:660
+#: src/pages/settings.cppm:662
 msgid "German"
 msgstr "Deutsch"
 
-#: src/pages/settings.cppm:670
+#: src/pages/settings.cppm:672
 msgid ""
 "These settings only apply to this browser and will not affect other sessions."
 msgstr ""
 "Diese Einstellungen gelten nur für diesen Browser und haben keinen Effekt "
 "auf andere Sitzungen."
 
-#: src/pages/settings.cppm:673
+#: src/pages/settings.cppm:675
 msgid "Language"
 msgstr "Sprache"
 
-#: src/pages/settings.cppm:683
+#: src/pages/settings.cppm:685
 msgid "Please refresh the page after changing the language."
 msgstr ""
 "Bitte aktualisieren Sie die Webseite, wenn Sie die Sprache geändert haben."
 
-#: src/pages/settings.cppm:685
+#: src/pages/settings.cppm:687
 msgid "Default theme"
 msgstr "Standarderscheinungsbild"
 
-#: src/pages/settings.cppm:698
+#: src/pages/settings.cppm:700
 msgid "The default theme only applies to newly created profiles."
 msgstr "Das Standarderscheinungsbild gilt nur für neue Profile."
 
-#: src/pages/settings.cppm:700
+#: src/pages/settings.cppm:702
 msgid "Save"
 msgstr "Speichern"
 
-#: src/pages/settings.cppm:708
+#: src/pages/settings.cppm:710
 msgid "Settings saved"
 msgstr "Einstellungen gespeichert"
 
-#: src/pages/settings.cppm:709
+#: src/pages/settings.cppm:711
 msgid "Your UI settings have been saved successfully."
 msgstr "Die Nutzerinterfaceeinstellungen wurden erfolgreich gespeichert."
 
-#: src/pages/settings.cppm:727
+#: src/pages/settings.cppm:729
 msgid "Add cleanup rule"
 msgstr "Aufräumregel erstellen"
 
-#: src/pages/settings.cppm:742
+#: src/pages/settings.cppm:744
 msgid "No cleanup rules found"
 msgstr "Keine Aufräumregeln vorhanden"
 
-#: src/pages/settings.cppm:743 src/pages/settings.cppm:774
+#: src/pages/settings.cppm:745 src/pages/settings.cppm:776
 msgid "You can add a new rule by clicking the button above."
 msgstr "Sie können eine neue Regel mit dem Knopf oben erstellen."
 
-#: src/pages/settings.cppm:758
+#: src/pages/settings.cppm:760
 msgid "Add alert rule"
 msgstr "Alarmregel erstellen"
 
-#: src/pages/settings.cppm:773
+#: src/pages/settings.cppm:775
 msgid "No alert rules found"
 msgstr "Keine Alarmregeln vorhanden"
 
-#: src/pages/settings.cppm:788
+#: src/pages/settings.cppm:790
 msgid "User interface"
 msgstr "Nutzerinterface"
 
-#: src/pages/settings.cppm:791
+#: src/pages/settings.cppm:793
 msgid "Cleanup rules"
 msgstr "Aufräumregeln"
 
-#: src/pages/settings.cppm:794
+#: src/pages/settings.cppm:796
 msgid "Alert rules"
 msgstr "Alarmregeln"
 

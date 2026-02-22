@@ -213,12 +213,13 @@ Webxx::dv profile_selector() {
         using import_data = std::unordered_map<std::string, std::unordered_map<std::string, std::string>>;
         auto imported_data = glz::read_json<import_data>(data);
         if(!imported_data) {
-            webpp::eval("window.alert('Invalid profile file: '+{});",
+            webpp::eval("window.alert('{}: '+{});",
+                std::string_view{"Invalid profile file"_},
                 glz::write_json(glz::format_error(imported_data.error(), data)).value_or("error"));
             return;
         }
         if(imported_data->empty()) {
-            webpp::eval("window.alert('Empty profile file');");
+            webpp::eval("window.alert('{}');", std::string_view{"Empty profile file"_});
             return;
         }
         for(auto& [key, value] : *imported_data) {
@@ -451,6 +452,7 @@ Webxx::dialog dialog_delete_profile(event_context& ctx) {
                         webpp::eval("document.getElementById('dialog_delete_profile').close();");
 
                         profile.delete_profile(profile.get_current_profile());
+                        profile.switch_profile("default");
 
                         webpp::get_element_by_id("profile_selector_mobile_container")->inner_html(Webxx::render(profile_selector<"mobile">()));
                         webpp::get_element_by_id("profile_selector_desktop_container")->inner_html(Webxx::render(profile_selector<"desktop">()));
@@ -539,10 +541,19 @@ void auto_select_page() {
 }
 
 auto load_mmdb(common::mmdb& target, std::string_view url) -> webpp::coroutine<void> {
-    auto data = co_await webpp::coro::fetch(url)
-        .then(std::mem_fn(&webpp::response::co_bytes));
+    webpp::log("Loading GeoIP database from {}...", url);
+    auto response = co_await webpp::coro::fetch(url);
+    webpp::log("Status for GeoIP database {}: {}, ok? {}", url, response.status(), response.ok());
+    if(!response.ok()) {
+        webpp::log("Failed to download GeoIP database from {}: HTTP {}", url, response.status());
+        co_return;
+    }
+
+    auto data = co_await response.co_bytes();
+    webpp::log("Finished downloading GeoIP database from {} ({} bytes), now parsing...", url, data.size());
+
     target = common::mmdb{std::move(data)};
-    if(geoip_country.is_valid()) {
+    if(target.is_valid()) {
         common::mmdb::data d = target.get_metadata();
         auto json = glz::write_json(d.to_json()).value_or("error");
         webpp::log("Loaded GeoIP database: {}", json);

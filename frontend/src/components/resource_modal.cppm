@@ -32,7 +32,9 @@ export struct resource_modal : component<resource_modal> {
         using namespace Webxx;
         if(v.is_boolean()) {
             return fragment{
-                span{{_class{v.get_boolean()?"text-success":"text-error"}}, v.get_boolean()?"true":"false"}
+                span{{_class{v.get_boolean() ? "text-success" : "text-error"}},
+                    v.get_boolean() ? "true"_ : "false"_
+                }
             };
         }
         if(v.is_array()) {
@@ -85,7 +87,7 @@ export struct resource_modal : component<resource_modal> {
                     form{{_method{"dialog"}},
                         button{{_class{"btn btn-sm btn-circle btn-ghost absolute right-2 top-2"}}, "x"}
                     },
-                    h3{{_class{"text-lg font-bold"}}, std::format("Resource \"{}\" ({})", sanitize(resource_name(id, resource)), id)},
+                    h3{{_class{"text-lg font-bold"}}, "Resource \"{}\" (#{})"_(sanitize(resource_name(id, resource)), id)},
                     dv{{_class{"overflow-auto"}},
                         table{{_class{"table table-zebra w-full"}},
                             thead{tr{
