@@ -12,14 +12,5 @@ export namespace mfk::i18n {
 
     inline namespace literals {
         using mfk::i18n::literals::operator""_;
-
-        template <CompileTimeString str>
-        constexpr auto operator""_sv() {
-            return static_cast<std::string_view>(build_I18NString<str>());
-        }
-        template <CompileTimeString str>
-        constexpr auto operator""_s() {
-            return std::string{build_I18NString<str>()};
-        }
     }
 }

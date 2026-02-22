@@ -42,7 +42,7 @@ export Webxx::dialog dialog_delete(event_context& ctx, const std::string& id, st
                             webpp::eval("document.getElementById('{}_name').setCustomValidity('');", id);
                         } else {
                             webpp::get_element_by_id(std::format("{}_button", id))->add_class("btn-disabled");
-                            webpp::eval("document.getElementById('{}_name').setCustomValidity('{}');", id, "Name must match."_sv);
+                            webpp::eval("document.getElementById('{}_name').setCustomValidity('{}');", id, std::string_view{"Name must match."_});
                         }
                     }
                 ),

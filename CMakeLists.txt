@@ -11,9 +11,9 @@ option(GENERATE_POT "Generate .pot file" OFF)
 
 if(GENERATE_POT)
     FetchContent_Declare(i18n++
-    GIT_REPOSITORY https://github.com/JnCrMx/i18n-cpp.git
-    GIT_TAG trunk
-    GIT_SUBMODULES_RECURSE FALSE)
+        GIT_REPOSITORY https://github.com/JnCrMx/i18n-cpp.git
+        GIT_TAG trunk
+        GIT_SUBMODULES_RECURSE FALSE)
     set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
     set(BUILD_PLUGIN ON CACHE BOOL "" FORCE)
     set(BUILD_MERGE ON CACHE BOOL "" FORCE)
@@ -35,6 +35,9 @@ ExternalProject_Add(frontend
         -Di18n-merge-pot_LOCATION:FILEPATH=$<$<BOOL:${GENERATE_POT}>:$<TARGET_FILE:i18n::i18n-merge-pot>>
         -Di18n-plugin_LOCATION:FILEPATH=$<$<BOOL:${GENERATE_POT}>:$<TARGET_FILE:$<INSTALL_INTERFACE:i18n::>plugin>>
 )
+if(GENERATE_POT)
+    add_dependencies(frontend i18n::i18n-merge-pot i18n::i18n-extract)
+endif()
 
 function(AddExternalProjectFileDependency
          ExternalProjectName

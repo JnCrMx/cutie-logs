@@ -317,7 +317,7 @@ Webxx::dialog dialog_add_profile(event_context& ctx) {
                             webpp::eval("document.getElementById('profile_name').setCustomValidity('');");
                         } else {
                             webpp::get_element_by_id("profile_add")->add_class("btn-disabled");
-                            webpp::eval("document.getElementById('profile_name').setCustomValidity('{}');", "Profile name must be non-empty and unique."_sv);
+                            webpp::eval("document.getElementById('profile_name').setCustomValidity('{}');", std::string_view{"Profile name must be non-empty and unique."_});
                         }
                     }
                 ),
@@ -365,7 +365,7 @@ Webxx::dialog dialog_rename_profile(event_context& ctx) {
                             webpp::eval("document.getElementById('new_profile_name').setCustomValidity('');");
                         } else {
                             webpp::get_element_by_id("profile_rename")->add_class("btn-disabled");
-                            webpp::eval("document.getElementById('new_profile_name').setCustomValidity('{}');", "Profile name must be non-empty and unique."_sv);
+                            webpp::eval("document.getElementById('new_profile_name').setCustomValidity('{}');", std::string_view{"Profile name must be non-empty and unique."_});
                         }
                     }
                 ),
@@ -413,7 +413,7 @@ Webxx::dialog dialog_delete_profile(event_context& ctx) {
                             webpp::eval("document.getElementById('delete_profile_name').setCustomValidity('');");
                         } else {
                             webpp::get_element_by_id("profile_delete")->add_class("btn-disabled");
-                            webpp::eval("document.getElementById('delete_profile_name').setCustomValidity('{}');", "Profile name must match."_sv);
+                            webpp::eval("document.getElementById('delete_profile_name').setCustomValidity('{}');", std::string_view{"Profile name must match."_});
                         }
                     }
                 ),

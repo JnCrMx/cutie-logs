@@ -69,21 +69,21 @@ export class settings : public page {
 
         Webxx::dialog render_cleanup_rule_dialog(event_context& ctx, std::optional<common::cleanup_rule> rule = std::nullopt) {
             return components::dialog_add(ctx, "dialog_add_rule", components::dialog_add_ctx{
-                .what = "Cleanup Rule"_s,
+                .what = std::string{"Cleanup Rule"_},
                 .edit = rule.has_value(),
                 .object_id = rule.has_value() ? rule->id : 0,
                 .object_name = rule.has_value() ? rule->name : "",
                 .object_description = rule.has_value() ? rule->description : "",
                 .name_validator = [this](components::dialog_add_ctx& ctx, const std::string& name) -> std::optional<std::string> {
                     if(name.empty()) {
-                        return "Rule name must be non-empty."_s;
+                        return std::string{"Rule name must be non-empty."_};
                     }
                     if(ctx.edit && ctx.object_name == name) {
                         return std::nullopt;
                     }
                     for(const auto& r : cleanup_rules.rules) {
                         if(r.second.name == name) {
-                            return "Rule name must be unique."_s;
+                            return std::string{"Rule name must be unique."_};
                         }
                     }
                     return std::nullopt;
@@ -153,7 +153,7 @@ export class settings : public page {
                         }
                         auto new_rule_expected = glz::read<common::beve_opts, common::cleanup_rule>(co_await res.co_bytes());
                         if(!new_rule_expected) {
-                            error("Failed to parse rule"_s, glz::format_error(new_rule_expected.error()));
+                            error(std::string{"Failed to parse rule"_}, glz::format_error(new_rule_expected.error()));
                             co_return;
                         }
 
@@ -169,21 +169,21 @@ export class settings : public page {
 
         Webxx::dialog render_alert_rule_dialog(event_context& ctx, std::optional<common::alert_rule> rule = std::nullopt) {
             return components::dialog_add(ctx, "dialog_add_rule", components::dialog_add_ctx{
-                .what = "Alert Rule"_s,
+                .what = std::string{"Alert Rule"_},
                 .edit = rule.has_value(),
                 .object_id = rule.has_value() ? rule->id : 0,
                 .object_name = rule.has_value() ? rule->name : "",
                 .object_description = rule.has_value() ? rule->description : "",
                 .name_validator = [this](components::dialog_add_ctx& ctx, const std::string& name) -> std::optional<std::string> {
                     if(name.empty()) {
-                        return "Rule name must be non-empty."_s;
+                        return std::string{"Rule name must be non-empty."_};
                     }
                     if(ctx.edit && ctx.object_name == name) {
                         return std::nullopt;
                     }
                     for(const auto& r : alert_rules.rules) {
                         if(r.second.name == name) {
-                            return "Rule name must be unique."_s;
+                            return std::string{"Rule name must be unique."_};
                         }
                     }
                     return std::nullopt;
@@ -322,14 +322,14 @@ export class settings : public page {
                                         co_return;
                                     }
                                     if(!v->is_array()) {
-                                        error("Invalid JSON for option {}"_(option.name), "Expected an array."_s);
+                                        error("Invalid JSON for option {}"_(option.name), std::string{"Expected an array."_});
                                         co_return;
                                     }
                                     new_rule.notification_options[option.id] = *v;
                                     break;
                                 }
                                 default:
-                                    error("Unknown option type"_s, "The notification provider option type is not supported yet."_s);
+                                    error(std::string{"Unknown option type"_}, std::string{"The notification provider option type is not supported yet."_});
                                     co_return;
                             }
                         }
@@ -356,7 +356,7 @@ export class settings : public page {
                         }
                         auto new_rule_expected = glz::read<common::beve_opts, common::alert_rule>(co_await res.co_bytes());
                         if(!new_rule_expected) {
-                            error("Failed to parse rule"_s, glz::format_error(new_rule_expected.error()));
+                            error(std::string{"Failed to parse rule"_}, glz::format_error(new_rule_expected.error()));
                             co_return;
                         }
 
@@ -409,7 +409,7 @@ export class settings : public page {
         void delete_rule(const common::cleanup_rule& rule) {
             static event_context ctx; ctx.clear();
             webpp::get_element_by_id("dialog_placeholder")->inner_html(Webxx::render(
-                render_rule_delete_dialog(ctx, "Cleanup Rule"_s, "/api/v1/settings/cleanup_rules", rule, cleanup_rules)));
+                render_rule_delete_dialog(ctx, std::string{"Cleanup Rule"_}, "/api/v1/settings/cleanup_rules", rule, cleanup_rules)));
             webpp::eval("document.getElementById('dialog_delete_rule').showModal();");
         }
         void toggle_rule(common::cleanup_rule rule) {
@@ -449,7 +449,7 @@ export class settings : public page {
         void delete_rule(const common::alert_rule& rule) {
             static event_context ctx; ctx.clear();
             webpp::get_element_by_id("dialog_placeholder")->inner_html(Webxx::render(
-                render_rule_delete_dialog(ctx, "Alert Rule", "/api/v1/settings/alert_rules", rule, alert_rules)));
+                render_rule_delete_dialog(ctx, std::string{"Alert Rule"_}, "/api/v1/settings/alert_rules", rule, alert_rules)));
             webpp::eval("document.getElementById('dialog_delete_rule').showModal();");
         }
         void toggle_rule(common::alert_rule rule) {
@@ -468,7 +468,7 @@ export class settings : public page {
                 }
                 auto new_rule_expected = glz::read<common::beve_opts, common::alert_rule>(co_await res.co_bytes());
                 if(!new_rule_expected) {
-                    components::show_alert("settings_alert_rules_error", "Failed to parse rule"_s, glz::format_error(new_rule_expected.error()));
+                    components::show_alert("settings_alert_rules_error", std::string{"Failed to parse rule"_}, glz::format_error(new_rule_expected.error()));
                     co_return;
                 }
 
@@ -577,7 +577,7 @@ export class settings : public page {
 
             std::string run_info = rule.last_execution ?
                 "Last run: {}"_(*rule.last_execution) :
-                "Never run"_s;
+                std::string{"Never run"_};
             std::string generated_decription = "Delete logs older than {}"_(common::format_duration(rule.filter_minimum_age));
             generated_decription += describe_filters(rule.filters);
             generated_decription += ".";
@@ -616,7 +616,7 @@ export class settings : public page {
 
             std::string run_info = rule.last_alert ?
                 "Last alert: {}"_(*rule.last_alert) :
-                "Never triggered"_s;
+                std::string{"Never triggered"_};
             std::string generated_decription = "Alert for logs";
             generated_decription += describe_filters(rule.filters);
             generated_decription += ".";

@@ -354,7 +354,7 @@ export class table : public page {
                                     webpp::eval("document.getElementById('column_name').setCustomValidity('');");
                                 } else {
                                     webpp::get_element_by_id("column_add")->add_class("btn-disabled");
-                                    webpp::eval("document.getElementById('column_name').setCustomValidity('{}');", "Column name must be non-empty and unique."_sv);
+                                    webpp::eval("document.getElementById('column_name').setCustomValidity('{}');", std::string_view{"Column name must be non-empty and unique."_});
                                 }
                             }
                         ),

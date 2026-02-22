@@ -1,14 +1,14 @@
 # German translations for cutie-logs-frontend package.
 # Copyright (C) 2025 THE cutie-logs-frontend'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the cutie-logs-frontend package.
-# JCM <jcm@jcm.re>, 2025.
+# JCM <jcm@jcm.re>, 2025-2026.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: cutie-logs-frontend \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2017-07-14 02:40+0000\n"
-"PO-Revision-Date: 2025-07-17 04:19+0200\n"
+"PO-Revision-Date: 2026-02-22 05:39+0100\n"
 "Last-Translator: JCM <jcm@jcm.re>\n"
 "Language-Team: German <translation-team-de@lists.sourceforge.net>\n"
 "Language: de\n"
@@ -16,100 +16,54 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Gtranslator 48.0\n"
+"X-Generator: Gtranslator 49.0\n"
 
-msgid ":B:Body"
-msgstr ":B:Nachricht"
-
-msgid ":R:Resource"
-msgstr ":R:Ressource"
-
-msgid ":S:Scope"
-msgstr ":S:Bereich"
-
-msgid ":T:Timestamp"
-msgstr ":T:Zeitstempel"
-
-msgid ":V:Severity"
-msgstr ":V:Schwere"
-
-msgid "Alert Rule"
-msgstr "Alarmregeln"
-
-msgid "Cleanup Rule"
-msgstr "Aufräumregeln"
-
-msgid "Expected an array."
-msgstr "Es wurde ein Array erwartet."
-
-msgid "Failed to parse rule"
-msgstr "Konnte die Regel nicht einlesen."
-
-msgid "Never run"
-msgstr "Niemals aufgeführt"
-
-msgid "Never triggered"
-msgstr "Niemals ausgelöst"
-
-msgid "Rule name must be non-empty."
-msgstr "Der Name der Regel darf nicht leer sein."
-
-msgid "Rule name must be unique."
-msgstr "Es existiert bereits eine Regel mit diesem Namen."
-
-msgid "The notification provider option type is not supported yet."
-msgstr ""
-"Benachrichtigungs-Konfigurationen von diesem Typ sind noch nicht unterstützt."
-
-msgid "Unknown option type"
-msgstr "Unbekannter Optionstyp"
-
-#: src/components/dialog_add.cppm:56
+#: src/components/dialog_add.cppm:57
 msgid "Edit {} \"{}\" ({})"
 msgstr "{} \"{}\" ({}) bearbeiten"
 
-#: src/components/dialog_add.cppm:57 src/components/dialog_add.cppm:97
+#: src/components/dialog_add.cppm:59 src/components/dialog_add.cppm:104
 msgid "Add {}"
 msgstr "{} erstellen"
 
-#: src/components/dialog_add.cppm:62
+#: src/components/dialog_add.cppm:64
 msgid "{} name"
 msgstr "{}-Name"
 
-#: src/components/dialog_add.cppm:63 src/components/dialog_delete.cppm:34
-#: src/mainpage.cpp:292 src/pages/table.cppm:338
+#: src/components/dialog_add.cppm:65 src/components/dialog_delete.cppm:36
+#: src/mainpage.cpp:311 src/pages/table.cppm:348
 msgid "Name"
 msgstr "Name"
 
-#: src/components/dialog_add.cppm:81
+#: src/components/dialog_add.cppm:83
 msgid "Name must be valid."
 msgstr "Der Name muss gültig sein."
 
-#: src/components/dialog_add.cppm:83
+#: src/components/dialog_add.cppm:86
 msgid "{} description"
 msgstr "{}-Beschreibung"
 
-#: src/components/dialog_add.cppm:84
+#: src/components/dialog_add.cppm:87
 msgid "Description"
 msgstr "Beschreibung"
 
-#: src/components/dialog_add.cppm:97
+#: src/components/dialog_add.cppm:102
 msgid "Save {}"
 msgstr "{} speichern"
 
-#: src/components/dialog_delete.cppm:29
+#: src/components/dialog_delete.cppm:30
 msgid "Delete {} \"{}\" ({})"
 msgstr "{} \"{}\" ({}) löschen"
 
-#: src/components/dialog_delete.cppm:33
+#: src/components/dialog_delete.cppm:35
 msgid "Please type the name of the {} to confirm deletion."
 msgstr "Geben Sie den Namen der {} zur Bestätigung ein."
 
-#: src/components/dialog_delete.cppm:47
+#: src/components/dialog_delete.cppm:45 src/components/dialog_delete.cppm:49
 msgid "Name must match."
 msgstr "Der Name muss übereinstimmen."
 
-#: src/components/dialog_delete.cppm:50
+#: src/components/dialog_delete.cppm:53
 msgid "Delete {}"
 msgstr "{} löschen"
 
@@ -130,7 +84,7 @@ msgid "seconds"
 msgstr "Sekunden"
 
 #: src/components/resource_modal.cppm:27 src/pages/logs.cppm:158
-#: src/pages/table.cppm:279
+#: src/pages/table.cppm:289
 msgid "Resource #{}"
 msgstr "Ressource #{}"
 
@@ -142,116 +96,137 @@ msgstr "Attribut"
 msgid "Value"
 msgstr "Wert"
 
-#: src/components/selection.cppm:61
+#: src/components/selection.cppm:84
 msgid "Search..."
 msgstr "Suche..."
+
+#: src/components/selection.cppm:89
+msgid "Only show selected"
+msgstr "Nur ausgewählte anzeigen"
 
 # kein Plan, wie man das übersetzt
 #: src/components/theme_button.cppm:27
 msgid "Themes"
 msgstr "Themes"
 
-#: src/mainpage.cpp:110
-msgid "Total Log Entries"
-msgstr "Gesamte Einträge"
-
-#: src/mainpage.cpp:114
-msgid "Total Attributes"
-msgstr "Gesamte Attribute"
-
-#: src/mainpage.cpp:118
-msgid "Total Resources"
-msgstr "Gesamte Ressourcen"
-
-#: src/mainpage.cpp:122
-msgid "Total Scopes"
-msgstr "Gesamte Bereiche"
-
-#: src/mainpage.cpp:199
-msgid "Create New Profile..."
-msgstr "Neues Profil anlegen..."
-
-#: src/mainpage.cpp:200
-msgid "Import Profile..."
-msgstr "Profil importieren..."
-
-#: src/mainpage.cpp:244 src/mainpage.cpp:337 src/mainpage.cpp:356
-msgid "Rename profile"
-msgstr "Profil umbenennen"
-
-#: src/mainpage.cpp:246
-msgid "Rename profile \"{}\""
-msgstr "Profil \"{}\" umbenennen"
-
-#: src/mainpage.cpp:252
-msgid "Export profile"
-msgstr "Profil exportieren"
-
-#: src/mainpage.cpp:269 src/mainpage.cpp:385 src/mainpage.cpp:404
-msgid "Delete profile"
-msgstr "Profil löschen"
-
-#: src/mainpage.cpp:271
-msgid "Delete profile \"{}\""
-msgstr "Profil \"{}\" löschen"
-
-#: src/mainpage.cpp:289 src/mainpage.cpp:308
-msgid "Add profile"
-msgstr "Profil erstellen"
-
-#: src/mainpage.cpp:291
-msgid "Profile name"
-msgstr "Profilname"
-
-#: src/mainpage.cpp:305 src/mainpage.cpp:353
-msgid "Profile name must be non-empty and unique."
-msgstr "Der Name des Profils darf nicht leer und muss einzigartig sein."
-
-#: src/mainpage.cpp:339
-msgid "New name"
-msgstr "Neuer Name"
-
-#: src/mainpage.cpp:387
-msgid "Please type the name of the profile to confirm deletion."
-msgstr "Geben Sie den Namen des Profils zur Bestätigung ein."
-
-#: src/mainpage.cpp:401
-msgid "Profile name must match."
-msgstr "Der Profilname muss übereinstimmen."
-
-#: src/mainpage.cpp:432
-msgid "version {}"
-msgstr "Version {}"
-
-#: src/mainpage.cpp:52
+#: src/mainpage.cpp:71
 msgid "Text View"
 msgstr "Text"
 
-#: src/mainpage.cpp:53
+#: src/mainpage.cpp:72
 msgid "Table View"
 msgstr "Tabelle"
 
 #. page_tuple{"analysis", "Analysis", assets::icons::analysis, &logs_page},
-#: src/mainpage.cpp:55
+#: src/mainpage.cpp:74
 msgid "Settings"
 msgstr "Einstellungen"
 
-#: src/pages/logs.cppm:146 src/pages/logs.cppm:211 src/pages/table.cppm:267
-#: src/pages/table.cppm:431
+#: src/mainpage.cpp:129
+msgid "Total Log Entries"
+msgstr "Gesamte Einträge"
+
+#: src/mainpage.cpp:133
+msgid "Total Attributes"
+msgstr "Gesamte Attribute"
+
+#: src/mainpage.cpp:137
+msgid "Total Resources"
+msgstr "Gesamte Ressourcen"
+
+#: src/mainpage.cpp:141
+msgid "Total Scopes"
+msgstr "Gesamte Bereiche"
+
+#: src/mainpage.cpp:218
+msgid "Create New Profile..."
+msgstr "Neues Profil anlegen..."
+
+#: src/mainpage.cpp:219
+msgid "Import Profile..."
+msgstr "Profil importieren..."
+
+#: src/mainpage.cpp:263 src/mainpage.cpp:356 src/mainpage.cpp:375
+msgid "Rename profile"
+msgstr "Profil umbenennen"
+
+#: src/mainpage.cpp:265
+msgid "Rename profile \"{}\""
+msgstr "Profil \"{}\" umbenennen"
+
+#: src/mainpage.cpp:271
+msgid "Export profile"
+msgstr "Profil exportieren"
+
+#: src/mainpage.cpp:288 src/mainpage.cpp:404 src/mainpage.cpp:423
+msgid "Delete profile"
+msgstr "Profil löschen"
+
+#: src/mainpage.cpp:290
+msgid "Delete profile \"{}\""
+msgstr "Profil \"{}\" löschen"
+
+#: src/mainpage.cpp:308 src/mainpage.cpp:327
+msgid "Add profile"
+msgstr "Profil erstellen"
+
+#: src/mainpage.cpp:310
+msgid "Profile name"
+msgstr "Profilname"
+
+#: src/mainpage.cpp:320 src/mainpage.cpp:324 src/mainpage.cpp:368
+#: src/mainpage.cpp:372
+msgid "Profile name must be non-empty and unique."
+msgstr "Der Name des Profils darf nicht leer und muss einzigartig sein."
+
+#: src/mainpage.cpp:358
+msgid "New name"
+msgstr "Neuer Name"
+
+#: src/mainpage.cpp:406
+msgid "Please type the name of the profile to confirm deletion."
+msgstr "Geben Sie den Namen des Profils zur Bestätigung ein."
+
+#: src/mainpage.cpp:416 src/mainpage.cpp:420
+msgid "Profile name must match."
+msgstr "Der Profilname muss übereinstimmen."
+
+#: src/mainpage.cpp:459
+msgid "version {}"
+msgstr "Version {}"
+
+#: src/pages/logs.cppm:28
+msgid "Display Options"
+msgstr "Anzeigeoptionen"
+
+#: src/pages/logs.cppm:29
+msgid "Log line stencil. Use {{...}} to insert values."
+msgstr "Format der Protokollzeile. Nutzen Sie {{...}} um Werte einzusetzen."
+
+#: src/pages/logs.cppm:46 src/pages/table.cppm:380
+msgid "Stencil invalid: \"{}\""
+msgstr "Format ungültig: \"{}\""
+
+#: src/pages/logs.cppm:56 src/pages/table.cppm:392
+msgid "Preview"
+msgstr "Vorschau"
+
+#: src/pages/logs.cppm:146 src/pages/logs.cppm:211 src/pages/table.cppm:277
+#: src/pages/table.cppm:441
 msgid "Select Attributes"
 msgstr "Attribute auswählen"
 
-#: src/pages/logs.cppm:154 src/pages/logs.cppm:213 src/pages/table.cppm:275
-#: src/pages/table.cppm:433
+#: src/pages/logs.cppm:154 src/pages/logs.cppm:213 src/pages/table.cppm:285
+#: src/pages/table.cppm:443
 msgid "Filter Scopes"
 msgstr "Bereiche filtern"
 
-#: src/pages/logs.cppm:169 src/pages/logs.cppm:212 src/pages/table.cppm:290
-#: src/pages/table.cppm:432
+#: src/pages/logs.cppm:169 src/pages/logs.cppm:212 src/pages/table.cppm:300
+#: src/pages/table.cppm:442
 msgid "Filter Resources"
 msgstr "Ressourcen filtern"
 
-#: src/pages/logs.cppm:221 src/pages/table.cppm:439
+#: src/pages/logs.cppm:221 src/pages/table.cppm:449
 msgid "Query"
 msgstr "Abfragen"
 
@@ -279,134 +254,160 @@ msgstr "100k Einträge"
 msgid "1M entries"
 msgstr "1M Einträge"
 
-#: src/pages/logs.cppm:28
-msgid "Display Options"
-msgstr "Anzeigeoptionen"
+#: src/pages/settings.cppm:72 src/pages/settings.cppm:412
+msgid "Cleanup Rule"
+msgstr "Aufräumregeln"
 
-#: src/pages/logs.cppm:29
-msgid "Log line stencil. Use {{...}} to insert values."
-msgstr "Format der Protokollzeile. Nutzen Sie {{...}} um Werte einzusetzen."
+#: src/pages/settings.cppm:79 src/pages/settings.cppm:179
+msgid "Rule name must be non-empty."
+msgstr "Der Name der Regel darf nicht leer sein."
 
-#: src/pages/logs.cppm:46 src/pages/table.cppm:370
-msgid "Stencil invalid: \"{}\""
-msgstr "Format ungültig: \"{}\""
+#: src/pages/settings.cppm:86 src/pages/settings.cppm:186
+msgid "Rule name must be unique."
+msgstr "Es existiert bereits eine Regel mit diesem Namen."
 
-#: src/pages/logs.cppm:56 src/pages/table.cppm:382
-msgid "Preview"
-msgstr "Vorschau"
-
-#: src/pages/settings.cppm:104 src/pages/settings.cppm:270
-msgid "Conditions"
-msgstr "Bedingungen"
-
-#: src/pages/settings.cppm:106 src/pages/settings.cppm:107
-msgid "Minimum age"
-msgstr "Minimales Alter"
-
-#: src/pages/settings.cppm:108
-msgid "Minimum age must be a positive number."
-msgstr "Das minimale Alter muss positiv sein."
-
-#: src/pages/settings.cppm:220 src/pages/settings.cppm:87
+#: src/pages/settings.cppm:97 src/pages/settings.cppm:230
 msgid "Enabled"
 msgstr "Aktiviert"
 
-#: src/pages/settings.cppm:229
-msgid "Notification Provider"
-msgstr "Benachrichtungstyp"
-
-#: src/pages/settings.cppm:231
-msgid "Select a provider"
-msgstr "Wählen Sie einen Benachrichtungstyp aus"
-
-#: src/pages/settings.cppm:258
-msgid "Notification Settings"
-msgstr "Benachrichtigungseinstellungen"
-
-#: src/pages/settings.cppm:260
-msgid "Please select a notification provider first."
-msgstr "Wählen Sie zuerst einen Benachrichtungstyp aus."
-
-#: src/pages/settings.cppm:298 src/pages/settings.cppm:302
-#: src/pages/settings.cppm:311 src/pages/settings.cppm:315
-msgid "Invalid JSON for option {}"
-msgstr "Ungültiges JSON für die Option {}"
-
-#: src/pages/settings.cppm:569
-msgid "Last run: {}"
-msgstr "Zuletzt ausgeführt: {}"
-
-#: src/pages/settings.cppm:571
-msgid "Delete logs older than {}"
-msgstr "Lösche Einträge älter als {}"
-
-#: src/pages/settings.cppm:576 src/pages/settings.cppm:615
-msgid "Enable/Disable rule"
-msgstr "Regel (de)aktivieren"
-
-#: src/pages/settings.cppm:579
-msgid "Execution interval: {}"
-msgstr "Ausführungsintervall: {}"
-
-#: src/pages/settings.cppm:582 src/pages/settings.cppm:621
-msgid "No description"
-msgstr "Keine Beschreibung"
-
-#: src/pages/settings.cppm:586 src/pages/settings.cppm:625
-msgid "Edit rule"
-msgstr "Regel bearbeiten"
-
-#: src/pages/settings.cppm:589 src/pages/settings.cppm:628
-msgid "Delete rule"
-msgstr "Regel löschen"
-
-#: src/pages/settings.cppm:608
-msgid "Last alert: {}"
-msgstr "Letzter Alarm: {}"
-
-#: src/pages/settings.cppm:618
-msgid "Provider: {}"
-msgstr "Typ: {}"
-
-#: src/pages/settings.cppm:642
-msgid "Add cleanup rule"
-msgstr "Aufräumregel erstellen"
-
-#: src/pages/settings.cppm:657
-msgid "No cleanup rules found"
-msgstr "Keine Aufräumregeln vorhanden"
-
-#: src/pages/settings.cppm:658 src/pages/settings.cppm:689
-msgid "You can add a new rule by clicking the button above."
-msgstr "Sie können eine neue Regel mit dem Knopf oben erstellen."
-
-#: src/pages/settings.cppm:673
-msgid "Add alert rule"
-msgstr "Alarmregel erstellen"
-
-#: src/pages/settings.cppm:688
-msgid "No alert rules found"
-msgstr "Keine Alarmregeln vorhanden"
-
-#: src/pages/settings.cppm:703
-msgid "Cleanup rules"
-msgstr "Aufräumregeln"
-
-#: src/pages/settings.cppm:706
-msgid "Alert rules"
-msgstr "Alarmregeln"
-
-#: src/pages/settings.cppm:93
+#: src/pages/settings.cppm:103
 msgid "Just here for equal spacing."
 msgstr "Nur hier für Abstände."
 
-#: src/pages/settings.cppm:96 src/pages/settings.cppm:97
+#: src/pages/settings.cppm:106 src/pages/settings.cppm:107
 msgid "Execution interval"
 msgstr "Ausführungsintervall"
 
-#: src/pages/settings.cppm:98
+#: src/pages/settings.cppm:108
 msgid "Execution interval must be a positive number."
 msgstr "Das Ausführungsintervall muss positiv sein."
+
+#: src/pages/settings.cppm:114 src/pages/settings.cppm:280
+msgid "Conditions"
+msgstr "Bedingungen"
+
+#: src/pages/settings.cppm:116 src/pages/settings.cppm:117
+msgid "Minimum age"
+msgstr "Minimales Alter"
+
+#: src/pages/settings.cppm:118
+msgid "Minimum age must be a positive number."
+msgstr "Das minimale Alter muss positiv sein."
+
+#: src/pages/settings.cppm:156 src/pages/settings.cppm:359
+#: src/pages/settings.cppm:471
+msgid "Failed to parse rule"
+msgstr "Konnte die Regel nicht einlesen."
+
+#: src/pages/settings.cppm:172 src/pages/settings.cppm:452
+msgid "Alert Rule"
+msgstr "Alarmregeln"
+
+#: src/pages/settings.cppm:239
+msgid "Notification Provider"
+msgstr "Benachrichtungstyp"
+
+#: src/pages/settings.cppm:241
+msgid "Select a provider"
+msgstr "Wählen Sie einen Benachrichtungstyp aus"
+
+#: src/pages/settings.cppm:268
+msgid "Notification Settings"
+msgstr "Benachrichtigungseinstellungen"
+
+#: src/pages/settings.cppm:270
+msgid "Please select a notification provider first."
+msgstr "Wählen Sie zuerst einen Benachrichtungstyp aus."
+
+#: src/pages/settings.cppm:308 src/pages/settings.cppm:312
+#: src/pages/settings.cppm:321 src/pages/settings.cppm:325
+msgid "Invalid JSON for option {}"
+msgstr "Ungültiges JSON für die Option {}"
+
+#: src/pages/settings.cppm:325
+msgid "Expected an array."
+msgstr "Es wurde ein Array erwartet."
+
+#: src/pages/settings.cppm:332
+msgid "The notification provider option type is not supported yet."
+msgstr ""
+"Benachrichtigungs-Konfigurationen von diesem Typ sind noch nicht unterstützt."
+
+#: src/pages/settings.cppm:332
+msgid "Unknown option type"
+msgstr "Unbekannter Optionstyp"
+
+#: src/pages/settings.cppm:579
+msgid "Last run: {}"
+msgstr "Zuletzt ausgeführt: {}"
+
+#: src/pages/settings.cppm:580
+msgid "Never run"
+msgstr "Niemals aufgeführt"
+
+#: src/pages/settings.cppm:581
+msgid "Delete logs older than {}"
+msgstr "Lösche Einträge älter als {}"
+
+#: src/pages/settings.cppm:586 src/pages/settings.cppm:625
+msgid "Enable/Disable rule"
+msgstr "Regel (de)aktivieren"
+
+#: src/pages/settings.cppm:589
+msgid "Execution interval: {}"
+msgstr "Ausführungsintervall: {}"
+
+#: src/pages/settings.cppm:592 src/pages/settings.cppm:631
+msgid "No description"
+msgstr "Keine Beschreibung"
+
+#: src/pages/settings.cppm:596 src/pages/settings.cppm:635
+msgid "Edit rule"
+msgstr "Regel bearbeiten"
+
+#: src/pages/settings.cppm:599 src/pages/settings.cppm:638
+msgid "Delete rule"
+msgstr "Regel löschen"
+
+#: src/pages/settings.cppm:618
+msgid "Last alert: {}"
+msgstr "Letzter Alarm: {}"
+
+#: src/pages/settings.cppm:619
+msgid "Never triggered"
+msgstr "Niemals ausgelöst"
+
+#: src/pages/settings.cppm:628
+msgid "Provider: {}"
+msgstr "Typ: {}"
+
+#: src/pages/settings.cppm:652
+msgid "Add cleanup rule"
+msgstr "Aufräumregel erstellen"
+
+#: src/pages/settings.cppm:667
+msgid "No cleanup rules found"
+msgstr "Keine Aufräumregeln vorhanden"
+
+#: src/pages/settings.cppm:668 src/pages/settings.cppm:699
+msgid "You can add a new rule by clicking the button above."
+msgstr "Sie können eine neue Regel mit dem Knopf oben erstellen."
+
+#: src/pages/settings.cppm:683
+msgid "Add alert rule"
+msgstr "Alarmregel erstellen"
+
+#: src/pages/settings.cppm:698
+msgid "No alert rules found"
+msgstr "Keine Alarmregeln vorhanden"
+
+#: src/pages/settings.cppm:713
+msgid "Cleanup rules"
+msgstr "Aufräumregeln"
+
+#: src/pages/settings.cppm:716
+msgid "Alert rules"
+msgstr "Alarmregeln"
 
 #: src/pages/table.cppm:168
 msgid "error: {}"
@@ -416,30 +417,50 @@ msgstr "Fehler: {}"
 msgid "missing"
 msgstr "fehlt"
 
-#: src/pages/table.cppm:335 src/pages/table.cppm:455
+#: src/pages/table.cppm:203
+msgid ":T:Timestamp"
+msgstr ":T:Zeitstempel"
+
+#: src/pages/table.cppm:205
+msgid ":R:Resource"
+msgstr ":R:Ressource"
+
+#: src/pages/table.cppm:207
+msgid ":S:Scope"
+msgstr ":S:Bereich"
+
+#: src/pages/table.cppm:209
+msgid ":V:Severity"
+msgstr ":V:Schwere"
+
+#: src/pages/table.cppm:229
+msgid ":B:Body"
+msgstr ":B:Nachricht"
+
+#: src/pages/table.cppm:345 src/pages/table.cppm:465
 msgid "Add custom column"
 msgstr "Benutzerdefinierte Spalte erstellen"
 
-#: src/pages/table.cppm:337
+#: src/pages/table.cppm:347
 msgid "Column name"
 msgstr "Spaltenname"
 
-#: src/pages/table.cppm:351
+#: src/pages/table.cppm:357 src/pages/table.cppm:361
 msgid "Column name must be non-empty and unique."
 msgstr "Der Spaltenname darf nicht leer und muss einzigartig sein."
 
-#: src/pages/table.cppm:353
+#: src/pages/table.cppm:363
 msgid "Stencil"
 msgstr "Format"
 
-#: src/pages/table.cppm:354
+#: src/pages/table.cppm:364
 msgid "Column stencil. Use {{...}} to insert values."
 msgstr "Format der Spalte. Nutzen Sie {{...}} um Werte einzusetzen."
 
-#: src/pages/table.cppm:386
+#: src/pages/table.cppm:396
 msgid "Add column"
 msgstr "Spalte erstellen"
 
-#: src/pages/table.cppm:447
+#: src/pages/table.cppm:457
 msgid "Reset table"
 msgstr "Tabelle zurücksetzen"
