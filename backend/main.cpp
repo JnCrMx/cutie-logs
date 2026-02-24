@@ -2,6 +2,7 @@
 #include <concepts>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <optional>
 
 import pistache;
@@ -15,6 +16,7 @@ import backend.jobs;
 import backend.opentelemetry;
 import backend.web;
 import backend.notifications;
+import backend.self_sink;
 
 template<typename T>
 std::optional<T> get_env(std::string arg) {
@@ -91,6 +93,9 @@ int main(int argc, char** argv) {
     program.add_argument("--geoip-city-url")
         .help("URL to download GeoLite2-City database from (env: CUTIE_LOGS_GEOIP_CITY_URL)")
         .nargs(1).metavar("URL");
+    program.add_argument("--self-ingest").default_value(false)
+        .help("Ingest internal instance logs back into the local database (env: CUTIE_LOGS_SELF_INGEST)")
+        .implicit_value(true);
     auto& db_arg = program.add_argument("--database", "--database-url")
         .help("Database connection string (env: CUTIE_LOGS_DATABASE_URL)")
         .nargs(1).metavar("CONNECTION_STRING");
@@ -115,6 +120,13 @@ int main(int argc, char** argv) {
         spdlog::warn("Skipping database consistency check");
     }
     db.start_workers();
+
+    if(env_get<bool>(program, "--self-ingest")) {
+        auto logger = spdlog::default_logger();
+        auto db_sink = std::make_shared<backend::self_sink_mt>(db);
+        logger->sinks().push_back(db_sink); // this is not thread-safe, but should be okay I hope
+        logger->info("Self-ingestion enabled");
+    }
 
     static common::shared_settings settings{};
     if(auto country_url = env_present(program, "--geoip-country-url")) {

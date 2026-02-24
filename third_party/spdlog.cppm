@@ -1,8 +1,13 @@
 module;
 
 #include <spdlog/spdlog.h>
-#include <spdlog/cfg/env.h>
 #include <spdlog/cfg/argv.h>
+#include <spdlog/cfg/env.h>
+#include <spdlog/details/log_msg.h>
+#include <spdlog/details/null_mutex.h>
+#include <spdlog/details/synchronous_factory.h>
+#include <spdlog/sinks/base_sink.h>
+
 #include <fmt/core.h>
 #include <fmt/chrono.h>
 #include <fmt/ranges.h>
@@ -23,6 +28,8 @@ export namespace spdlog {
     using spdlog::logger;
     using spdlog::default_logger;
 
+    using spdlog::synchronous_factory;
+
     namespace level {
         using spdlog::level::trace;
         using spdlog::level::debug;
@@ -36,6 +43,13 @@ export namespace spdlog {
     namespace cfg {
         using spdlog::cfg::load_env_levels;
         using spdlog::cfg::load_argv_levels;
+    }
+    namespace sinks {
+        using spdlog::sinks::base_sink;
+    }
+    namespace details {
+        using spdlog::details::log_msg;
+        using spdlog::details::null_mutex;
     }
 };
 

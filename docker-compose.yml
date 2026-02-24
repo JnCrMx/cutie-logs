@@ -7,6 +7,8 @@ services:
     environment:
       - CUTIE_LOGS_DATABASE_URL=postgresql://postgres:password@postgres:5432/postgres
       - CUTIE_LOGS_WEB_ADDRESS=0.0.0.0:8080
+      - CUTIE_LOGS_SELF_INGEST=1
+      - SPDLOG_LEVEL=trace
   postgres:
     image: "postgres:latest"
     ports:

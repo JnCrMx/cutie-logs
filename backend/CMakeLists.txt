@@ -78,6 +78,7 @@ set(SOURCES
 )
 set(MODULE_SOURCES
   backend.cppm
+  self_sink.cppm
   utils.cppm
   database/database.cppm
   jobs/jobs.cppm
