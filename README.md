@@ -1,4 +1,6 @@
-# <img src="docs/icon.svg" width="32"> cutie-logs [![Build Status](https://woodpecker.jcm.re/api/badges/29/status.svg)](https://woodpecker.jcm.re/repos/29)
+# <img src="frontend/public/favicon.svg" width="32"> cutie-logs [![Build Status](https://woodpecker.jcm.re/api/badges/29/status.svg)](https://woodpecker.jcm.re/repos/29)
+
+<img src="docs/github-card.svg" width="50%">
 
 `cutie-logs` is a very simple and minimal server for receiving OpenTelemetry logs,
 storing them in a PostgreSQL database and providing a simple web interface for querying
