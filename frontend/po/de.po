@@ -31,7 +31,8 @@ msgid "{} name"
 msgstr "{}-Name"
 
 #: src/components/dialog_add.cppm:65 src/components/dialog_delete.cppm:36
-#: src/mainpage.cpp:334 src/pages/table.cppm:348
+#: src/mainpage.cpp:334 src/mainpage.cpp:386 src/mainpage.cpp:434
+#: src/pages/table.cppm:348
 msgid "Name"
 msgstr "Name"
 

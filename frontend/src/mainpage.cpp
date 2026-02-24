@@ -383,7 +383,7 @@ Webxx::dialog dialog_rename_profile(event_context& ctx) {
             h3{{_id{"dialog_rename_profile_title"}, _class{"text-lg font-bold"}}, "Rename profile"_},
             fieldset{{_class{"fieldset w-full"}},
                 label{{_class{"fieldset-label"}}, "New name"_},
-                ctx.on_input(input{{_id{"new_profile_name"}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"}}},
+                ctx.on_input(input{{_id{"new_profile_name"}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"_}}},
                     [](webpp::event e){
                         auto name = *e.target().as<webpp::element>()->get_property<std::string>("value");
                         bool valid = !name.empty() && !std::ranges::contains(profile.get_profiles(), name);
@@ -431,7 +431,7 @@ Webxx::dialog dialog_delete_profile(event_context& ctx) {
             h3{{_id{"dialog_delete_profile_title"}, _class{"text-lg font-bold"}}, "Delete profile"_},
             fieldset{{_class{"fieldset w-full"}},
                 label{{_class{"text-base"}}, "Please type the name of the profile to confirm deletion."_},
-                ctx.on_input(input{{_id{"delete_profile_name"}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"}}},
+                ctx.on_input(input{{_id{"delete_profile_name"}, _class{"input w-full validator"}, _required{}, _placeholder{"Name"_}}},
                     [](webpp::event e){
                         auto name = *e.target().as<webpp::element>()->get_property<std::string>("value");
                         bool valid = !name.empty() && name == profile.get_current_profile();
