@@ -40,7 +40,9 @@ namespace backend::utils {
     export constexpr std::string_view host_arch = "s390x";
 #elif defined(__i386) || defined(__i386__)
     export constexpr std::string_view host_arch = "x86";
-#elif
+#elif defined(__riscv)
+    export constexpr std::string_view host_arch = "riscv64";
+#else
     export constexpr std::string_view host_arch = "unknown";
     #warning Failed to detect CPU architecture
 #endif
