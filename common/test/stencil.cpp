@@ -25,6 +25,11 @@ struct functions {
     common::stencil_functions base{};
 };
 
+struct test {
+    bool value1 = false;
+    bool value2 = true;
+};
+
 int main() {
     int a = 5;
     functions fn{};
@@ -90,6 +95,11 @@ int main() {
     };
     glz::generic stenciled = common::stencil_json(json_obj, alert_object);
     std::cout << glz::write_json(stenciled).value_or("error") << std::endl;
+
+    test my_test{};
+    std::cout << *common::stencil("{?value1}yes{:?}no{/?} {?value2}{?value2}yes{:?}no{/?}{/?}", my_test).or_else([](auto&& err) -> std::expected<std::string, std::string> {
+        return std::string{"error: "} + err;
+    }) << std::endl;
 
     return 0;
 }

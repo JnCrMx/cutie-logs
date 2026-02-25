@@ -245,6 +245,41 @@ namespace common {
     template<typename T>
     concept can_stencil = can_get_field<T>;
 
+    enum class if_end_type {
+        else_,
+        end_
+    };
+    std::optional<std::pair<std::string_view::size_type, if_end_type>> find_if_end(std::string_view stencil, std::string_view::size_type pos) {
+        int depth = 0;
+        while(pos < stencil.size()) {
+            char c = stencil[pos++];
+            if(c == '{') {
+                if(pos >= stencil.size()) {
+                    return std::nullopt;
+                }
+                auto end = stencil.find('}', pos);
+                if(end == std::string_view::npos) {
+                    return std::nullopt;
+                }
+                std::string_view key = stencil.substr(pos, end - pos);
+                if(key.starts_with("?")) {
+                    depth++;
+                } else if(key == ":?") {
+                    if(depth == 0) {
+                        return std::make_pair(end+1, if_end_type::else_);
+                    }
+                } else if(key == "/?") {
+                    if(depth == 0) {
+                        return std::make_pair(end+1, if_end_type::end_);
+                    }
+                    depth--;
+                }
+                pos = end + 1;
+            }
+        }
+        return std::nullopt;
+    }
+
     export template<can_stencil T, glz::reflectable Functions = stencil_functions>
     std::expected<std::string, std::string> stencil(std::string_view stencil, const T& obj, const Functions& functions = stencil_functions{}) {
         std::string result{};
@@ -265,12 +300,44 @@ namespace common {
                     expression = trim(key.substr(pos + 1));
                     key = trim(key.substr(0, pos));
                 }
-                auto field = get_field(obj, key, functions, expression);
-                if(!field) {
-                    return std::unexpected(field.error());
+
+                if(key.starts_with("?")) {
+                    key.remove_prefix(1);
+                    auto field = get_field(obj, key, functions, expression);
+                    if(!field) {
+                        return std::unexpected(field.error());
+                    }
+
+                    if(*field == "true") {
+                        pos = end + 1;
+                    } else if(*field == "false") {
+                        auto if_end = find_if_end(stencil, end+1);
+                        if(!if_end) {
+                            return std::unexpected("Could not find else or end tag");
+                        }
+                        pos = if_end->first;
+                        continue;
+                    } else {
+                        return std::unexpected(std::format("Boolean expression \"{}\" is not either \"true\" or \"false\".", *field));
+                    }
+                } else if(key == ":?") { // if this is encountered, the boolean expression evaluated to true and we should skip to the end
+                    auto if_end = find_if_end(stencil, end+1);
+                    if(!if_end || if_end->second != if_end_type::end_) {
+                        return std::unexpected("Could not find end tag");
+                    }
+                    pos = if_end->first;
+                    continue;
+                } else if(key == "/?") {
+                    pos = end + 1;
+                } else {
+                    auto field = get_field(obj, key, functions, expression);
+                    if(!field) {
+                        return std::unexpected(field.error());
+                    }
+
+                    result.append(field.value());
+                    pos = end + 1;
                 }
-                result.append(field.value());
-                pos = end + 1;
             } else if(c == '\\') {
                 if(pos >= stencil.size()) {
                     return std::unexpected{"unexpected end of stencil"};
