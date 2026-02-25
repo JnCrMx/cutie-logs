@@ -136,6 +136,13 @@ export struct stencil_functions {
     std::add_pointer_t<double(double, std::string_view)> mod = [](double x, std::string_view y){
         return std::fmod(x, parse_int(y).value_or(1));
     };
+    std::add_pointer_t<double(double)> neg = [](double x){
+        return -x;
+    };
+
+    std::add_pointer_t<bool(bool)> inv = [](bool x){
+        return !x;
+    };
 
     struct {
         std::string operator()(std::string_view x) const {
@@ -203,6 +210,15 @@ export struct stencil_functions {
     std::add_pointer_t<std::string(std::string)> reverse = [](std::string x){
         std::reverse(x.begin(), x.end());
         return x;
+    };
+    std::add_pointer_t<std::string(std::string, std::string_view)> append = [](std::string x, std::string_view y){
+        return x + std::string{y};
+    };
+    std::add_pointer_t<std::string(std::string, std::string_view)> prepend = [](std::string x, std::string_view y){
+        return std::string{y} + x;
+    };
+    std::add_pointer_t<bool(std::string)> is_empty = [](std::string x){
+        return x.empty();
     };
 
     using sys_seconds_double = std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double>>;
