@@ -211,9 +211,18 @@ export class Database {
         unsigned int ensure_resource(pqxx::connection& conn, const glz::generic& attributes, unsigned int tries = 3) {
             try {
                 pqxx::work txn(conn);
-                pqxx::result res = txn.exec(pqxx::prepped{"ensure_resource"}, pqxx::params{attributes.dump().value()});
-                txn.commit();
-                return res[0][0].as<unsigned int>();
+                std::string attribute_string = attributes.dump().value();
+                pqxx::result res = txn.exec(pqxx::prepped{"find_resource"}, pqxx::params{attribute_string});
+                if(res.size() == 1) {
+                    return res[0][0].as<unsigned int>();
+                } else if(res.size() == 0) {
+                    res = txn.exec(pqxx::prepped{"insert_resource"}, pqxx::params{attribute_string});
+                    txn.commit();
+                    return res[0][0].as<unsigned int>();
+                } else {
+                    logger->critical("Unexpected row count in ensure_resource: expected 0 or 1, but got {}", res.size());
+                    throw std::logic_error("Unexpected row count in ensure_resource");
+                }
             } catch (const pqxx::deadlock_detected& e) {
                 if(tries > 0) {
                     logger->warn("Deadlock detected in ensure_resource, retrying");
@@ -385,7 +394,10 @@ export class Database {
                 "count_boolean = log_attributes.count_boolean + EXCLUDED.count_boolean, "
                 "count_array = log_attributes.count_array + EXCLUDED.count_array, "
                 "count_object = log_attributes.count_object + EXCLUDED.count_object");
-            conn.prepare("ensure_resource",
+            conn.prepare("find_resource",
+                "SELECT id FROM log_resources "
+                "WHERE attributes = $1::jsonb");
+            conn.prepare("insert_resource",
                 "INSERT INTO log_resources (attributes) "
                 "VALUES ($1::jsonb) "
                 "ON CONFLICT (attributes) DO UPDATE SET "
