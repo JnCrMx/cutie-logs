@@ -7,6 +7,7 @@ import glaze;
 import i18n;
 
 import :page;
+import :utils;
 
 import common;
 import frontend.assets;
@@ -35,58 +36,14 @@ export class logs : public page {
                             auto validator = *webpp::get_element_by_id("stencil_validator");
                             stencil_format = textarea["value"].as<std::string>().value_or("");
                             profile.set_data("stencil", stencil_format);
-                            if(auto r = common::stencil(stencil_format, *example_entry, stencil_functions)) {
-                                validator.inner_text(sanitize(*r));
-                                validator.remove_class("text-error");
-                                validator.remove_class("font-bold");
 
-                                textarea.remove_class("textarea-error");
-                                textarea.add_class("textarea-success");
-                            } else {
-                                validator.inner_text("Stencil invalid: \"{}\""_(sanitize(r.error())));
-                                validator.add_class("text-error");
-                                validator.add_class("font-bold");
-
-                                textarea.remove_class("textarea-success");
-                                textarea.add_class("textarea-error");
-                            }
+                            validate_stencil(textarea, validator, stencil_format, *example_entry, stencil_functions);
                             co_return;
                         }());
                     }),
                 dv{{_class{"fieldset-label"}}, "Preview"_},
                 textarea{{_id{"stencil_validator"}, _class{"textarea w-full min-h-[2.5rem]"}, _rows{"1"}, _readonly{}}},
             };
-        }
-
-        std::string build_attributes_selector(const std::unordered_map<std::string, bool>& selected_attributes) {
-            std::string attributes_selector{};
-            for(const auto& [attr, selected] : selected_attributes) {
-                if(selected) {
-                    attributes_selector += std::format("{},", attr);
-                }
-            }
-            if(!attributes_selector.empty()) {
-                attributes_selector.pop_back();
-            }
-            return attributes_selector;
-        }
-        std::string build_scopes_selector(const std::unordered_map<std::string, bool>& selected_scopes) {
-            std::string scopes_selector{};
-            for(const auto& [scope, selected] : selected_scopes) {
-                if(selected) {
-                    scopes_selector += std::format("{},", scope.empty() ? "<empty>" : scope);
-                }
-            }
-            return scopes_selector+"<dummy>";
-        }
-        std::string build_resources_selector(const std::unordered_map<std::string, bool>& selected_resources) {
-            std::string resources_selector{};
-            for(const auto& [res, selected] : selected_resources) {
-                if(selected) {
-                    resources_selector += std::format("{},", res);
-                }
-            }
-            return resources_selector+"0";
         }
 
         webpp::coroutine<void> run_query() {
@@ -152,10 +109,6 @@ export class logs : public page {
                 [](const auto& scope) { return std::pair{scope.first, false}; }); // all scopes are deselected by default
             webpp::get_element_by_id("scopes")->inner_html(Webxx::render(
                 components::selection<"scopes">("Filter Scopes"_, scopes->scopes, selected_scopes, &profile, 1, false)));
-        }
-
-        std::string resource_name(unsigned int id, const common::log_resource& resource) {
-            return resource.guess_name().value_or("Resource #{}"_(id));
         }
         void update_resources() {
             transformed_resources.clear();

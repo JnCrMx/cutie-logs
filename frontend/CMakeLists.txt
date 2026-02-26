@@ -85,6 +85,7 @@ set(MODULE_SOURCES
   src/pages/logs.cppm
   src/pages/table.cppm
   src/pages/settings.cppm
+  src/pages/utils.cppm
 )
 
 add_executable(mainpage ${SOURCES})
