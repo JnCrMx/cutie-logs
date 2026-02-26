@@ -256,39 +256,39 @@ export namespace common {
 }
 
 export namespace glz {
-    template<uint32_t format, typename Rep, typename Period>
-    struct from<format, std::chrono::duration<Rep, Period>> {
+    template<typename Rep, typename Period>
+    struct from<glz::BEVE, std::chrono::duration<Rep, Period>> {
         template<auto Opts>
         static void op(std::chrono::duration<Rep, Period>& value, auto&&... args) {
             Rep raw;
-            parse<format>::template op<Opts>(raw, args...);
+            parse<glz::BEVE>::template op<Opts>(raw, args...);
             value = std::chrono::duration<Rep, Period>(raw);
         }
     };
 
-    template<uint32_t format, typename Rep, typename Period>
-    struct to<format, std::chrono::duration<Rep, Period>> {
+    template<typename Rep, typename Period>
+    struct to<glz::BEVE, std::chrono::duration<Rep, Period>> {
         template<auto Opts>
         static void op(const std::chrono::duration<Rep, Period>& value, auto&&... args) {
-            serialize<format>::template op<Opts>(value.count(), args...);
+            serialize<glz::BEVE>::template op<Opts>(value.count(), args...);
         }
     };
 
-    template<uint32_t format, typename Clock, typename Duration>
-    struct from<format, std::chrono::time_point<Clock, Duration>> {
+    template<typename Clock, typename Duration>
+    struct from<glz::BEVE, std::chrono::time_point<Clock, Duration>> {
         template<auto Opts>
         static void op(std::chrono::time_point<Clock, Duration>& value, auto&&... args) {
             Duration raw;
-            parse<format>::template op<Opts>(raw, args...);
+            parse<glz::BEVE>::template op<Opts>(raw, args...);
             value = std::chrono::time_point<Clock, Duration>(raw);
         }
     };
 
-    template<uint32_t format, typename Clock, typename Duration>
-    struct to<format, std::chrono::time_point<Clock, Duration>> {
+    template<typename Clock, typename Duration>
+    struct to<glz::BEVE, std::chrono::time_point<Clock, Duration>> {
         template<auto Opts>
         static void op(const std::chrono::time_point<Clock, Duration>& value, auto&&... args) {
-            serialize<format>::template op<Opts>(value.time_since_epoch(), args...);
+            serialize<glz::BEVE>::template op<Opts>(value.time_since_epoch(), args...);
         }
     };
 }

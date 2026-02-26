@@ -23,17 +23,17 @@ FetchContent_Declare(gzip-hpp
   SOURCE_SUBDIR  include)
 FetchContent_Declare(pqxx
   GIT_REPOSITORY https://github.com/jtv/libpqxx.git
-  GIT_TAG        7.10.1)
+  GIT_TAG        7.10.5)
 FetchContent_Declare(argparse
   GIT_REPOSITORY https://github.com/p-ranav/argparse.git
   GIT_TAG        v3.2)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG        v6.0.1
+  GIT_TAG        v7.0.2
   GIT_SHALLOW TRUE)
 FetchContent_Declare(cpr
   GIT_REPOSITORY https://github.com/libcpr/cpr.git
-  GIT_TAG        1.12.0)
+  GIT_TAG        1.14.2)
 
 set(PISTACHE_BUILD_TESTS OFF CACHE BOOL "Pistache: Build tests" FORCE)
 set(PISTACHE_USE_RAPIDJSON OFF CACHE BOOL "Pistache: Use RapidJSON" FORCE)
@@ -103,3 +103,15 @@ add_custom_command(
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/database/generate_migrations.sh ${CMAKE_CURRENT_SOURCE_DIR}/database/migrations
 )
 target_sources(server PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/migrations.inc)
+
+add_executable(test_notifications "test/notifications.cpp"
+  notifications/providers/webhook.cpp
+)
+target_sources(test_notifications PRIVATE FILE_SET CXX_MODULES FILES
+  notifications/notifications.cppm
+  notifications/provider.cppm
+)
+target_link_libraries(test_notifications PRIVATE
+  common
+  spdlogModule glazeModule cprModule
+)

@@ -99,7 +99,9 @@ std::expected<int, std::string> execute_transform_cleanup_job(const common::clea
         .error_on_unknown_keys = true,
         .error_on_missing_keys = true
     };
-    auto actions_expected = glz::read<json_options, std::vector<common::transform_action>>(*rule.action_options);
+    auto actions_expected = glz::read<json_options, std::vector<common::transform_action>>(
+        glz::write<common::json_opts>(*rule.action_options).value() // not taking this round-trip would cause a linker error... :(
+    );
     if(!actions_expected) {
         return std::unexpected(std::string("Error parsing action options for transform cleanup job: ") + glz::format_error(actions_expected.error()));
     }

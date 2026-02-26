@@ -29,7 +29,7 @@ FetchContent_Declare(webxx
   GIT_TAG main)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG        v6.0.1
+  GIT_TAG        v7.0.2
   GIT_SHALLOW TRUE)
 FetchContent_Declare(i18n++
   GIT_REPOSITORY https://github.com/JnCrMx/i18n-cpp.git
