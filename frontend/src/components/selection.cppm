@@ -12,24 +12,30 @@ using namespace mfk::i18n::literals;
 
 namespace frontend::components {
 
-void save_selections(profile_data* profile, std::string_view identifier, const std::unordered_map<std::string, bool>& saved_selections) {
+export using selection_map = std::unordered_map<std::string, bool>;
+void save_selections(profile_data* profile, std::string_view identifier, const selection_map& saved_selections) {
     if(!profile) {
         return;
     }
     profile->set_data(std::format("select_{}_selections", identifier), glz::write_json(saved_selections).value_or("{}"));
 }
 
+export struct selection_button {
+    std::string text;
+    std::string_view icon;
+    std::function<bool(const selection_map& selections, selection_map& changes)> on_click;
+};
+
 export template<glz::string_literal identifier>
 auto selection_detail(std::string_view title,
-    const std::unordered_map<std::string, std::tuple<std::string, unsigned int>>& attributes, std::unordered_map<std::string, bool>& selections,
-    profile_data* profile, unsigned int total = 1, bool show_percent = false, std::string_view info_modal_key = "")
+    const std::unordered_map<std::string, std::tuple<std::string, unsigned int>>& attributes, selection_map& selections,
+    profile_data* profile, unsigned int total = 1, bool show_percent = false, std::string_view info_modal_key = "", const std::vector<selection_button>& extra_buttons = {})
 {
     static frontend::event_context ctx;
     ctx.clear();
 
     auto search_id = std::format("select_{}_search", identifier.sv());
     std::string saved = profile ? profile->get_data(std::format("select_{}_selections", identifier.sv())).value_or("{}") : "{}";
-    using selection_map = std::unordered_map<std::string, bool>;
     static selection_map saved_selections;
 
     saved_selections = glz::read_json<selection_map>(saved).value_or(selection_map{});
@@ -96,7 +102,26 @@ auto selection_detail(std::string_view title,
                     dv{{_class{"swap-off btn btn-sm btn-square"}},               assets::icons::filter_selected},
                     dv{{_class{"swap-on  btn btn-sm btn-square btn-secondary"}}, assets::icons::filter_selected},
                 }
-            }
+            },
+            each(extra_buttons, [&selections, profile](const selection_button& e){
+                return dv{{_class{"tooltip tooltip-bottom"}, _dataTip{e.text}},
+                    ctx.on_click(button{{_class{"btn btn-sm btn-square"}},
+                        e.icon
+                    }, [on_click = e.on_click, &selections, profile](webpp::event) {
+                        if(on_click) {
+                            selection_map changes;
+                            if(on_click(selections, changes)) {
+                                for(const auto& [key, value] : changes) {
+                                    selections[key] = value;
+                                    saved_selections[key] = value;
+                                    webpp::get_element_by_id(std::format("select_{}_entry_{}_checkbox", identifier.sv(), key))->set_property("checked", value);
+                                }
+                                save_selections(profile, identifier.sv(), saved_selections);
+                            }
+                        }
+                    })
+                };
+            }),
         },
         dv{{_class{"overflow-y-auto h-full flex flex-col gap-1"}},
             each(sorted_attributes, [total, show_percent, &attributes, &selections, info_modal_key, profile](const auto& attr) {
@@ -136,13 +161,13 @@ auto selection_detail(std::string_view title,
 export template<glz::string_literal identifier>
 auto selection(std::string_view title,
     const std::unordered_map<std::string, unsigned int>& attributes, std::unordered_map<std::string, bool>& selections,
-    profile_data* profile, unsigned int total = 1, bool show_percent = false)
+    profile_data* profile, unsigned int total = 1, bool show_percent = false, const std::vector<selection_button>& extra_buttons = {})
 {
     std::unordered_map<std::string, std::tuple<std::string, unsigned int>> attr_map;
     for(const auto& [attr, count] : attributes) {
         attr_map[attr] = {attr, count};
     }
-    return selection_detail<identifier>(title, attr_map, selections, profile, total, show_percent);
+    return selection_detail<identifier>(title, attr_map, selections, profile, total, show_percent, "", extra_buttons);
 }
 
 }

@@ -23,5 +23,6 @@ export namespace frontend::assets {
         extern const std::string_view edit;
         extern const std::string_view export_;
         extern const std::string_view filter_selected;
+        extern const std::string_view magic;
     }
 }

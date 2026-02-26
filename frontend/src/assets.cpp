@@ -93,5 +93,10 @@ namespace frontend::assets {
             #embed "assets/icons/filter_selected.svg"
         };
         const std::string_view filter_selected{filter_selected_data, sizeof(filter_selected_data)};
+
+        constexpr char magic_data[] = {
+            #embed "assets/icons/magic.svg"
+        };
+        const std::string_view magic{magic_data, sizeof(magic_data)};
     }
 }

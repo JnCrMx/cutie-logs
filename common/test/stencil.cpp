@@ -101,5 +101,10 @@ int main() {
         return std::string{"error: "} + err;
     }) << std::endl;
 
+    for(const auto& k : *common::stencil_required_attributes("{?value1}yes{:?}no{/?} {?value2}{?value2}yes{:?}no{/?}{/?} {timestamp | from_timestamp | iso_8601}")) {
+        std::cout << k << ' ';
+    }
+    std::cout << std::endl;
+
     return 0;
 }

@@ -262,8 +262,19 @@ export class table : public page {
             selected_resources.clear();
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
                 [](const auto& res) { return std::pair{res.first, true}; }); // all resources are selected by default
+
+            components::selection_button magic_button{
+                .text = std::string{"Select similar"_},
+                .icon = assets::icons::magic,
+                .on_click = [this](const components::selection_map& selections, components::selection_map& changes){
+                    return auto_select_resources(*resources, selections, changes);
+                }
+            };
             webpp::get_element_by_id("resources")->inner_html(Webxx::render(
-                components::selection_detail<"resources">("Filter Resources"_, transformed_resources, selected_resources, &profile, 1, false, "resource")));
+                components::selection_detail<"resources">("Filter Resources"_,
+                    transformed_resources, selected_resources, &profile, 1, false, "resource", {std::move(magic_button)}
+                )
+            ));
         }
 
         profile_data& profile;

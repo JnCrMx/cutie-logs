@@ -5,6 +5,7 @@ module;
 #include <string_view>
 #include <string>
 #include <type_traits>
+#include <unordered_set>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -354,6 +355,45 @@ namespace common {
                 }
             } else {
                 result.push_back(c);
+            }
+        }
+        return result;
+    }
+
+    export std::expected<std::unordered_set<std::string_view>, std::string> stencil_required_attributes(std::string_view stencil) {
+        std::unordered_set<std::string_view> result{};
+        std::string_view::size_type pos = 0;
+        while(pos < stencil.size()) {
+            char c = stencil[pos++];
+            if(c == '{') {
+                if(pos >= stencil.size()) {
+                    return std::unexpected{"unexpected end of stencil"};
+                }
+
+                auto end = stencil.find('}', pos);
+                if(end == std::string_view::npos) {
+                    return std::unexpected{"missing '}'"};
+                }
+                std::string_view key = stencil.substr(pos, end - pos);
+                if(auto pos = key.find('|'); pos != std::string_view::npos) {
+                    key = trim(key.substr(0, pos));
+                }
+
+                if(key.starts_with("?")) {
+                    key.remove_prefix(1);
+                    if(key.ends_with("?")) {
+                        key.remove_suffix(1);
+                    }
+                    result.emplace(key);
+                } else if(key == ":?" || key == "/?") {
+                    // ignore these keys
+                } else {
+                    if(key.ends_with("?")) {
+                        key.remove_suffix(1);
+                    }
+                    result.emplace(key);
+                }
+                pos = end + 1;
             }
         }
         return result;

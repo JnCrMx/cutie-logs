@@ -99,9 +99,38 @@ export class logs : public page {
             selected_attributes.clear();
             std::transform(attributes->attributes.begin(), attributes->attributes.end(), std::inserter(selected_attributes, selected_attributes.end()),
                 [](const auto& attr) { return std::pair{attr.first, false}; }); // all attributes are deselected by default
+
+            components::selection_button magic_button{
+                .text = std::string{"Auto-select"_},
+                .icon = assets::icons::magic,
+                .on_click = [this](const components::selection_map&, components::selection_map& changes) {
+                    auto required_attributes = common::stencil_required_attributes(stencil_format);
+                    if(!required_attributes) {
+                        webpp::eval("window.alert(\"{}\")", std::string_view{"Cannot auto-select required attributes for invalid stencil."_});
+                        return false;
+                    }
+                    for(std::string_view attr : *required_attributes) {
+                        if(!attr.starts_with("attributes.")) continue;
+                        attr.remove_prefix(std::string_view::traits_type::length("attributes."));
+
+                        if(auto pos = attr.find('.'); pos != std::string_view::npos) {
+                            if(pos < 1) continue; // TODO: fix this once stencils with root are properly implemented
+                            attr = attr.substr(0, pos-1);
+                        }
+
+                        std::string attr_s{attr};
+                        if(!attributes->attributes.contains(attr_s)) continue;
+                        changes[attr_s] = true;
+                    }
+                    return true;
+                }
+            };
+
             webpp::get_element_by_id("attributes")->inner_html(Webxx::render(
                 components::selection<"attributes">("Select Attributes"_,
-                    attributes->attributes, selected_attributes, &profile, attributes->total_logs, true)));
+                    attributes->attributes, selected_attributes, &profile, attributes->total_logs, true, {std::move(magic_button)}
+                )
+            ));
         }
         void update_scopes() {
             selected_scopes.clear();
@@ -118,8 +147,19 @@ export class logs : public page {
             selected_resources.clear();
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
                 [](const auto& res) { return std::pair{res.first, true}; }); // all resources are selected by default
+
+            components::selection_button magic_button{
+                .text = std::string{"Select similar"_},
+                .icon = assets::icons::magic,
+                .on_click = [this](const components::selection_map& selections, components::selection_map& changes){
+                    return auto_select_resources(*resources, selections, changes);
+                }
+            };
             webpp::get_element_by_id("resources")->inner_html(Webxx::render(
-                components::selection_detail<"resources">("Filter Resources"_, transformed_resources, selected_resources, &profile, 1, false, "resource")));
+                components::selection_detail<"resources">("Filter Resources"_,
+                    transformed_resources, selected_resources, &profile, 1, false, "resource", {std::move(magic_button)}
+                )
+            ));
         }
 
         profile_data& profile;
