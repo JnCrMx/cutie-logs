@@ -47,7 +47,7 @@ endif()
 
 # Common modules
 add_library(glazeModule STATIC)
-target_sources(glazeModule PUBLIC FILE_SET CXX_MODULES FILES glaze.cppm)
+target_sources(glazeModule PUBLIC FILE_SET CXX_MODULES FILES glaze.cppm asio.cppm)
 target_compile_features(glazeModule PUBLIC cxx_std_23)
 target_link_libraries(glazeModule PUBLIC glaze::glaze)
 target_compile_definitions(glazeModule PUBLIC BUILD_TARGET_${BUILD_TARGET})

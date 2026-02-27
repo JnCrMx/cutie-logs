@@ -3,6 +3,7 @@ module;
 #include <chrono>
 #include <expected>
 #include <format>
+#include <future>
 #include <ranges>
 #include <string>
 #include <unordered_map>
@@ -15,68 +16,39 @@ module backend.web;
 
 import glaze;
 import pqxx;
+import pistache;
 
 import common;
 
 namespace backend::web {
 
 namespace mime {
-static const auto application_json = Pistache::Http::Mime::MediaType{Pistache::Http::Mime::Type::Application, Pistache::Http::Mime::Subtype::Json};
-static const auto application_octet = Pistache::Http::Mime::MediaType{Pistache::Http::Mime::Type::Application, Pistache::Http::Mime::Subtype::OctetStream};
-static const auto application_beve = Pistache::Http::Mime::MediaType{"application/prs.beve", Pistache::Http::Mime::MediaType::DoParse};
+
+constexpr auto application_json = "application/json";
+constexpr auto application_octed = "application/octet-stream";
+constexpr auto application_beve = "application/prs.beve";
+constexpr auto text_plain = "text/plain";
+
 }
 
-bool mime_equals(const Pistache::Http::Mime::MediaType& lhs, const Pistache::Http::Mime::MediaType& rhs) {
-    if(lhs.top() != rhs.top()) {
-        return false;
+auto maybe(const auto& map, const auto& key) -> std::optional<std::decay_t<decltype(map.at(key))>> {
+    if(map.contains(key)) {
+        return map.at(key);
     }
-    if(lhs.sub() != rhs.sub()) {
-        return false;
-    }
-    if(lhs.suffix() != rhs.suffix()) {
-        return false;
-    }
-    if(lhs.sub() == Pistache::Http::Mime::Subtype::Vendor || lhs.sub() == Pistache::Http::Mime::Subtype::Ext) {
-        return lhs.rawSub() == rhs.rawSub();
-    }
-    return true;
+    return std::nullopt;
 }
 
-bool accepts(const Pistache::Http::Request& req, Pistache::Http::Mime::MediaType type) {
-    if(!req.headers().has<Pistache::Http::Header::Accept>()) {
-        return false;
-    }
-    auto accept = req.headers().get<Pistache::Http::Header::Accept>()->media();
-    return std::ranges::find_if(accept, [&type](const auto& mime) {
-        return mime_equals(mime, type);
-    }) != accept.end();
-}
-bool isContentType(const Pistache::Http::Request& req, Pistache::Http::Mime::MediaType type) {
-    if(!req.headers().has<Pistache::Http::Header::ContentType>()) {
-        return false;
-    }
-    auto content_type = req.headers().get<Pistache::Http::Header::ContentType>()->mime();
-    return mime_equals(content_type, type);
+bool accepts(const glz::request& req, std::string_view type) {
+    if(!req.headers.contains("accept")) return false;
+    std::string_view accept = req.headers.at("accept");
+    return accept.contains(type); // very hacky, pls fix this
 }
 
 template<typename T>
-void send_response(Pistache::Http::ResponseWriter& response, bool beve, const T& data) {
+void send_response(glz::response& response, bool beve, const T& data) {
     auto res_data = beve ? *glz::write<common::beve_opts>(data) : *glz::write<common::json_opts>(data);
-    response.send(Pistache::Http::Code::Ok, res_data.data(), res_data.size(),
-        beve ? mime::application_beve : mime::application_json);
-}
-
-std::string url_decode(const std::string& str) {
-    std::string ret;
-    for(size_t i=0; i<str.size(); i++) {
-        if(str[i] == '%') {
-            ret.push_back(std::stoi(str.substr(i+1, 2), nullptr, 16));
-            i += 2;
-        } else {
-            ret.push_back(str[i]);
-        }
-    }
-    return ret;
+    response.content_type(beve ? mime::application_beve : mime::application_json);
+    response.body(res_data);
 }
 
 std::string build_scope_filter(const std::string& scopes) {
@@ -183,52 +155,52 @@ std::expected<void, std::string> check_alert_rule(const common::alert_rule& rule
 }
 
 void Server::setup_api_routes() {
-    router.get("/api/v1/healthz", [](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-        response.send(Pistache::Http::Code::Ok, "OK");
-        return Pistache::Rest::Route::Result::Ok;
+    router.get("/api/v1/healthz", [](const glz::request& request, glz::response& response) {
+        response.status(200).content_type(mime::text_plain).body("OK");
     });
-    router.get("/api/v1/version", [](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-        response.send(Pistache::Http::Code::Ok, common::project_version.data(), common::project_version.size());
-        return Pistache::Rest::Route::Result::Ok;
+    router.get("/api/v1/version", [](const glz::request& request, glz::response& response) {
+        response.status(200).content_type(mime::text_plain).body(common::project_version);
     });
-    router.get("/api/v1/settings", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+    router.get("/api/v1/settings", [this](const glz::request& request, glz::response& response) {
         bool accepts_beve = accepts(request, mime::application_beve);
+        response.status(200);
         send_response(response, accepts_beve, settings);
-        return Pistache::Rest::Route::Result::Ok;
     });
-    router.get("/api/v1/logs", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+    router.get_async("/api/v1/logs", [this](const glz::request& request, glz::response& response) -> std::future<void> {
         bool accepts_beve = accepts(request, mime::application_beve);
-        auto filter = request.query().get("filter").transform(url_decode).value_or("");
-        auto attributes = request.query().get("attributes").transform(url_decode).value_or("");
-        auto scopes = request.query().get("scopes").transform(url_decode).value_or("");
-        auto resources = request.query().get("resources").transform(url_decode).value_or("");
-        auto limit = request.query().get("limit").transform(url_decode).value_or("100");
-        auto offset = request.query().get("offset").transform(url_decode).value_or("0");
-        db.queue_work([this, accepts_beve, response = std::move(response), filter, attributes, scopes, resources, limit, offset](pqxx::connection& conn) mutable {
+        auto filter = maybe(request.query, "filter").value_or("");
+        auto attributes = maybe(request.query, "filter").value_or("");
+        auto scopes = maybe(request.query, "scopes").value_or("");
+        auto resources = maybe(request.query, "resources").value_or("");
+        auto limit = maybe(request.query, "limit").value_or("100");
+        auto offset = maybe(request.query, "offset").value_or("0");
+        return db.queue_work([this, &response, accepts_beve, filter, attributes, scopes, resources, limit, offset](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
             try {
                 common::logs_response res;
                 res.logs = get_logs(txn, attributes, scopes, resources, filter, limit, offset);
 
+                response.status(200);
                 send_response(response, accepts_beve, res);
             } catch(const pqxx::sql_error& e) {
-                response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
+                response.status(500).content_type(mime::text_plain).body(e.what());
             }
             malloc_trim(1024*1024);
         });
-        return Pistache::Rest::Route::Result::Ok;
     });
-    router.get("/api/v1/logs/stencil", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-        auto filter = request.query().get("filter").transform(url_decode).value_or("");
-        auto scopes = request.query().get("scopes").transform(url_decode).value_or("");
-        auto resources = request.query().get("resources").transform(url_decode).value_or("");
-        auto limit = request.query().get("limit").transform(url_decode).value_or("100");
-        auto offset = request.query().get("offset").transform(url_decode).value_or("0");
-        auto stencil = request.query().get("stencil").transform(url_decode).value_or("");
-        db.queue_work([this, response = std::move(response), scopes, resources, filter, limit, offset, stencil](pqxx::connection& conn) mutable {
+    router.get_async("/api/v1/logs/stencil", [this](const glz::request& request, glz::response& response) -> std::future<void> {
+        // TODO: switch to streaming once Glaze supports it
+        auto filter = maybe(request.query, "filter").value_or("");
+        auto attributes = maybe(request.query, "filter").value_or("");
+        auto scopes = maybe(request.query, "scopes").value_or("");
+        auto resources = maybe(request.query, "resources").value_or("");
+        auto limit = maybe(request.query, "limit").value_or("100");
+        auto offset = maybe(request.query, "offset").value_or("0");
+        auto stencil = maybe(request.query, "stencil").value_or("");
+
+        return db.queue_work([this, &response, scopes, resources, filter, limit, offset, stencil](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
             try {
-                auto stream = response.stream(Pistache::Http::Code::Ok);
                 std::string query = "SELECT resource, extract(epoch from timestamp) as unix_time, scope, severity, attributes, body FROM logs WHERE TRUE";
                 if(!scopes.empty()) {
                     query += " AND " + build_scope_filter(scopes);
@@ -240,26 +212,25 @@ void Server::setup_api_routes() {
                 query += " LIMIT " + std::to_string(std::stoi(limit));
                 query += " OFFSET " + std::to_string(std::stoi(offset));
 
+                std::string data{};
                 for(auto [resource, timestamp, scope, severity, attributes, body] :
                     txn.stream<unsigned int, double, std::string, common::log_severity, glz::generic, glz::generic>(query))
                 {
                     common::log_entry log{resource, timestamp, scope, severity, attributes, body};
-                    std::string line = *common::stencil(stencil, log)
+                    data += *common::stencil(stencil, log)
                         .or_else([](auto err) -> std::expected<std::string, std::string> { return std::format("Stencil invalid: \"{}\"", err); })
                         +"\n";
-                    stream.write(line.data(), line.size());
                 }
-                stream.ends();
+                response.status(200).content_type(mime::text_plain).body(data);
             } catch(const pqxx::sql_error& e) {
-                response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
+                response.status(500).content_type(mime::text_plain).body(e.what());
             }
             malloc_trim(1024*1024);
         });
-        return Pistache::Rest::Route::Result::Ok;
     });
-    router.get("/api/v1/logs/attributes", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+    router.get_async("/api/v1/logs/attributes", [this](const glz::request& request, glz::response& response) -> std::future<void> {
         bool accepts_beve = accepts(request, mime::application_beve);
-        db.queue_work([this, accepts_beve, response = std::move(response)](pqxx::connection& conn) mutable {
+        return db.queue_work([this, accepts_beve, &response](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
             auto result = txn.exec(pqxx::prepped{"get_attributes"});
             common::logs_attributes_response res;
@@ -270,11 +241,10 @@ void Server::setup_api_routes() {
 
             send_response(response, accepts_beve, res);
         });
-        return Pistache::Rest::Route::Result::Ok;
     });
-    router.get("/api/v1/logs/scopes", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+    router.get_async("/api/v1/logs/scopes", [this](const glz::request& request, glz::response& response) -> std::future<void> {
         bool accepts_beve = accepts(request, mime::application_beve);
-        db.queue_work([this, accepts_beve, response = std::move(response)](pqxx::connection& conn) mutable {
+        return db.queue_work([this, accepts_beve, &response](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
             auto result = txn.exec(pqxx::prepped{"get_scopes"});
             common::logs_scopes_response res{};
@@ -284,13 +254,13 @@ void Server::setup_api_routes() {
                 res.total_logs += count; // we can avoid executing get_count query
             }
 
+            response.status(200);
             send_response(response, accepts_beve, res);
         });
-        return Pistache::Rest::Route::Result::Ok;
     });
-    router.get("/api/v1/logs/resources", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+    router.get_async("/api/v1/logs/resources", [this](const glz::request& request, glz::response& response) -> std::future<void> {
         bool accepts_beve = accepts(request, mime::application_beve);
-        db.queue_work([this, accepts_beve, response = std::move(response)](pqxx::connection& conn) mutable {
+        return db.queue_work([this, accepts_beve, &response](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
             auto result = txn.exec(pqxx::prepped{"get_resources"});
             common::logs_resources_response res;
@@ -303,20 +273,21 @@ void Server::setup_api_routes() {
                 res.resources[id] = {r, count};
             }
 
+            response.status(200);
             send_response(response, accepts_beve, res);
         });
-        return Pistache::Rest::Route::Result::Ok;
     });
-    router.get("/api/v1/settings/cleanup_rules", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+    router.get_async("/api/v1/settings/cleanup_rules", [this](const glz::request& request, glz::response& response) -> std::future<void> {
         bool accepts_beve = accepts(request, mime::application_beve);
-        db.queue_work([this, accepts_beve, response = std::move(response)](pqxx::connection& conn) mutable {
+        return db.queue_work([this, accepts_beve, &response](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
 
             common::cleanup_rules_response res{db.get_cleanup_rules(txn)};
+
+            response.status(200);
             send_response(response, accepts_beve, res);
         });
-        return Pistache::Rest::Route::Result::Ok;
-    });
+    });/*
     auto create_or_update_cleanup_rule = [this]<bool update>(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         bool accepts_beve = accepts(request, mime::application_beve);
 
@@ -455,19 +426,19 @@ void Server::setup_api_routes() {
             }
         });
         return Pistache::Rest::Route::Result::Ok;
-    });
+    });*/
 
-
-    router.get("/api/v1/settings/alert_rules", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+    router.get_async("/api/v1/settings/alert_rules", [this](const glz::request& request, glz::response& response) -> std::future<void> {
         bool accepts_beve = accepts(request, mime::application_beve);
-        db.queue_work([this, accepts_beve, response = std::move(response)](pqxx::connection& conn) mutable {
+        return db.queue_work([this, accepts_beve, &response](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
 
             common::alert_rules_response res{db.get_alert_rules(txn)};
+
+            response.status(200);
             send_response(response, accepts_beve, res);
         });
-        return Pistache::Rest::Route::Result::Ok;
-    });
+    });/*
     auto create_or_update_alert_rule = [this]<bool update>(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         bool accepts_beve = accepts(request, mime::application_beve);
 
@@ -598,7 +569,7 @@ void Server::setup_api_routes() {
             }
         });
         return Pistache::Rest::Route::Result::Ok;
-    });
+    });*/
 }
 
 }

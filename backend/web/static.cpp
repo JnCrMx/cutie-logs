@@ -100,32 +100,33 @@ void Server::setup_static_routes() {
             dev_path.remove_prefix(1);
         }
 
-        router.get(
-            std::string{path}, [this, data, type, dev_path](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-                response.headers().add<Pistache::Http::Header::ContentType>(std::string{type});
-                if(static_dev_path.has_value()) {
-                    auto path = *static_dev_path / dev_path;
-                    if(std::filesystem::exists(path)) {
-                        std::ifstream file(path, std::ios::binary);
-                        if(file) {
-                            std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-                            response.send(Pistache::Http::Code::Ok, data);
-                            return Pistache::Rest::Route::Result::Ok;
-                        }
-                    }
-                }
-                if(request.headers().has<Pistache::Http::Header::IfNoneMatch>()) {
-                    auto if_none_match = request.headers().get<Pistache::Http::Header::IfNoneMatch>();
-                    if(!if_none_match->test(etag)) {
-                        response.send(Pistache::Http::Code::Not_Modified);
-                        return Pistache::Rest::Route::Result::Ok;
-                    }
-                }
+        router.get(path, [this, data, type, dev_path](const glz::request& request, glz::response& response) {
+            response.content_type(type);
 
-                response.headers().add<Pistache::Http::Header::ETag>(std::string{etag});
-                response.send(Pistache::Http::Code::Ok, reinterpret_cast<const char*>(data.data()), data.size());
-                return Pistache::Rest::Route::Result::Ok;
-            });
+            if(static_dev_path.has_value()) {
+                auto path = *static_dev_path / dev_path;
+                if(std::filesystem::exists(path)) {
+                    std::ifstream file(path, std::ios::binary);
+                    if(file) {
+                        std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                        response.body(data);
+                    } else {
+                        response.status(404).body("File not found");
+                    }
+                    return;
+                }
+            }
+            if(request.headers.contains("IfNoneMatch")) {
+                // auto if_none_match = request.headers().get<Pistache::Http::Header::IfNoneMatch>();
+                // if(!if_none_match->test(etag)) {
+                //     response.send(Pistache::Http::Code::Not_Modified);
+                //     return Pistache::Rest::Route::Result::Ok;
+                // }
+            }
+
+            response.header("ETag", etag);
+            response.body(std::string_view{reinterpret_cast<const char*>(data.data()), data.size()});
+        });
         logger->debug("Registered static route: {} -> {}", path, type);
     }
 }

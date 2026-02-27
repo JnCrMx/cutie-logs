@@ -1,14 +1,18 @@
 #include <algorithm>
+#include <charconv>
 #include <concepts>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <optional>
+#include <thread>
+#include <vector>
 
 import pistache;
 import pqxx;
 import argparse;
 import spdlog;
+import asio;
 
 import common;
 import backend.database;
@@ -63,6 +67,29 @@ std::optional<T> env_present(argparse::ArgumentParser& parser, std::string_view 
         return *env_value;
     }
     return parser.present<T>(arg);
+}
+
+asio::ip::tcp::endpoint parse_endpoint(std::string_view ip_port) {
+    auto colon_pos = ip_port.find_last_of(':');
+    if (colon_pos == std::string_view::npos) {
+        throw std::invalid_argument("Missing port delimiter ':'");
+    }
+    auto ip_str = ip_port.substr(0, colon_pos);
+    auto port_str = ip_port.substr(colon_pos + 1);
+    if (ip_str.starts_with('[') && ip_str.ends_with(']')) {
+        ip_str = ip_str.substr(1, ip_str.size() - 2);
+    }
+    asio::error_code ec;
+    auto address = asio::ip::make_address(ip_str, ec);
+    if (ec) {
+        throw std::invalid_argument("Invalid IP address format");
+    }
+    unsigned short port;
+    auto [ptr, parse_ec] = std::from_chars(port_str.data(), port_str.data() + port_str.size(), port);
+    if (parse_ec != std::errc() || ptr != port_str.data() + port_str.size()) {
+        throw std::invalid_argument("Invalid port number");
+    }
+    return asio::ip::tcp::endpoint(address, port);
 }
 
 int main(int argc, char** argv) {
@@ -145,13 +172,23 @@ int main(int argc, char** argv) {
     jobs::Jobs job_runner(db);
     job_runner.start();
 
-    web::Server web_server(db, settings, Pistache::Address(env_get(program, "--web-address")));
+    auto io_ctx = std::make_shared<asio::io_context>();
+
+    web::Server web_server(*io_ctx, db, settings, parse_endpoint(env_get(program, "--web-address")));
     if(auto path = env_present(program, "--web-dev-path")) {
         spdlog::info("Serving static frontend files from {} instead of embedded files", *path);
         web_server.set_static_dev_path(*path);
     }
     if(!env_get<bool>(program, "--disable-web")) {
-        web_server.serve_threaded();
+        web_server.start();
+    }
+
+    std::vector<std::jthread> asio_threads;
+    for(unsigned int i=0; i<std::thread::hardware_concurrency(); i++) {
+        asio_threads.emplace_back([i, io_ctx](){
+            spdlog::debug("ASIO worker {} started", i);
+            io_ctx->run();
+        });
     }
 
     opentelemetry::Server opentelemetry_server(db, Pistache::Address(env_get(program, "--otel-address")));

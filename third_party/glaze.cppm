@@ -4,6 +4,10 @@ module;
 #endif
 #include <glaze/glaze.hpp>
 
+#if BUILD_TARGET_backend
+#include <glaze/net/http_server.hpp>
+#endif
+
 export module glaze;
 
 export namespace glz {
@@ -41,6 +45,14 @@ export namespace glz {
     using glz::string_literal;
 
     using glz::stencil;
+
+#if BUILD_TARGET_backend
+    using glz::http_server;
+    using glz::http_router;
+    using glz::request;
+    using glz::response;
+    using glz::streaming_response;
+#endif
 
     template <auto Opts, class T, class Buffer> requires read_supported<T, Opts.format>
     [[nodiscard]] inline expected<T, error_ctx> read(Buffer&& buffer)
