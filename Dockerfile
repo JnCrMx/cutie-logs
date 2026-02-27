@@ -1,6 +1,7 @@
 FROM --platform=$BUILDPLATFORM ubuntu:noble AS builder
 ARG TARGETARCH
 ARG BUILDARCH
+ARG COMPILE_JOBS=""
 
 # Setup basic stuff for cross-compilation (no compilers included here)
 ADD utils/setup-cross-compile.sh /setup-cross-compile.sh
@@ -23,11 +24,13 @@ RUN ln -sf /usr/bin/ld.lld-20 /usr/bin/ld
 ADD . /src
 WORKDIR /src
 
-RUN cmake -B build -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 \
-    -DCMAKE_TOOLCHAIN_FILE=/toolchain.cmake \
-    -G Ninja
-RUN cmake --build build
+RUN --mount=type=tmpfs,target=/tmp/build \
+    cmake -S . -B /tmp/build -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 \
+        -DCMAKE_TOOLCHAIN_FILE=/toolchain.cmake \
+        -G Ninja && \
+    cmake --build /tmp/build ${COMPILE_JOBS:+-j${COMPILE_JOBS}} && \
+    mkdir -p /build && cp /tmp/build/backend/server /build/server
 
 FROM ubuntu:noble
 
@@ -35,7 +38,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y && DEBIA
     libpq5 libprotobuf32t64 libspdlog1.12 libcurl4t64
 
 RUN mkdir /app
-COPY --from=builder /src/build/backend/server /app/cutie-logs-server
+COPY --from=builder /build/server /app/cutie-logs-server
 
 WORKDIR /app
 CMD ["./cutie-logs-server"]
