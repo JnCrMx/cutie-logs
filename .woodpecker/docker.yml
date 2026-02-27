@@ -30,4 +30,4 @@ steps:
       tag: ["latest", "${CI_COMMIT_SHA}", "${CI_COMMIT_SHA:0:10}"]
       logins: *publish_logins
       build_args:
-        COMPILE_JOBS: 2
+        COMPILE_JOBS: "3"
