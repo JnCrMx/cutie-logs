@@ -500,6 +500,11 @@ auto page() {
             dialog_rename_profile(ctx),
             dialog_delete_profile(ctx),
         },
+        dv{{_class{"fab"}},
+            ctx.on_click(button{{_class{"btn btn-lg btn-circle btn-primary"}}, assets::icons::arrow_up}, [](webpp::event){
+                webpp::eval("window.scrollTo({top: 0, behavior: \"smooth\"})");
+            })
+        }
     };
 }
 
