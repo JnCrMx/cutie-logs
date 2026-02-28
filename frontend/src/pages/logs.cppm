@@ -46,23 +46,61 @@ export class logs : public page {
             };
         }
 
+        template<typename Key>
+        auto render_pagination() {
+            static event_context ctx;
+            ctx.clear();
+
+            using namespace Webxx;
+
+            auto prev = button{{_class{"join-item btn"}}, "«"};
+            if(current_page == 0) { prev.data.attributes.emplace_back<_disabled>(""); }
+
+            auto next = button{{_class{"join-item btn"}}, "»"};
+            if(is_last_page) { next.data.attributes.emplace_back<_disabled>(""); }
+
+            return dv{{_class{"join"}},
+                ctx.on_click(std::move(prev), [this](webpp::event){
+                    webpp::get_element_by_id("run_button_icon")->add_class("hidden");
+                    webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
+
+                    if(current_page > 0) { current_page--; }
+                    webpp::coro::submit(run_query());
+                }),
+                ctx.on_click(button{{_class{"join-item btn"}}, "Page {}"_(current_page+1)}, [this](webpp::event){
+                    webpp::get_element_by_id("run_button_icon")->add_class("hidden");
+                    webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
+
+                    webpp::coro::submit(run_query());
+                }),
+                ctx.on_click(std::move(next), [this](webpp::event){
+                    webpp::get_element_by_id("run_button_icon")->add_class("hidden");
+                    webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
+
+                    if(!is_last_page) { current_page++; }
+                    webpp::coro::submit(run_query());
+                }),
+            };
+        };
+
         webpp::coroutine<void> run_query() {
             std::string attributes_selector = build_attributes_selector(selected_attributes);
             std::string scopes_selector = build_scopes_selector(selected_scopes);
             std::string resources_selector = build_resources_selector(selected_resources);
-            constexpr unsigned int limit = 100;
 
-            auto url = std::format("/api/v1/logs?limit={}&attributes={}&scopes={}&resources={}",
-                limit, attributes_selector, scopes_selector, resources_selector);
+            unsigned int offset = current_page * page_limit;
+            auto url = std::format("/api/v1/logs?limit={}&offset={}&attributes={}&scopes={}&resources={}",
+                page_limit, offset, attributes_selector, scopes_selector, resources_selector);
             auto logs =
                 glz::read<common::beve_opts, common::logs_response>(co_await webpp::coro::fetch(url, utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes)))
                 .value_or(common::logs_response{});
+            is_last_page = logs.logs.size() < page_limit;
 
             webpp::get_element_by_id("run_button_icon")->remove_class("hidden");
             webpp::get_element_by_id("run_button_loading")->add_class("hidden");
 
             using namespace Webxx;
-            auto list = ul{{_class{"list rounded-box shadow p-4 gap-1"}},
+            auto list = ul{{_class{"list rounded-box shadow gap-1"}},
                 each(logs.logs, [&](const auto& entry) {
                     auto r = common::stencil(stencil_format, entry, stencil_functions);
                     return li{{_class{"list-item"}},
@@ -73,6 +111,9 @@ export class logs : public page {
             };
             webpp::get_element_by_id("logs")->inner_html(Webxx::render(list));
 
+            webpp::get_element_by_id("pagination_top")->inner_html(Webxx::render(render_pagination<struct top>()));
+            webpp::get_element_by_id("pagination_bottom")->inner_html(Webxx::render(render_pagination<struct bottom>()));
+
             co_return;
         };
 
@@ -81,8 +122,9 @@ export class logs : public page {
             std::string scopes_selector = build_scopes_selector(selected_scopes);
             std::string resources_selector = build_resources_selector(selected_resources);
 
-            auto url = std::format("/api/v1/logs/stencil?limit={}&attributes={}&scopes={}&resources={}&stencil={}",
-                limit, attributes_selector, scopes_selector, resources_selector, stencil_format);
+            unsigned int offset = current_page * page_limit;
+            auto url = std::format("/api/v1/logs/stencil?limit={}&offset={}&attributes={}&scopes={}&resources={}&stencil={}",
+                limit, offset, attributes_selector, scopes_selector, resources_selector, stencil_format);
             webpp::eval("window.open('{}', '_blank');", url);
 
             co_return;
@@ -172,6 +214,10 @@ export class logs : public page {
         std::string stencil_format;
         std::unordered_map<std::string, bool> selected_attributes, selected_resources, selected_scopes;
         std::unordered_map<std::string, std::tuple<std::string, unsigned int>> transformed_resources;
+
+        unsigned int current_page = 0;
+        bool is_last_page = false;
+        constexpr static unsigned int page_limit = 100;
     public:
         logs(profile_data& profile, r<common::log_entry>& example_entry, r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes, r<common::logs_resources_response>& resources,
             std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs)
@@ -215,6 +261,8 @@ export class logs : public page {
                             }, [this](webpp::event) {
                                 webpp::get_element_by_id("run_button_icon")->add_class("hidden");
                                 webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
+
+                                current_page = 0;
                                 webpp::coro::submit(run_query());
                             }),
                             dv{{_class{"dropdown dropdown-hover dropdown-top md:dropdown-bottom dropdown-end"}},
@@ -247,7 +295,9 @@ export class logs : public page {
                             }
                         }
                     },
-                    dv{{_id{"logs"}, _class{"mt-4 overflow-x-auto"}}},
+                    dv{{_id{"pagination_top"}, _class{"mx-auto my-4"}}},
+                    dv{{_id{"logs"}, _class{"overflow-x-auto"}}},
+                    dv{{_id{"pagination_bottom"}, _class{"mx-auto my-4"}}},
                 }
             };
         }
