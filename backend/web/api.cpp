@@ -66,50 +66,108 @@ void send_response(Pistache::Http::ResponseWriter& response, bool beve, const T&
         beve ? mime::application_beve : mime::application_json);
 }
 
-std::string url_decode(const std::string& str) {
-    std::string ret;
-    for(size_t i=0; i<str.size(); i++) {
-        if(str[i] == '%') {
-            ret.push_back(std::stoi(str.substr(i+1, 2), nullptr, 16));
-            i += 2;
+struct query_parameters {
+    struct all_attributes{};
+
+    unsigned int limit = 100;
+    unsigned int offset = 0;
+    std::optional<std::variant<std::vector<std::string>, all_attributes>> attributes; // NOT escaped yet!
+    std::vector<std::string> scopes; // NOT escaped yet!
+    std::vector<unsigned int> resources;
+};
+query_parameters parse_parameters(const Pistache::Rest::Request& request) {
+    constexpr auto url_decode = [](std::string_view sv) -> std::string { return glz::url_decode(sv); };
+    auto attributes = request.query().get("attributes").transform(url_decode);
+    auto scopes = request.query().get("scopes").transform(url_decode);
+    auto resources = request.query().get("resources").transform(url_decode);
+    auto limit = request.query().get("limit").transform(url_decode);
+    auto offset = request.query().get("offset").transform(url_decode);
+
+    query_parameters params{};
+    if(attributes) {
+        if(attributes == "*") {
+            params.attributes = query_parameters::all_attributes{};
         } else {
-            ret.push_back(str[i]);
+            auto& v = std::get<std::vector<std::string>>(*(params.attributes = std::vector<std::string>{}));
+            for(const auto& a : *attributes | std::views::split(',')) {
+                std::string_view sv{a};
+                if(sv == "<dummy>" || sv == "<empty>") { continue; }
+                v.emplace_back(sv);
+            }
         }
     }
-    return ret;
+    if(scopes) {
+        for(const auto& s : *scopes | std::views::split(',')) {
+            std::string_view sv{s};
+            if(sv == "<dummy>" || sv == "<empty>") { continue; }
+            params.scopes.emplace_back(sv);
+        }
+    }
+    if(resources) {
+        for(const auto& r : *resources | std::views::split(',')) {
+            unsigned int ri{};
+            if(std::from_chars(r.data(), r.data() + r.size(), ri).ec == std::errc{}) {
+                params.resources.push_back(ri);
+            }
+        }
+    }
+    if(limit) {
+        unsigned int li{};
+        if(std::from_chars(limit->data(), limit->data() + limit->size(), li).ec == std::errc{}) {
+            params.limit = li;
+        }
+    }
+    if(offset) {
+        unsigned int oi{};
+        if(std::from_chars(offset->data(), offset->data() + offset->size(), oi).ec == std::errc{}) {
+            params.offset = oi;
+        }
+    }
+    return params;
+}
+std::expected<void, std::string> validate_parameters(const query_parameters& params, bool needs_attributes) {
+    if(needs_attributes && !params.attributes) {
+        return std::unexpected("not attributes parameter given");
+    }
+    if(params.limit > max_query_limit) {
+        return std::unexpected(std::format("maximum query limit of {} exceeded", max_query_limit));
+    }
+
+    return std::expected<void, std::string>{};
+}
+std::expected<query_parameters, std::string> validate_parameters(const Pistache::Rest::Request& request, bool needs_attributes) {
+    auto params = parse_parameters(request);
+    auto e = validate_parameters(params, needs_attributes);
+    return e.transform([&](){
+        return std::move(params);
+    });
 }
 
-std::string build_scope_filter(const std::string& scopes) {
+std::string build_scope_filter(pqxx::transaction_base& txn, const std::vector<std::string>& scopes) {
     std::string filter = "scope IN (";
-    for(const auto& scope : scopes | std::views::split(',')) {
-        filter += "'";
-        std::string_view sv{scope};
-        if(sv != "<empty>") {
-            filter += sv;
-        }
-        filter += "',";
+    for(const auto& scope : scopes) {
+        filter += "'" + txn.esc(scope) + "',";
     }
     filter.pop_back();
     filter += ")";
     return filter;
 }
-std::string build_resource_filter(const std::string& resources) {
+std::string build_resource_filter(const std::vector<unsigned int>& resources) {
     std::string filter = "resource IN (";
-    for(const auto& resource : resources | std::views::split(',')) {
-        filter += std::to_string(std::stoi(std::string{std::string_view{resource}}));
-        filter += ",";
+    for(const auto& resource : resources) {
+        filter += std::to_string(resource) + ",";
     }
     filter.pop_back();
     filter += ")";
     return filter;
 }
 
-std::string build_query(pqxx::transaction_base& txn, const std::string& attributes, const std::string& scopes, const std::string& resources, const std::string& filter, const std::string& limit, const std::string& offset) {
+std::string build_query(pqxx::transaction_base& txn, const query_parameters& params) {
     std::string query = "SELECT resource, timestamp, extract(epoch from timestamp) as unix_time, scope, severity, body";
-    if(attributes == "*") {
+    if(std::holds_alternative<query_parameters::all_attributes>(*params.attributes)) {
         query += ", attributes";
     } else {
-        for(const auto& attr : attributes | std::views::split(',')) {
+        for(const auto& attr : std::get<std::vector<std::string>>(*params.attributes)) {
             query += ", attributes->'";
             query += txn.esc(std::string_view{attr});
             query += "'";
@@ -117,20 +175,20 @@ std::string build_query(pqxx::transaction_base& txn, const std::string& attribut
     }
     query += " FROM logs";
     query += " WHERE TRUE";
-    if(!scopes.empty()) {
-        query += " AND " + build_scope_filter(scopes);
+    if(!params.scopes.empty()) {
+        query += " AND " + build_scope_filter(txn, params.scopes);
     }
-    if(!resources.empty()) {
-        query += " AND " + build_resource_filter(resources);
+    if(!params.resources.empty()) {
+        query += " AND " + build_resource_filter(params.resources);
     }
     query += " ORDER BY timestamp DESC";
-    query += " LIMIT " + std::to_string(std::stoi(limit));
-    query += " OFFSET " + std::to_string(std::stoi(offset));
+    query += " LIMIT " + std::to_string(params.limit);
+    query += " OFFSET " + std::to_string(params.offset);
     return query;
 }
 
-std::vector<common::log_entry> get_logs(pqxx::transaction_base& txn, const std::string& attributes, const std::string& scopes, const std::string& resources, const std::string& filter, const std::string& limit, const std::string& offset) {
-    std::string query = build_query(txn, attributes, scopes, resources, filter, limit, offset);
+std::vector<common::log_entry> get_logs(pqxx::transaction_base& txn, const query_parameters& params) {
+    std::string query = build_query(txn, params);
 
     auto result = txn.exec(query);
     std::vector<common::log_entry> logs;
@@ -144,10 +202,10 @@ std::vector<common::log_entry> get_logs(pqxx::transaction_base& txn, const std::
         );
         l.body = row["body"].as<std::optional<glz::generic>>().value_or(glz::generic::null_t{});
         unsigned int i=row.column_number("body")+1;
-        if(attributes == "*") {
+        if(std::holds_alternative<query_parameters::all_attributes>(*params.attributes)) {
             l.attributes = row["attributes"].as<glz::generic>();
         } else {
-            for(const auto& attr : attributes | std::views::split(',')) {
+            for(const auto& attr : std::get<std::vector<std::string>>(*params.attributes)) {
                 auto sv = std::string_view{attr};
                 auto json = row[i].as<std::optional<glz::generic>>();
                 if(json) {
@@ -198,17 +256,16 @@ void Server::setup_api_routes() {
     });
     router.get("/api/v1/logs", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         bool accepts_beve = accepts(request, mime::application_beve);
-        auto filter = request.query().get("filter").transform(url_decode).value_or("");
-        auto attributes = request.query().get("attributes").transform(url_decode).value_or("");
-        auto scopes = request.query().get("scopes").transform(url_decode).value_or("");
-        auto resources = request.query().get("resources").transform(url_decode).value_or("");
-        auto limit = request.query().get("limit").transform(url_decode).value_or("100");
-        auto offset = request.query().get("offset").transform(url_decode).value_or("0");
-        db.queue_work([this, accepts_beve, response = std::move(response), filter, attributes, scopes, resources, limit, offset](pqxx::connection& conn) mutable {
+        auto params = validate_parameters(request, true);
+        if(!params) {
+            response.send(Pistache::Http::Code::Bad_Request, params.error());
+            return Pistache::Rest::Route::Result::Ok;
+        }
+        db.queue_work([this, accepts_beve, response = std::move(response), params = std::move(*params)](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
             try {
                 common::logs_response res;
-                res.logs = get_logs(txn, attributes, scopes, resources, filter, limit, offset);
+                res.logs = get_logs(txn, params);
 
                 send_response(response, accepts_beve, res);
             } catch(const pqxx::sql_error& e) {
@@ -219,26 +276,27 @@ void Server::setup_api_routes() {
         return Pistache::Rest::Route::Result::Ok;
     });
     router.get("/api/v1/logs/stencil", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-        auto filter = request.query().get("filter").transform(url_decode).value_or("");
-        auto scopes = request.query().get("scopes").transform(url_decode).value_or("");
-        auto resources = request.query().get("resources").transform(url_decode).value_or("");
-        auto limit = request.query().get("limit").transform(url_decode).value_or("100");
-        auto offset = request.query().get("offset").transform(url_decode).value_or("0");
+        constexpr auto url_decode = [](std::string_view sv) -> std::string { return glz::url_decode(sv); };
+        auto params = validate_parameters(request, false);
+        if(!params) {
+            response.send(Pistache::Http::Code::Bad_Request, params.error());
+            return Pistache::Rest::Route::Result::Ok;
+        }
         auto stencil = request.query().get("stencil").transform(url_decode).value_or("");
-        db.queue_work([this, response = std::move(response), scopes, resources, filter, limit, offset, stencil](pqxx::connection& conn) mutable {
+        db.queue_work([this, response = std::move(response), params = std::move(*params), stencil = std::move(stencil)](pqxx::connection& conn) mutable {
             pqxx::nontransaction txn{conn};
             try {
                 auto stream = response.stream(Pistache::Http::Code::Ok);
                 std::string query = "SELECT resource, extract(epoch from timestamp) as unix_time, scope, severity, attributes, body FROM logs WHERE TRUE";
-                if(!scopes.empty()) {
-                    query += " AND " + build_scope_filter(scopes);
+                if(!params.scopes.empty()) {
+                    query += " AND " + build_scope_filter(txn, params.scopes);
                 }
-                if(!resources.empty()) {
-                    query += " AND " + build_resource_filter(resources);
+                if(!params.resources.empty()) {
+                    query += " AND " + build_resource_filter(params.resources);
                 }
                 query += " ORDER BY timestamp DESC";
-                query += " LIMIT " + std::to_string(std::stoi(limit));
-                query += " OFFSET " + std::to_string(std::stoi(offset));
+                query += " LIMIT " + std::to_string(params.limit);
+                query += " OFFSET " + std::to_string(params.offset);
 
                 for(auto [resource, timestamp, scope, severity, attributes, body] :
                     txn.stream<unsigned int, double, std::string, common::log_severity, glz::generic, glz::generic>(query))

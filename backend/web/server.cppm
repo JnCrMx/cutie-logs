@@ -58,4 +58,5 @@ namespace backend::web {
             common::shared_settings& settings;
             std::optional<std::filesystem::path> static_dev_path;
     };
+    export constexpr unsigned int max_query_limit = 1000000;
 }

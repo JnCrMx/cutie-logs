@@ -3,6 +3,7 @@ module;
 #include "fake_std.hpp"
 #endif
 #include <glaze/glaze.hpp>
+#include <glaze/net/url.hpp>
 
 export module glaze;
 
@@ -40,7 +41,8 @@ export namespace glz {
     using glz::glaze_object_t;
     using glz::string_literal;
 
-    using glz::stencil;
+    using glz::url_decode;
+    using glz::url_encode;
 
     template <auto Opts, class T, class Buffer> requires read_supported<T, Opts.format>
     [[nodiscard]] inline expected<T, error_ctx> read(Buffer&& buffer)
