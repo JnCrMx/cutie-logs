@@ -56,7 +56,7 @@ int main() {
         .resource = &resource,
         .log = &log
     };
-    std::cout << *common::stencil("resource: {resource.created_at} = {resource.created_at | from_timestamp | strftime} | {resource.attributes.key} | {.timestamp} = {.timestamp | from_timestamp | strftime}", log_with_resource, functions{}).or_else([](auto&& err) -> std::expected<std::string, std::string> {
+    std::cout << *common::stencil("resource: {resource.created_at} = {resource.created_at | from_timestamp | strftime} | {resource.attributes.key} | {timestamp} = {.timestamp | from_timestamp | strftime}", log_with_resource, functions{}).or_else([](auto&& err) -> std::expected<std::string, std::string> {
         return std::string{"error: "} + err;
     }) << std::endl;
 

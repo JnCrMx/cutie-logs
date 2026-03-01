@@ -204,6 +204,7 @@ namespace common {
             first_key = key.substr(0, pos);
             second_key = key.substr(pos + 1);
         }
+        bool key_found = false;
         std::expected<std::string, std::string> result = std::unexpected("key not found: "+std::string(first_key));
         if(first_key.ends_with("?")) {
             first_key = first_key.substr(0, first_key.size() - 1);
@@ -226,6 +227,7 @@ namespace common {
         for_each_field<T>(obj, [&](auto&& field) {
             using decayed = std::decay_t<decltype(field)>;
             if(keys[index] == first_key) {
+                key_found = true;
                 if constexpr (can_get_field<decayed>) {
                     if(second_key.empty()) {
                         result = eval_expression(field, expression, functions, functions);
@@ -238,6 +240,20 @@ namespace common {
             }
             index++;
         });
+
+        if constexpr (has_root<T>) {
+            if(!key_found) {
+                unsigned int index = 0;
+                for_each_field<T>(obj, [&](auto&& field) {
+                    using decayed = std::decay_t<decltype(field)>;
+                    if(keys[index] == T::root) {
+                        result = get_field(field, key, functions, expression);
+                    }
+                    index++;
+                });
+            }
+        }
+
         return result.transform_error([&](auto&& err) {
             return std::string{first_key}+": "+err;
         });
