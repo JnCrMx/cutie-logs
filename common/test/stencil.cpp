@@ -28,6 +28,9 @@ struct functions {
 struct test {
     bool value1 = false;
     bool value2 = true;
+
+    int* x;
+    int* y;
 };
 
 int main() {
@@ -53,10 +56,10 @@ int main() {
     }) << std::endl;
 
     common::log_entry_stencil_object log_with_resource{
-        .resource = &resource,
-        .log = &log
+        .log = &log,
+        .resource = &resource
     };
-    std::cout << *common::stencil("resource: {resource.created_at} = {resource.created_at | from_timestamp | strftime} | {resource.attributes.key} | {timestamp} = {.timestamp | from_timestamp | strftime}", log_with_resource, functions{}).or_else([](auto&& err) -> std::expected<std::string, std::string> {
+    std::cout << *common::stencil("resource: {resource.created_at} = {resource.created_at | from_timestamp | strftime} | {resource.attributes.key} {resource | resource_name} | {timestamp} = {.timestamp | from_timestamp | strftime}", log_with_resource, functions{}).or_else([](auto&& err) -> std::expected<std::string, std::string> {
         return std::string{"error: "} + err;
     }) << std::endl;
 
@@ -96,7 +99,10 @@ int main() {
     glz::generic stenciled = common::stencil_json(json_obj, alert_object);
     std::cout << glz::write_json(stenciled).value_or("error") << std::endl;
 
-    test my_test{};
+    test my_test{
+        .x = &a,
+        .y = nullptr
+    };
     std::cout << *common::stencil("{?value1}yes{:?}no{/?} {?value2}{?value2}yes{:?}no{/?}{/?}", my_test).or_else([](auto&& err) -> std::expected<std::string, std::string> {
         return std::string{"error: "} + err;
     }) << std::endl;
@@ -105,6 +111,10 @@ int main() {
         std::cout << k << ' ';
     }
     std::cout << std::endl;
+
+    std::cout << *common::stencil("{x} {y} {x | add_5}", my_test, fn).or_else([](auto&& err) -> std::expected<std::string, std::string> {
+        return std::string{"error: "} + err;
+    }) << std::endl;
 
     return 0;
 }

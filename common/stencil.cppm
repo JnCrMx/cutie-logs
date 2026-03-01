@@ -42,6 +42,13 @@ namespace common {
     std::expected<std::string, std::string> format_if_possible(const T& obj) {
         if constexpr (trivially_formattable<T>) {
             return std::format("{}", obj);
+        } else if constexpr (std::is_pointer_v<std::decay_t<T>>) {
+            using DerefT = std::remove_pointer_t<std::decay_t<T>>;
+            if constexpr (trivially_formattable<DerefT>) {
+                return obj == nullptr ? "nullptr" : format_if_possible(*obj);
+            } else {
+                return std::unexpected(std::format("Cannot format type \"{}\" or \"{}\".", glz::name_v<T>, glz::name_v<DerefT>));
+            }
         } else if constexpr (std::is_same_v<T, glz::generic>) {
             if(obj.is_string()) {
                 return obj.get_string();
@@ -55,7 +62,7 @@ namespace common {
                 });
             }
         } else {
-            return std::unexpected{"Cannot format type: "+std::string(glz::name_v<T>)};
+            return std::unexpected(std::format("Cannot format type \"{}\".", glz::name_v<T>));
         }
     }
 
@@ -148,28 +155,61 @@ namespace common {
             using decayed = std::decay_t<decltype(field)>;
             if(keys[index] == first_expression) {
                 found_one = true;
-                if constexpr (std::is_invocable_v<decltype(field), T&&>) {
+
+                auto eval_noarg = [&]<typename SubT>(SubT&& in){
                     if(arg) {
                         result = std::unexpected(std::format("function \"{}\" does not take arguments", first_expression));
                         return;
                     }
-                    auto x = field(std::forward<T>(value));
+                    auto out = field(std::forward<SubT>(in));
                     // TODO: implement error handling (field could return std::expected and then we could optionally unmarshal it, unless the next field takes a std::expected as well)
                     if(second_expression.empty()) {
-                        result = format_if_possible(x);
+                        result = format_if_possible(out);
                     } else {
-                        result = eval_expression(x, second_expression, functions_root, functions_root);
+                        result = eval_expression(out, second_expression, functions_root, functions_root);
                     }
-                } else if constexpr (std::is_invocable_v<decltype(field), T&&, std::string_view>) {
+                };
+                auto eval_arg = [&]<typename SubT>(SubT&& in){
                     if(!arg) {
                         result = std::unexpected(std::format("function \"{}\" requires an argument", first_expression));
                         return;
                     }
-                    auto x = field(std::forward<T>(value), *arg);
+                    auto x = field(std::forward<SubT>(in), *arg);
                     if(second_expression.empty()) {
                         result = format_if_possible(x);
                     } else {
                         result = eval_expression(x, second_expression, functions_root, functions_root);
+                    }
+                };
+
+                if constexpr (std::is_invocable_v<decltype(field), T&&>) {
+                    eval_noarg.template operator()<T>(std::forward<T>(value));
+                } else if constexpr (std::is_invocable_v<decltype(field), T&&, std::string_view>) {
+                    eval_arg.template operator()<T>(std::forward<T>(value));
+                } else if constexpr (std::is_pointer_v<std::decay_t<T>>) {
+                    using DerefT = std::remove_pointer_t<std::decay_t<T>>;
+
+                    if constexpr (std::is_invocable_v<decltype(field), DerefT&&>) {
+                        if(value == nullptr) {
+                            result = std::unexpected(std::format(
+                                "cannot dereference value (\"{}\" to \"{}\") in order to call \"{}\" because it is a null pointer",
+                                glz::name_v<std::decay_t<T>>, glz::name_v<std::decay_t<DerefT>>, first_expression
+                            ));
+                        } else {
+                            eval_noarg.template operator()<DerefT>(std::forward<DerefT>(*value));
+                        }
+                    } else if constexpr (std::is_invocable_v<decltype(field), DerefT&&, std::string_view>) {
+                        if(value == nullptr) {
+                            result = std::unexpected(std::format(
+                                "cannot dereference value (\"{}\" to \"{}\") in order to call \"{}\" because it is a null pointer",
+                                glz::name_v<std::decay_t<T>>, glz::name_v<std::decay_t<DerefT>>, first_expression
+                            ));
+                        } else {
+                            eval_arg.template operator()<DerefT>(std::forward<DerefT>(*value));
+                        }
+                    } else {
+                        result = std::unexpected(std::format("cannot call function \"{}\" with argument of type \"{}\" or \"{}\"",
+                            first_expression, glz::name_v<std::decay_t<T>>, glz::name_v<std::decay_t<DerefT>>));
                     }
                 } else {
                     result = std::unexpected(std::format("cannot call function \"{}\" with argument of type \"{}\"",
