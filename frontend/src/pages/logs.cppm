@@ -143,7 +143,7 @@ export class logs : public page {
         void update_attributes() {
             selected_attributes.clear();
             std::transform(attributes->attributes.begin(), attributes->attributes.end(), std::inserter(selected_attributes, selected_attributes.end()),
-                [](const auto& attr) { return std::pair{attr.first, false}; }); // all attributes are deselected by default
+                [](const auto& attr) { return std::pair{attr.first, false}; });
 
             components::selection_button magic_button{
                 .text = std::string{"Auto-select"_},
@@ -185,7 +185,7 @@ export class logs : public page {
         void update_scopes() {
             selected_scopes.clear();
             std::transform(scopes->scopes.begin(), scopes->scopes.end(), std::inserter(selected_scopes, selected_scopes.end()),
-                [](const auto& scope) { return std::pair{scope.first, false}; }); // all scopes are deselected by default
+                [](const auto& scope) { return std::pair{scope.first, false}; });
             webpp::get_element_by_id("scopes")->inner_html(Webxx::render(
                 components::selection<"scopes">("Filter Scopes"_, scopes->scopes, selected_scopes, &profile, 1, false)));
         }
@@ -196,7 +196,7 @@ export class logs : public page {
             }
             selected_resources.clear();
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
-                [](const auto& res) { return std::pair{res.first, true}; }); // all resources are selected by default
+                [](const auto& res) { return std::pair{res.first, false}; });
 
             components::selection_button magic_button{
                 .text = std::string{"Select similar"_},
