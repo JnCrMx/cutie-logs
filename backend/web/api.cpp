@@ -356,6 +356,7 @@ void Server::setup_api_routes() {
                 unsigned int id = row["id"].as<unsigned int>();
                 unsigned int count = row["count"].as<unsigned int>();
                 common::log_resource r;
+                r.id = id;
                 r.attributes = row["attributes"].as<glz::generic>();
                 r.created_at = row["created_at"].as<double>();
                 res.resources[id] = {r, count};

@@ -24,6 +24,7 @@ export namespace common {
     concept serializable = serializable_beve<T> && serializable_json<T>;
 
     struct log_resource {
+        unsigned int id;
         glz::generic attributes;
         double created_at;
 

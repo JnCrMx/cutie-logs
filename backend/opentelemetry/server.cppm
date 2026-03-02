@@ -178,6 +178,7 @@ namespace backend::opentelemetry {
                                 glz::generic::object_t resource_attributes = to_json(resourceLog.resource().attributes());
                                 unsigned int resource = db.ensure_resource(conn, resource_attributes);
                                 common::log_resource log_resource{
+                                    .id = resource,
                                     .attributes = std::move(resource_attributes),
                                 };
 

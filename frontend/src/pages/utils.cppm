@@ -86,8 +86,4 @@ std::string build_resources_selector(const std::unordered_map<std::string, bool>
     return resources_selector+"0";
 }
 
-std::string resource_name(unsigned int id, const common::log_resource& resource) {
-    return resource.guess_name().value_or("Resource #{}"_(id));
-}
-
 }

@@ -143,7 +143,7 @@ export class table : public page {
                     auto attributes = entry.attributes.is_object() ? entry.attributes.get_object() : glz::generic::object_t{};
                     auto e_timestamp = std::format("{:%Y-%m-%d %H:%M:%S}", timestamp);
                     auto e_resource = a{{_class{"link"}, _onClick{std::format("document.getElementById('modal_resource_{}').showModal()", entry.resource)}},
-                        sanitize(resource_name(entry.resource, std::get<0>(resources->resources[entry.resource])))};
+                        sanitize(resource_name(std::get<0>(resources->resources[entry.resource])))};
                     auto e_scope = sanitize(entry.scope);
                     auto e_severity = common::log_severity_names[std::to_underlying(entry.severity)];
                     auto e_body = sanitize(entry.body.is_string() ? entry.body.get_string() : entry.body.dump().value_or("error"));
@@ -298,7 +298,7 @@ export class table : public page {
         void update_resources() {
             transformed_resources.clear();
             for(const auto& [id, e] : resources->resources) {
-                transformed_resources[std::to_string(id)] = {resource_name(id, std::get<0>(e)), std::get<1>(e)};
+                transformed_resources[std::to_string(id)] = {resource_name(std::get<0>(e)), std::get<1>(e)};
             }
             selected_resources.clear();
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),

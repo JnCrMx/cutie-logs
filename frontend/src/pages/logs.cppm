@@ -184,7 +184,7 @@ export class logs : public page {
         void update_resources() {
             transformed_resources.clear();
             for(const auto& [id, e] : resources->resources) {
-                transformed_resources[std::to_string(id)] = {resource_name(id, std::get<0>(e)), std::get<1>(e)};
+                transformed_resources[std::to_string(id)] = {resource_name(std::get<0>(e)), std::get<1>(e)};
             }
             selected_resources.clear();
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
