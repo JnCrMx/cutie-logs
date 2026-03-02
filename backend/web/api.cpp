@@ -91,7 +91,6 @@ query_parameters parse_parameters(const Pistache::Rest::Request& request) {
             auto& v = std::get<std::vector<std::string>>(*(params.attributes = std::vector<std::string>{}));
             for(const auto& a : *attributes | std::views::split(',')) {
                 std::string_view sv{a};
-                if(sv == "<dummy>" || sv == "<empty>") { continue; }
                 v.emplace_back(sv);
             }
         }
@@ -99,8 +98,11 @@ query_parameters parse_parameters(const Pistache::Rest::Request& request) {
     if(scopes) {
         for(const auto& s : *scopes | std::views::split(',')) {
             std::string_view sv{s};
-            if(sv == "<dummy>" || sv == "<empty>") { continue; }
-            params.scopes.emplace_back(sv);
+            if(sv == "<empty>") {
+                params.scopes.emplace_back("");
+            } else {
+                params.scopes.emplace_back(sv);
+            }
         }
     }
     if(resources) {
