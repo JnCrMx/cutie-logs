@@ -37,7 +37,8 @@ export class logs : public page {
                             stencil_format = textarea["value"].as<std::string>().value_or("");
                             profile.set_data("stencil", stencil_format);
 
-                            validate_stencil(textarea, validator, stencil_format, *example_entry, stencil_functions);
+                            auto obj = common::log_entry_stencil_object::create(*example_entry, resources->resources);
+                            validate_stencil(textarea, validator, stencil_format, obj, stencil_functions);
                             co_return;
                         }());
                     }),
@@ -102,7 +103,9 @@ export class logs : public page {
             using namespace Webxx;
             auto list = ul{{_class{"list rounded-box shadow gap-1"}},
                 each(logs.logs, [&](const auto& entry) {
-                    auto r = common::stencil(stencil_format, entry, stencil_functions);
+                    const auto& res = resources->resources.find(entry.resource);
+                    auto obj = common::log_entry_stencil_object::create(entry, resources->resources);
+                    auto r = common::stencil(stencil_format, obj, stencil_functions);
                     return li{{_class{"list-item"}},
                         code{{_class{r ? "whitespace-pre" : "whitespace-pre text-error font-bold"}},
                             sanitize(*r.or_else([](auto err) -> decltype(r) { return "Stencil invalid: \"{}\""_(err); }))}
@@ -152,8 +155,13 @@ export class logs : public page {
                         return false;
                     }
                     for(std::string_view attr : *required_attributes) {
-                        if(!attr.starts_with("attributes.")) continue;
-                        attr.remove_prefix(std::string_view::traits_type::length("attributes."));
+                        if(attr.starts_with("attributes.")) {
+                            attr.remove_prefix(std::string_view::traits_type::length("attributes."));
+                        } else if(attr.starts_with(".attributes.")) {
+                            attr.remove_prefix(std::string_view::traits_type::length(".attributes."));
+                        } else {
+                            continue;
+                        }
 
                         if(auto pos = attr.find('.'); pos != std::string_view::npos) {
                             if(pos < 1) continue; // TODO: fix this once stencils with root are properly implemented

@@ -300,11 +300,23 @@ void Server::setup_api_routes() {
                 query += " LIMIT " + std::to_string(params.limit);
                 query += " OFFSET " + std::to_string(params.offset);
 
+                auto result = txn.exec(pqxx::prepped{"get_resources"});
+                std::unordered_map<unsigned int, common::log_resource> resources;
+                for(const auto& row : result) {
+                    unsigned int id = row["id"].as<unsigned int>();
+                    unsigned int count = row["count"].as<unsigned int>();
+                    common::log_resource& r = resources[id];
+                    r.id = id;
+                    r.attributes = row["attributes"].as<glz::generic>();
+                    r.created_at = row["created_at"].as<double>();
+                }
+
                 for(auto [resource, timestamp, scope, severity, attributes, body] :
                     txn.stream<unsigned int, double, std::string, common::log_severity, glz::generic, glz::generic>(query))
                 {
                     common::log_entry log{resource, timestamp, scope, severity, attributes, body};
-                    std::string line = *common::stencil(stencil, log)
+                    auto obj = common::log_entry_stencil_object::create(log, resources);
+                    std::string line = *common::stencil(stencil, obj)
                         .or_else([](auto err) -> std::expected<std::string, std::string> { return std::format("Stencil invalid: \"{}\"", err); })
                         +"\n";
                     stream.write(line.data(), line.size());

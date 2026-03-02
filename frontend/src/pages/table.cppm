@@ -168,7 +168,8 @@ export class table : public page {
                                 auto name = attr.substr(1);
                                 if(table_custom_columns.contains(name)) {
                                     const auto& stencil = table_custom_columns.at(name);
-                                    auto r = common::stencil(stencil, entry, stencil_functions);
+                                    auto obj = common::log_entry_stencil_object::create(entry, resources->resources);
+                                    auto r = common::stencil(stencil, obj, stencil_functions);
                                     if(r) {
                                         return td{sanitize(*r)};
                                     } else {
@@ -392,7 +393,8 @@ export class table : public page {
                                     auto validator = *webpp::get_element_by_id("column_stencil_validator");
                                     stencil_format = textarea["value"].as<std::string>().value_or("");
 
-                                    validate_stencil(textarea, validator, stencil_format, *example_entry, stencil_functions);
+                                    auto obj = common::log_entry_stencil_object::create(*example_entry, resources->resources);
+                                    validate_stencil(textarea, validator, stencil_format, obj, stencil_functions);
                                     co_return;
                                 }());
                             }
