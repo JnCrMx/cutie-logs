@@ -253,7 +253,7 @@ export struct stencil_functions {
             return o.resource->guess_name().value_or(std::format("Resource #{}", o.log->resource));
         }
         std::string operator()(const log_resource& r) const {
-            return r.guess_name().value_or("Unknown Resource");
+            return r.guess_name().value_or(std::format("Resource #{}", r.id));
         }
     } resource_name;
 

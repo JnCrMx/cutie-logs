@@ -88,12 +88,12 @@ namespace common {
         }
     }
     template<can_get_field T, typename Callable>
-    void for_each_field(const T& obj, Callable&& func) {
+    std::expected<void, std::string> for_each_field(const T& obj, Callable&& func) {
         if constexpr (glz::reflectable<std::decay_t<T>>) {
             glz::for_each_field(obj, std::forward<Callable>(func));
         } else if constexpr (glz::reflectable<std::remove_pointer_t<std::decay_t<T>>>) {
             if(obj == nullptr) {
-                return; // TODO: return error?
+                return std::unexpected("refusing to dereference nullptr");
             }
             glz::for_each_field(*obj, std::forward<Callable>(func));
         } else {
@@ -104,6 +104,7 @@ namespace common {
                 }
             }
         }
+        return std::expected<void, std::string>{};
     }
 
     std::string_view trim(std::string_view str) {
@@ -151,7 +152,7 @@ namespace common {
         unsigned int index = 0;
         std::expected<std::string, std::string> result = std::unexpected(std::format("cannot find function \"{}\"", first_expression));
         bool found_one = false;
-        for_each_field(functions, [&](auto&& field) {
+        for_each_field(functions, [&](auto&& field) { // we can safely ignore the result of this, since function is never nullptr
             using decayed = std::decay_t<decltype(field)>;
             if(keys[index] == first_expression) {
                 found_one = true;
@@ -192,7 +193,7 @@ namespace common {
                     if constexpr (std::is_invocable_v<decltype(field), DerefT&&>) {
                         if(value == nullptr) {
                             result = std::unexpected(std::format(
-                                "cannot dereference value (\"{}\" to \"{}\") in order to call \"{}\" because it is a null pointer",
+                                "refusing dereference nullptr of type \"{}\" to \"{}\" in order to call \"{}\"",
                                 glz::name_v<std::decay_t<T>>, glz::name_v<std::decay_t<DerefT>>, first_expression
                             ));
                         } else {
@@ -201,7 +202,7 @@ namespace common {
                     } else if constexpr (std::is_invocable_v<decltype(field), DerefT&&, std::string_view>) {
                         if(value == nullptr) {
                             result = std::unexpected(std::format(
-                                "cannot dereference value (\"{}\" to \"{}\") in order to call \"{}\" because it is a null pointer",
+                                "refusing dereference nullptr of type \"{}\" to \"{}\" in order to call \"{}\"",
                                 glz::name_v<std::decay_t<T>>, glz::name_v<std::decay_t<DerefT>>, first_expression
                             ));
                         } else {
@@ -264,7 +265,7 @@ namespace common {
 
         auto keys = get_keys(obj);
         unsigned int index = 0;
-        for_each_field<T>(obj, [&](auto&& field) {
+        auto for_each_result = for_each_field<T>(obj, [&](auto&& field) {
             using decayed = std::decay_t<decltype(field)>;
             if(keys[index] == first_key) {
                 key_found = true;
@@ -281,7 +282,9 @@ namespace common {
             index++;
         });
 
-        if constexpr (has_root<T>) {
+        if(!for_each_result) {
+            result = std::unexpected(for_each_result.error());
+        } else if constexpr (has_root<T>) { // if we cannot iterate over the object, there is no point in looking for a root
             if(!key_found) {
                 unsigned int index = 0;
                 for_each_field<T>(obj, [&](auto&& field) {
