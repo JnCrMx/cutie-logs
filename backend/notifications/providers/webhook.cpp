@@ -10,6 +10,7 @@ import cpr;
 import glaze;
 import common;
 import spdlog;
+import backend.utils;
 
 namespace backend::notifications {
 
@@ -35,7 +36,7 @@ class webhook_provider : public provider {
             }
         }
 
-        std::expected<void, error> notify(const common::alert_stencil_object& msg) override {
+        std::expected<void, error> notify(const common::alert_stencil_object& msg, NetworkIpFilter* ipFilter) override {
             glz::generic payload = common::stencil_json(m_template, msg);
             auto json_payload = glz::write_json(payload);
             if(!json_payload) {
@@ -43,7 +44,15 @@ class webhook_provider : public provider {
                     "Failed to serialize JSON payload: " + glz::format_error(json_payload.error()));
             }
 
-            auto res = cpr::Post(cpr::Url{m_url}, cpr::Body(*json_payload), cpr::Header{{"Content-Type", "application/json"}});
+            cpr::Session session{};
+            session.SetUrl(cpr::Url{m_url});
+            session.SetBody(cpr::Body{std::move(*json_payload)});
+            session.SetHeader(cpr::Header{{"Content-Type", "application/json"}});
+            if(ipFilter) {
+                ipFilter->install(session);
+            }
+
+            auto res = session.Post();
             if(res.status_code == 0) {
                 return std::unexpected<error>(std::in_place, error_code::internal_error,
                     "Failed to send notification: " + res.error.message);

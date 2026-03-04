@@ -80,6 +80,7 @@ set(MODULE_SOURCES
   backend.cppm
   self_sink.cppm
   utils.cppm
+  network_ip_filter.cppm
   database/database.cppm
   jobs/jobs.cppm
   notifications/notifications.cppm

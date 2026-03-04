@@ -13,6 +13,8 @@ export module backend.utils;
 import spdlog;
 import pistache;
 
+export import :network_ip_filter;
+
 export template<>
 struct fmt::formatter<Pistache::Address> : fmt::formatter<std::string>
 {

@@ -13,6 +13,8 @@ import glaze;
 import common;
 import spdlog;
 
+import backend.utils;
+
 namespace backend::notifications {
 
 export enum class error_code {
@@ -34,7 +36,7 @@ export class provider {
         provider() = default;
         virtual ~provider() = default;
 
-        virtual std::expected<void, error> notify(const common::alert_stencil_object& msg) = 0;
+        virtual std::expected<void, error> notify(const common::alert_stencil_object& msg, NetworkIpFilter* ipFilter) = 0;
 };
 
 export class registry {

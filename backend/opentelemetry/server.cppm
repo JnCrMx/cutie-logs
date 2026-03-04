@@ -120,7 +120,7 @@ namespace backend::opentelemetry {
                         txn.exec(pqxx::prepped{"update_alert_result"}, {rule.id, false, provider.error().message});
                         continue;
                     }
-                    auto result = (*provider)->notify(msg);
+                    auto result = (*provider)->notify(msg, nullptr);
                     if(!result) {
                         logger->error("Failed to send notification for rule {}:{}: {}",
                             rule.id, rule.name, result.error().message);
