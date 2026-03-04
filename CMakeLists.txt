@@ -7,9 +7,9 @@ project(cutie-logs VERSION 0.1)
 set(TOP_LEVEL_PROJECT_NAME ${PROJECT_NAME})
 set(TOP_LEVEL_PROJECT_VERSION ${PROJECT_VERSION})
 
-option(GENERATE_POT "Generate .pot file" OFF)
+option(CUTIE_LOGS_GENERATE_POT "Generate .pot file" OFF)
 
-if(GENERATE_POT)
+if(CUTIE_LOGS_GENERATE_POT)
     FetchContent_Declare(i18n++
         GIT_REPOSITORY https://github.com/JnCrMx/i18n-cpp.git
         GIT_TAG trunk
@@ -31,11 +31,11 @@ ExternalProject_Add(frontend
         -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=${CMAKE_EXPORT_COMPILE_COMMANDS}
         -DTOP_LEVEL_PROJECT_NAME:STRING=${TOP_LEVEL_PROJECT_NAME}
         -DTOP_LEVEL_PROJECT_VERSION:STRING=${TOP_LEVEL_PROJECT_VERSION}
-        -DGENERATE_POT:BOOL=${GENERATE_POT}
-        -Di18n-merge-pot_LOCATION:FILEPATH=$<$<BOOL:${GENERATE_POT}>:$<TARGET_FILE:i18n::i18n-merge-pot>>
-        -Di18n-plugin_LOCATION:FILEPATH=$<$<BOOL:${GENERATE_POT}>:$<TARGET_FILE:$<INSTALL_INTERFACE:i18n::>plugin>>
+        -DCUTIE_LOGS_GENERATE_POT:BOOL=${CUTIE_LOGS_GENERATE_POT}
+        -Di18n-merge-pot_LOCATION:FILEPATH=$<$<BOOL:${CUTIE_LOGS_GENERATE_POT}>:$<TARGET_FILE:i18n::i18n-merge-pot>>
+        -Di18n-plugin_LOCATION:FILEPATH=$<$<BOOL:${CUTIE_LOGS_GENERATE_POT}>:$<TARGET_FILE:$<INSTALL_INTERFACE:i18n::>plugin>>
 )
-if(GENERATE_POT)
+if(CUTIE_LOGS_GENERATE_POT)
     add_dependencies(frontend i18n::i18n-merge-pot i18n::i18n-extract)
 endif()
 

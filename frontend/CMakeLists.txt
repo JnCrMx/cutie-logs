@@ -95,7 +95,7 @@ target_link_libraries(mainpage PRIVATE common stdModule webxxModule glazeModule 
 target_link_options(mainpage PRIVATE -Wl,--no-entry)
 target_link_options(mainpage PRIVATE -nostartfiles)
 target_compile_options(mainpage PRIVATE --embed-dir=${CMAKE_CURRENT_SOURCE_DIR} -Wno-c23-extensions)
-if(GENERATE_POT)
+if(CUTIE_LOGS_GENERATE_POT)
   include(${i18n++_SOURCE_DIR}/i18n++Use.cmake)
 
   add_executable(i18n::i18n-merge-pot IMPORTED)
