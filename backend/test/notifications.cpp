@@ -32,7 +32,7 @@ int main(int argc, const char** argv) {
 
     };
     common::alert_stencil_object alert{&rule, &resource, &log};
-    if(auto res = provider->notify(alert, &ipFilter); !res) {
+    if(auto res = provider->notify(*spdlog::default_logger(), alert, &ipFilter); !res) {
         spdlog::error("Failed to send notification: {}", res.error().message);
         return 1;
     }

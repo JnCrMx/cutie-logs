@@ -7,30 +7,15 @@ module;
 #include <expected>
 
 #include <netinet/in.h>
-#include <curl/curl.h>
-
-#include <iostream>
-#include <format>
 
 export module backend.utils:network_ip_filter;
 
-import cpr;
 import common;
 
 namespace backend {
 
 export class NetworkIpFilter {
     private:
-        static curl_socket_t opensocket_callback(void* clientp, curlsocktype purpose, curl_sockaddr* address) {
-            if(purpose == CURLSOCKTYPE_IPCXN) {
-                bool accept = static_cast<NetworkIpFilter*>(clientp)->filter(&address->addr);
-                if(!accept) {
-                    return CURL_SOCKET_BAD;
-                }
-            }
-            return socket(address->family, address->socktype, address->protocol);
-        }
-
         enum class filter_action {
             deny,
             allow,
@@ -76,12 +61,8 @@ export class NetworkIpFilter {
                 }
 
                 if(auto ipv4 = common::parse_ipv4(rule)) {
-                    std::cout << std::format("Parsed IPv4: {}\n", *ipv4);
-
                     filterlist_ipv4.emplace_back(*ipv4, prefix_len, action);
                 } else if(auto ipv6 = common::parse_ipv6(rule)) {
-                    std::cout << std::format("Parsed IPv6: {}\n", *ipv6);
-
                     filterlist_ipv6.emplace_back(*ipv6, prefix_len, action);
                 } else {
                     throw std::runtime_error("failed to parse ip address: " + std::string{rule});
@@ -89,9 +70,29 @@ export class NetworkIpFilter {
             }
         }
 
-        void install(cpr::Session& session) {
-            curl_easy_setopt(session.GetCurlHolder()->handle, CURLOPT_OPENSOCKETFUNCTION, opensocket_callback);
-            curl_easy_setopt(session.GetCurlHolder()->handle, CURLOPT_OPENSOCKETDATA, this);
+        bool filter(uint32_t ipv4) {
+            for(const auto& subnet : filterlist_ipv4) {
+                uint32_t mask = (subnet.prefix_len == 0) ? 0 : (~0U << (32 - subnet.prefix_len));
+                if((ipv4 & mask) == (subnet.network & mask)) {
+                    switch (subnet.action) {
+                        case filter_action::allow: return true;
+                        case filter_action::deny: return false;
+                    }
+                }
+            }
+            return true;
+        }
+        bool filter(__uint128_t ipv6) {
+            for(const auto& subnet : filterlist_ipv6) {
+                __uint128_t mask = (subnet.prefix_len == 0) ? 0 : (~static_cast<__uint128_t>(0U) << (128 - subnet.prefix_len));
+                if((ipv6 & mask) == (subnet.network & mask)) {
+                    switch (subnet.action) {
+                        case filter_action::allow: return true;
+                        case filter_action::deny: return false;
+                    }
+                }
+            }
+            return true;
         }
 
         bool filter(sockaddr* address) { // use sockaddr here to be independent of libcurl (so this can also be used for notifications not using cpr)
@@ -102,28 +103,11 @@ export class NetworkIpFilter {
             if(address->sa_family == AF_INET) {
                 auto* sockaddr = reinterpret_cast<sockaddr_in*>(address);
                 uint32_t ip = ntohl(sockaddr->sin_addr.s_addr);
-
-                for(const auto& subnet : filterlist_ipv4) {
-                    uint32_t mask = (subnet.prefix_len == 0) ? 0 : (~0U << (32 - subnet.prefix_len));
-                    if((ip & mask) == (subnet.network & mask)) {
-                        switch (subnet.action) {
-                            case filter_action::allow: return true;
-                            case filter_action::deny: return false;
-                        }
-                    }
-                }
+                return filter(ip);
             } else if(address->sa_family == AF_INET6) {
                 auto* socketaddr = reinterpret_cast<sockaddr_in6*>(address);
-                __uint128_t ip = std::bit_cast<__uint128_t>(socketaddr->sin6_addr.s6_addr);
-                for(const auto& subnet : filterlist_ipv6) {
-                    __uint128_t mask = (subnet.prefix_len == 0) ? 0 : (~static_cast<__uint128_t>(0U) << (128 - subnet.prefix_len));
-                    if((ip & mask) == (subnet.network & mask)) {
-                        switch (subnet.action) {
-                            case filter_action::allow: return true;
-                            case filter_action::deny: return false;
-                        }
-                    }
-                }
+                __uint128_t ip = common::ntoh128(std::bit_cast<__uint128_t>(socketaddr->sin6_addr.s6_addr));
+                return filter(ip);
             }
 
             return true;

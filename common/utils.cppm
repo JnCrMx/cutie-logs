@@ -1,4 +1,5 @@
 module;
+#include <bit>
 #include <charconv>
 #include <chrono>
 #include <expected>
@@ -180,6 +181,18 @@ export std::expected<__uint128_t, ip_parse_error> parse_ipv6(std::string_view sv
         sv = sv.substr(colon+1);
     }
     return left_part | right_part;
+}
+
+export __uint128_t ntoh128(__uint128_t v) {
+    if constexpr (std::endian::native == std::endian::big) {
+        return v;
+    } else {
+        return std::byteswap(v);
+    }
+}
+
+export std::string ipv4_to_string(uint32_t ip) {
+    return std::format("{}.{}.{}.{}", ip >> 24 & 0xFF, ip >> 16 & 0xFF, ip >> 8 & 0xFF, ip & 0xFF);
 }
 
 }

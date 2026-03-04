@@ -36,7 +36,7 @@ export class provider {
         provider() = default;
         virtual ~provider() = default;
 
-        virtual std::expected<void, error> notify(const common::alert_stencil_object& msg, NetworkIpFilter* ipFilter) = 0;
+        virtual std::expected<void, error> notify(spdlog::logger& logger, const common::alert_stencil_object& msg, NetworkIpFilter* ipFilter) = 0;
 };
 
 export class registry {
