@@ -104,14 +104,6 @@ add_custom_command(
 )
 target_sources(server PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/migrations.inc)
 
-add_executable(test_notifications "test/notifications.cpp"
-  notifications/providers/webhook.cpp
-)
-target_sources(test_notifications PRIVATE FILE_SET CXX_MODULES FILES
-  notifications/notifications.cppm
-  notifications/provider.cppm
-)
-target_link_libraries(test_notifications PRIVATE
-  common
-  spdlogModule glazeModule cprModule
-)
+if(CUTIE_LOGS_BUILD_TESTS)
+  add_subdirectory("test")
+endif()

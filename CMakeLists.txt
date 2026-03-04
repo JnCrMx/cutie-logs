@@ -8,6 +8,7 @@ set(TOP_LEVEL_PROJECT_NAME ${PROJECT_NAME})
 set(TOP_LEVEL_PROJECT_VERSION ${PROJECT_VERSION})
 
 option(CUTIE_LOGS_GENERATE_POT "Generate .pot file" OFF)
+option(CUTIE_LOGS_BUILD_TESTS "Build tests" ON)
 
 if(CUTIE_LOGS_GENERATE_POT)
     FetchContent_Declare(i18n++
@@ -18,6 +19,10 @@ if(CUTIE_LOGS_GENERATE_POT)
     set(BUILD_PLUGIN ON CACHE BOOL "" FORCE)
     set(BUILD_MERGE ON CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(i18n++)
+endif()
+
+if(CUTIE_LOGS_BUILD_TESTS)
+    enable_testing()
 endif()
 
 ExternalProject_Add(frontend
