@@ -56,7 +56,7 @@ docker run -p 4318:4318 -p 8080:8080 -e CUTIE_LOGS_DATABASE_URL=postgres://... g
 
 ## Command Line Options
 ```
-Usage: cutie-logs [--help] [--version] [--otel-address ADDRESS] [--web-address ADDRESS] [--web-dev-path PATH] [--skip-database-consistency] [--disable-web] [--geoip-country-url URL] [--geoip-asn-url URL] [--geoip-city-url URL] [--self-ingest] [--database-url CONNECTION_STRING]
+Usage: cutie-logs [--help] [--version] [--otel-address ADDRESS] [--web-address ADDRESS] [--web-dev-path PATH] [--skip-database-consistency] [--disable-web] [--geoip-country-url URL] [--geoip-asn-url URL] [--geoip-city-url URL] [--self-ingest] [--outgoing-ip-filter FILTER] --database-url CONNECTION_STRING
 
 Optional arguments:
   -h, --help                                    shows help message and exits
@@ -70,5 +70,9 @@ Optional arguments:
   --geoip-asn-url URL                           URL to download GeoLite2-ASN database from (env: CUTIE_LOGS_GEOIP_ASN_URL)
   --geoip-city-url URL                          URL to download GeoLite2-City database from (env: CUTIE_LOGS_GEOIP_CITY_URL)
   --self-ingest                                 Ingest internal instance logs back into the local database (env: CUTIE_LOGS_SELF_INGEST)
-  --database, --database-url CONNECTION_STRING  Database connection string (env: CUTIE_LOGS_DATABASE_URL)
+  --outgoing-ip-filter FILTER                   Filter for outgoing IP addresses for notifications (env: CUTIE_LOGS_OUTGOING_IP_FILTER)
+  --database, --database-url CONNECTION_STRING  Database connection string (env: CUTIE_LOGS_DATABASE_URL) [required]
 ```
+
+### Detailed documentation for specific options
+#### [`--outgoing-ip-filter`](docs/outgoing-ip-filter.md)

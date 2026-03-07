@@ -32,6 +32,10 @@ class webhook_provider : public provider {
                         auto* sockaddr = reinterpret_cast<sockaddr_in*>(&address->addr);
                         uint32_t ip = ntohl(sockaddr->sin_addr.s_addr);
                         ip_string = common::ipv4_to_string(ip);
+                    } else if(address->family == AF_INET6) {
+                        auto* sockaddr = reinterpret_cast<sockaddr_in6*>(&address->addr);
+                        __uint128_t ip = common::ntoh128(std::bit_cast<__uint128_t>(sockaddr->sin6_addr.s6_addr));
+                        ip_string = common::ipv6_to_string(ip);
                     }
                     static_cast<curl_opensocket_data_t*>(clientp)->logger.warn("Blocking webhook request to IP address \"{}\" due to network IP filter rules", ip_string);
                     return CURL_SOCKET_BAD;

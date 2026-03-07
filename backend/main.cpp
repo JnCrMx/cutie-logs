@@ -17,6 +17,7 @@ import backend.opentelemetry;
 import backend.web;
 import backend.notifications;
 import backend.self_sink;
+import backend.utils;
 
 template<typename T>
 std::optional<T> get_env(std::string arg) {
@@ -65,6 +66,16 @@ std::optional<T> env_present(argparse::ArgumentParser& parser, std::string_view 
     return parser.present<T>(arg);
 }
 
+constexpr const char* default_ip_filter =
+    // block local, private, and zero-conf IPv4
+    "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.0/8,169.254.0.0/16,0.0.0.0/8,"
+    // block carrier-grade NAT, multicast, and broadcast IPv4
+    "100.64.0.0/10,224.0.0.0/4,240.0.0.0/4,255.255.255.255/32,"
+    // block local, private, and unspecified IPv6
+    "::1/128,fc00::/7,fe80::/10,::/128,"
+    // block IPv4-mapped IPv6 & multicast IPv6
+    "::ffff:0:0/96,ff00::/8";
+
 int main(int argc, char** argv) {
     spdlog::cfg::load_env_levels();
 
@@ -96,6 +107,9 @@ int main(int argc, char** argv) {
     program.add_argument("--self-ingest").default_value(false)
         .help("Ingest internal instance logs back into the local database (env: CUTIE_LOGS_SELF_INGEST)")
         .implicit_value(true);
+    program.add_argument("--outgoing-ip-filter")
+        .help("Filter for outgoing IP addresses for notifications (env: CUTIE_LOGS_OUTGOING_IP_FILTER)")
+        .nargs(1).metavar("FILTER");
     auto& db_arg = program.add_argument("--database", "--database-url")
         .help("Database connection string (env: CUTIE_LOGS_DATABASE_URL)")
         .nargs(1).metavar("CONNECTION_STRING");
@@ -128,6 +142,26 @@ int main(int argc, char** argv) {
         logger->info("Self-ingestion enabled");
     }
 
+    std::string ip_filter_string = default_ip_filter;
+    if(auto ip_filter = std::getenv("CUTIE_LOGS_OUTGOING_IP_FILTER")) {
+        std::string new_ip_filter_string = ip_filter;
+        if(auto pos = new_ip_filter_string.find("..."); pos != std::string::npos) {
+            new_ip_filter_string = new_ip_filter_string.replace(pos, 3, ip_filter_string);
+        }
+        ip_filter_string = new_ip_filter_string;
+    }
+    if(auto ip_filter = env_present(program, "--outgoing-ip-filter")) {
+        std::string new_ip_filter_string = *ip_filter;
+        if(auto pos = new_ip_filter_string.find("..."); pos != std::string::npos) {
+            new_ip_filter_string = new_ip_filter_string.replace(pos, 3, ip_filter_string);
+        }
+        ip_filter_string = new_ip_filter_string;
+    }
+    spdlog::debug("Full outgoing IP filter is: {}", ip_filter_string);
+    backend::NetworkIpFilter ip_filter{ip_filter_string};
+    spdlog::debug("Parsed outgoing IPv4 filters: {}", ip_filter.get_ipv4_filterlist());
+    spdlog::debug("Parsed outgoing IPv6 filters: {}", ip_filter.get_ipv6_filterlist());
+
     static common::shared_settings settings{};
     if(auto country_url = env_present(program, "--geoip-country-url")) {
         settings.geoip.country_url = *country_url;
@@ -154,7 +188,7 @@ int main(int argc, char** argv) {
         web_server.serve_threaded();
     }
 
-    opentelemetry::Server opentelemetry_server(db, Pistache::Address(env_get(program, "--otel-address")));
+    opentelemetry::Server opentelemetry_server(db, &ip_filter, Pistache::Address(env_get(program, "--otel-address")));
     opentelemetry_server.serve();
 
     return 0;

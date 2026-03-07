@@ -11,11 +11,12 @@ module;
 export module backend.utils:network_ip_filter;
 
 import common;
+import spdlog;
 
 namespace backend {
 
 export class NetworkIpFilter {
-    private:
+    public:
         enum class filter_action {
             deny,
             allow,
@@ -31,7 +32,7 @@ export class NetworkIpFilter {
             int prefix_len;
             filter_action action = filter_action::deny;
         };
-
+    private:
         std::vector<IPv4Subnet> filterlist_ipv4;
         std::vector<IPv6Subnet> filterlist_ipv6;
 
@@ -39,10 +40,17 @@ export class NetworkIpFilter {
         NetworkIpFilter(std::string_view filterlist = "") {
             for(auto rule_ : filterlist | std::views::split(',')) {
                 std::string_view rule{rule_};
+
+                if(auto first = rule.find_first_not_of(" \t\r\n"); first != std::string_view::npos) {
+                    rule.remove_prefix(first);
+                }
+                if(auto last = rule.find_last_not_of(" \t\r\n"); last != std::string_view::npos) {
+                    rule.remove_suffix(rule.size() - last - 1);
+                }
                 if(rule.empty()) continue;
 
                 filter_action action = filter_action::deny; // if not action is given, default to block
-                int prefix_len = 32; // if no mask is given, block only a single IP address
+                int prefix_len = -1; // if no mask is given, block only a single IP address
 
                 if(rule[0] == '+') {
                     action = filter_action::allow;
@@ -61,8 +69,18 @@ export class NetworkIpFilter {
                 }
 
                 if(auto ipv4 = common::parse_ipv4(rule)) {
+                    if(prefix_len == -1) {
+                        prefix_len = 32;
+                    } else if(prefix_len > 32 || prefix_len < 0) {
+                        throw std::runtime_error("invalid IP address mask: " + std::to_string(prefix_len));
+                    }
                     filterlist_ipv4.emplace_back(*ipv4, prefix_len, action);
                 } else if(auto ipv6 = common::parse_ipv6(rule)) {
+                    if(prefix_len == -1) {
+                        prefix_len = 128;
+                    } else if(prefix_len > 128 || prefix_len < 0) {
+                        throw std::runtime_error("invalid IP address mask: " + std::to_string(prefix_len));
+                    }
                     filterlist_ipv6.emplace_back(*ipv6, prefix_len, action);
                 } else {
                     throw std::runtime_error("failed to parse ip address: " + std::string{rule});
@@ -110,8 +128,46 @@ export class NetworkIpFilter {
                 return filter(ip);
             }
 
-            return true;
+            return false; // fail closed
+        }
+
+        const std::vector<IPv4Subnet>& get_ipv4_filterlist() const {
+            return filterlist_ipv4;
+        }
+        const std::vector<IPv6Subnet>& get_ipv6_filterlist() const {
+            return filterlist_ipv6;
         }
 };
 
 }
+
+export template<>
+struct fmt::formatter<backend::NetworkIpFilter::filter_action> : fmt::formatter<std::string>
+{
+    auto format(backend::NetworkIpFilter::filter_action action, format_context &ctx) const -> decltype(ctx.out())
+    {
+        switch (action) {
+            case backend::NetworkIpFilter::filter_action::deny: return fmt::format_to(ctx.out(), "DENY");
+            case backend::NetworkIpFilter::filter_action::allow: return fmt::format_to(ctx.out(), "ALLOW");
+            default: return fmt::format_to(ctx.out(), "UNKNOWN");
+        }
+    }
+};
+
+export template<>
+struct fmt::formatter<backend::NetworkIpFilter::IPv4Subnet> : fmt::formatter<std::string>
+{
+    auto format(const backend::NetworkIpFilter::IPv4Subnet& subnet, format_context &ctx) const -> decltype(ctx.out())
+    {
+        return fmt::format_to(ctx.out(), "{} {}/{}", subnet.action, common::ipv4_to_string(subnet.network), subnet.prefix_len);
+    }
+};
+
+export template<>
+struct fmt::formatter<backend::NetworkIpFilter::IPv6Subnet> : fmt::formatter<std::string>
+{
+    auto format(const backend::NetworkIpFilter::IPv6Subnet& subnet, format_context &ctx) const -> decltype(ctx.out())
+    {
+        return fmt::format_to(ctx.out(), "{} {}/{}", subnet.action, common::ipv6_to_string(subnet.network), subnet.prefix_len);
+    }
+};

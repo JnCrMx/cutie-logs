@@ -65,8 +65,8 @@ namespace backend::opentelemetry {
                     .flags(Pistache::Tcp::Options::ReuseAddr);
             }
 
-            Server(database::Database& db, Pistache::Address address = default_address(), Pistache::Http::Endpoint::Options options = default_options())
-                : db(db), address(address), server(address), router(), logger(spdlog::default_logger()->clone("opentelemetry"))
+            Server(database::Database& db, NetworkIpFilter* ip_filter, Pistache::Address address = default_address(), Pistache::Http::Endpoint::Options options = default_options())
+                : db(db), ip_filter(ip_filter), address(address), server(address), router(), logger(spdlog::default_logger()->clone("opentelemetry"))
             {
                 server.init(options);
 
@@ -120,7 +120,7 @@ namespace backend::opentelemetry {
                         txn.exec(pqxx::prepped{"update_alert_result"}, {rule.id, false, provider.error().message});
                         continue;
                     }
-                    auto result = (*provider)->notify(*logger, msg, nullptr);
+                    auto result = (*provider)->notify(*logger, msg, ip_filter);
                     if(!result) {
                         logger->error("Failed to send notification for rule {}:{}: {}",
                             rule.id, rule.name, result.error().message);
@@ -231,6 +231,7 @@ namespace backend::opentelemetry {
             Pistache::Http::Endpoint server;
             Pistache::Rest::Router router;
             database::Database& db;
+            NetworkIpFilter* ip_filter;
 
             std::map<unsigned int, common::alert_rule> alert_rules;
     };

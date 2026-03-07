@@ -195,4 +195,18 @@ export std::string ipv4_to_string(uint32_t ip) {
     return std::format("{}.{}.{}.{}", ip >> 24 & 0xFF, ip >> 16 & 0xFF, ip >> 8 & 0xFF, ip & 0xFF);
 }
 
+export std::string ipv6_to_string(__uint128_t ip) {
+    return std::format(
+        "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}",
+        static_cast<uint16_t>(ip >> 112),
+        static_cast<uint16_t>(ip >> 96),
+        static_cast<uint16_t>(ip >> 80),
+        static_cast<uint16_t>(ip >> 64),
+        static_cast<uint16_t>(ip >> 48),
+        static_cast<uint16_t>(ip >> 32),
+        static_cast<uint16_t>(ip >> 16),
+        static_cast<uint16_t>(ip)
+    );
+}
+
 }
