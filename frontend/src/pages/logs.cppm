@@ -131,8 +131,8 @@ export class logs : public page {
 
             unsigned int offset = current_page * page_limit;
             auto url = std::format("/api/v1/logs/stencil?limit={}&offset={}&attributes={}&scopes={}&resources={}&stencil={}",
-                limit, offset, attributes_selector, scopes_selector, resources_selector, stencil_format);
-            webpp::eval("window.open('{}', '_blank');", url);
+                limit, offset, attributes_selector, scopes_selector, resources_selector, glz::url_encode(stencil_format));
+            webpp::eval("window.open({}, '_blank');", glz::write_json(url).value_or("\"error\""));
 
             co_return;
         };

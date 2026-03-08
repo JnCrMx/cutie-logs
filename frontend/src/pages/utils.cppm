@@ -3,6 +3,7 @@ export module frontend.pages:utils;
 import std;
 import webpp;
 import i18n;
+import glaze;
 
 import common;
 import frontend.components;
@@ -59,7 +60,8 @@ std::string build_attributes_selector(const std::unordered_map<std::string, bool
     std::string attributes_selector{};
     for(const auto& [attr, selected] : selected_attributes) {
         if(selected) {
-            attributes_selector += std::format("{},", attr);
+            attributes_selector += glz::url_encode(attr);
+            attributes_selector += ",";
         }
     }
     if(!attributes_selector.empty()) {
@@ -71,7 +73,8 @@ std::string build_scopes_selector(const std::unordered_map<std::string, bool>& s
     std::string scopes_selector{};
     for(const auto& [scope, selected] : selected_scopes) {
         if(selected) {
-            scopes_selector += std::format("{},", scope.empty() ? "<empty>" : scope);
+            scopes_selector += (scope.empty() ? "<empty>" : glz::url_encode(scope));
+            scopes_selector += ",";
         }
     }
     return scopes_selector+"<dummy>";
@@ -80,7 +83,8 @@ std::string build_resources_selector(const std::unordered_map<std::string, bool>
     std::string resources_selector{};
     for(const auto& [res, selected] : selected_resources) {
         if(selected) {
-            resources_selector += std::format("{},", res);
+            resources_selector += glz::url_encode(res);
+            resources_selector += ",";
         }
     }
     return resources_selector+"0";
