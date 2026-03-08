@@ -135,7 +135,7 @@ export class table : public page {
                 thead{tr{
                     each(table_column_order, [&](const std::string& attr) { return make_th(attr); })
                 }},
-                each(logs.logs, [&, this](const common::log_entry& entry) {
+                each(logs, [&, this](const common::log_entry& entry) {
                     using sys_seconds_double = std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double>>;
                     auto timestamp_double = sys_seconds_double{std::chrono::duration<double>{entry.timestamp}};
                     auto timestamp = std::chrono::time_point_cast<std::chrono::sys_seconds::duration>(timestamp_double);
@@ -228,7 +228,7 @@ export class table : public page {
                     order.push_back(n);
                 }
             }
-            for(const auto& entry : logs.logs) {
+            for(const auto& entry : logs) {
                 if(!entry.body.is_null() && (!entry.body.is_string() || !entry.body.get_string().empty())) {
                     if(std::find_if(order.begin(), order.end(), [](const std::string& str){
                         return str.starts_with(":B:");
@@ -265,10 +265,13 @@ export class table : public page {
             unsigned int offset = current_page * page_limit;
             auto url = std::format("/api/v1/logs?limit={}&offset={}&attributes={}&scopes={}&resources={}",
                 page_limit, offset, attributes_selector, scopes_selector, resources_selector);
-            logs =
-                glz::read<common::beve_opts, common::logs_response>(co_await webpp::coro::fetch(url, utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes)))
-                .value_or(common::logs_response{});
-            is_last_page = logs.logs.size() < page_limit;
+            if(auto error = glz::read_beve_delimited<common::beve_opts, common::logs_response>(logs,
+                co_await webpp::coro::fetch(url, utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes))))
+            {
+                components::show_alert("run_query_alert", std::string{"Failed to parse logs"_},
+                    glz::format_error(error), std::chrono::seconds(30));
+            }
+            is_last_page = logs.size() < page_limit;
 
             webpp::get_element_by_id("run_button_icon")->remove_class("hidden");
             webpp::get_element_by_id("run_button_loading")->add_class("hidden");
@@ -481,8 +484,11 @@ export class table : public page {
                     dv{{_id{"pagination_top"}, _class{"mx-auto my-4"}}},
                     dv{{_id{"table"}, _class{"overflow-x-auto"}}},
                     dv{{_id{"pagination_bottom"}, _class{"mx-auto my-4"}}},
-                    dialog_add_custom_column(ctx),
-                }
+                },
+                dialog_add_custom_column(ctx),
+                dv{{_id{"toasts"}, _class{"toast toast-top toast-end z-50"}},
+                    components::alert("run_query_alert", "mb-4")
+                },
             };
         }
 };
