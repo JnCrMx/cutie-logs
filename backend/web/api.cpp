@@ -187,9 +187,9 @@ std::string build_resource_filter(const std::vector<unsigned int>& resources) {
     return filter;
 }
 
-std::string build_query(pqxx::transaction_base& txn, const query_parameters& params) {
+std::string build_query(pqxx::transaction_base& txn, const query_parameters& params, bool force_all_attributes = false) {
     std::string query = "SELECT resource, extract(epoch from timestamp) as unix_time, scope, severity, body";
-    if(std::holds_alternative<query_parameters::all_attributes>(*params.attributes)) {
+    if(force_all_attributes || std::holds_alternative<query_parameters::all_attributes>(*params.attributes)) {
         query += ", attributes";
     } else {
         for(const auto& attr : std::get<std::vector<std::string>>(*params.attributes)) {
@@ -243,11 +243,7 @@ std::vector<common::log_entry> get_logs(pqxx::transaction_base& txn, const query
 }
 
 void stream_logs_all_attributes(pqxx::transaction_base& txn, const query_parameters& params, std::invocable<const common::log_entry&, unsigned int> auto&& consumer) {
-    if(!std::holds_alternative<query_parameters::all_attributes>(*params.attributes)) {
-        throw std::invalid_argument("params.attributes MUST be query_parameters::all_attributes");
-    }
-
-    std::string query = build_query(txn, params);
+    std::string query = build_query(txn, params, true);
     unsigned int row_index = 0;
     for(const auto& [resource, timestamp, scope, severity, body, attributes] :
         txn.stream<unsigned int, double, std::string, common::log_severity, glz::generic, glz::generic>(query))
@@ -417,8 +413,6 @@ void Server::setup_api_routes() {
                     r.attributes = row["attributes"].as<glz::generic>();
                     r.created_at = row["created_at"].as<double>();
                 }
-
-                params.attributes = query_parameters::all_attributes{};
 
                 auto stream = response.stream(Pistache::Http::Code::Ok);
                 stream_logs_all_attributes(txn, params, [&](const common::log_entry& entry, unsigned int row_index) {
