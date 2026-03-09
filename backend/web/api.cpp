@@ -283,7 +283,11 @@ namespace detail {
 
     template<std::size_t... Is>
     void assign_attributes(common::log_entry& log, const auto& fields, const std::vector<std::string>& attr_names, std::index_sequence<Is...>) {
-        (..., (log.attributes[attr_names[Is]] = std::get<5 + Is>(fields)));
+        (..., [&](){
+            if(const auto& value = std::get<5 + Is>(fields)) {
+                log.attributes[attr_names[Is]] = value;
+            }
+        }());
     }
 
     template<std::size_t N, std::size_t MAX = 25>
@@ -300,7 +304,7 @@ namespace detail {
         std::string query = build_query(txn, params);
 
         using base_tuple = std::tuple<unsigned int, double, std::string, common::log_severity, glz::generic>;
-        using attributes_tuple = tuple_N<glz::generic, N>::type;
+        using attributes_tuple = tuple_N<std::optional<glz::generic>, N>::type;
         using tuple = tuple_cat_t<base_tuple, attributes_tuple>;
 
         auto stream = stream_helper<tuple>::stream(txn, query);
@@ -312,6 +316,7 @@ namespace detail {
             log.scope = std::get<2>(fields);
             log.severity = std::get<3>(fields);
             log.body = std::get<4>(fields);
+            log.attributes = glz::generic::object_t{};
             assign_attributes(log, fields, attributes, std::make_index_sequence<N>{});
 
             consumer(log, row_index++);
