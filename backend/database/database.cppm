@@ -168,7 +168,7 @@ export class Database {
         constexpr static unsigned int default_worker_count = 4;
 
         Database(const std::string& connection_string, unsigned int worker_count = default_worker_count)
-            : logger(spdlog::default_logger()->clone("database"))
+            : connection_string(connection_string), logger(spdlog::default_logger()->clone("database"))
         {
             connections.reserve(worker_count);
             for(int i = 0; i < worker_count; i++) {
@@ -473,6 +473,34 @@ export class Database {
                 "UPDATE logs SET attributes = $4::jsonb WHERE resource = $1 AND timestamp = to_timestamp($2::double precision) AND scope = $3");
         }
 
+        void reconnect(int index, pqxx::connection& conn, unsigned int attempt = 0, unsigned int max_attempts = 5) {
+            try {
+                logger->info("Reconnecting to database (conneciton {}, attempt {})...", index, attempt+1);
+                if(conn.is_open()) {
+                    conn.close();
+                }
+                conn = pqxx::connection(connection_string);
+                conn.set_session_var("application_name", std::format("backend-worker-{}", index));
+                prepare_statements(conn);
+                logger->info("Reconnected to database (connection {}, attempt {})", index, attempt+1);
+                return;
+            } catch(const std::exception& e) {
+                logger->error("Failed to reconnect to database (connection {}, attempt {}): {}", index, attempt+1, e.what());
+            } catch(...) {
+                logger->error("Failed to reconnect to database (connection {}, attempt {})", index, attempt+1);
+            }
+
+            if(attempt < max_attempts) {
+                std::chrono::seconds backoff{1<<attempt};
+                logger->info("Reconnecting in {} seconds...", backoff.count());
+                std::this_thread::sleep_for(backoff);
+                reconnect(index, conn, attempt + 1, max_attempts);
+            } else {
+                logger->critical("Failed to reconnect to database (connection {}) after {} attempts", index, max_attempts);
+                std::terminate();
+            }
+        }
+
         void worker(unsigned int id, pqxx::connection& conn, std::stop_token st) {
             logger->debug("Worker {} started", id);
             prepare_statements(conn);
@@ -512,11 +540,24 @@ export class Database {
                     break;
                 }
 
-                work(conn);
+                try {
+                    work(conn);
+                } catch(const pqxx::failure& failure) {
+                    logger->error("pqxx failure in worker {}: {}", id, failure.what());
+                    if(failure.poisons_connection()) {
+                        logger->error("Connection of worker {} is poisoned. Reconnecting...");
+                        reconnect(id, conn);
+                    }
+                } catch(const std::exception& ex) {
+                    logger->error("Unhandled exception in worker {}: {}", id, ex.what());
+                } catch(...) {
+                    logger->error("Unhandled unknown exception in worker {}", id);
+                }
                 promise.set_value();
             }
         }
 
+        std::string connection_string;
         std::shared_ptr<spdlog::logger> logger;
         std::vector<pqxx::connection> connections;
         std::vector<std::jthread> threads;
