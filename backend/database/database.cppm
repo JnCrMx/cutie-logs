@@ -29,30 +29,17 @@ namespace pqxx {
     export template<> std::string const type_name<common::log_severity>{"log_severity"};
     export template<> struct nullness<common::log_severity> : pqxx::no_null<common::log_severity> {};
     export template<> struct string_traits<common::log_severity> {
-        static constexpr bool converts_to_string{true};
-        static constexpr bool converts_from_string{true};
-
-        static constexpr zview to_buf(char *begin, char *end, common::log_severity const &value) {
+        [[nodiscard]] static constexpr std::string_view to_buf(std::span<char> buf, common::log_severity const &value, ctx c = {}) {
             if(std::to_underlying(value) >= common::log_severity_names.size()) {
                 throw pqxx::conversion_error{std::format("Could not convert {} to log_severity", std::to_underlying(value))};
             }
             return common::log_severity_names[static_cast<std::underlying_type_t<common::log_severity>>(value)];
         }
-        static char *into_buf(char *begin, char *end, common::log_severity const &value) {
-            if(std::to_underlying(value) >= common::log_severity_names.size()) {
-                throw pqxx::conversion_error{std::format("Could not convert {} to log_severity", std::to_underlying(value))};
-            }
-            const char* str = common::log_severity_names[static_cast<std::underlying_type_t<common::log_severity>>(value)];
-            auto size = std::char_traits<char>::length(str)+1;
-            if(static_cast<std::size_t>(end - begin) < size) {
-                throw pqxx::conversion_error{std::format("Buffer too small for log_severity")};
-            }
-            return std::copy(str, str + size, begin);
+        [[nodiscard]] static constexpr std::size_t size_buffer(common::log_severity const &value) noexcept {
+            return 0; // no extra buffer needed
         }
-        constexpr static std::size_t size_buffer(common::log_severity const &value) noexcept {
-            return sizeof("UNSPECIFIED");
-        }
-        static common::log_severity from_string(std::string_view text) {
+
+        [[nodiscard]] static constexpr common::log_severity from_string(std::string_view text, ctx c = {}) {
             for(std::underlying_type_t<common::log_severity> i{}; i < common::log_severity_names.size(); i++) {
                 if(text == common::log_severity_names[i]) {
                     return static_cast<common::log_severity>(i);
@@ -65,30 +52,16 @@ namespace pqxx {
     export template<> std::string const type_name<common::filter_type>{"filter_type"};
     export template<> struct nullness<common::filter_type> : pqxx::no_null<common::filter_type> {};
     export template<> struct string_traits<common::filter_type> {
-        static constexpr bool converts_to_string{true};
-        static constexpr bool converts_from_string{true};
-
-        static constexpr zview to_buf(char *begin, char *end, common::filter_type const &value) {
+        [[nodiscard]] static constexpr std::string_view to_buf(std::span<char> buf, common::filter_type const &value, ctx c = {}) {
             if(std::to_underlying(value) >= common::filter_type_names.size()) {
                 throw pqxx::conversion_error{std::format("Could not convert {} to filter_type", std::to_underlying(value))};
             }
             return common::filter_type_names[static_cast<std::underlying_type_t<common::filter_type>>(value)];
         }
-        static char *into_buf(char *begin, char *end, common::filter_type const &value) {
-            if(std::to_underlying(value) >= common::filter_type_names.size()) {
-                throw pqxx::conversion_error{std::format("Could not convert {} to filter_type", std::to_underlying(value))};
-            }
-            const char* str = common::filter_type_names[static_cast<std::underlying_type_t<common::filter_type>>(value)];
-            auto size = std::char_traits<char>::length(str)+1;
-            if(static_cast<std::size_t>(end - begin) < size) {
-                throw pqxx::conversion_error{std::format("Buffer too small for filter_type")};
-            }
-            return std::copy(str, str + size, begin);
+        [[nodiscard]] static constexpr std::size_t size_buffer(common::filter_type const &value) noexcept {
+            return 0; // no extra buffer needed
         }
-        constexpr static std::size_t size_buffer(common::filter_type const &value) noexcept {
-            return sizeof("INCLUDE");
-        }
-        static common::filter_type from_string(std::string_view text) {
+        [[nodiscard]] static constexpr common::filter_type from_string(std::string_view text, ctx c = {}) {
             for(std::underlying_type_t<common::filter_type> i{}; i < common::filter_type_names.size(); i++) {
                 if(text == common::filter_type_names[i]) {
                     return static_cast<common::filter_type>(i);
@@ -101,30 +74,16 @@ namespace pqxx {
     export template<> std::string const type_name<common::rule_action>{"rule_action"};
     export template<> struct nullness<common::rule_action> : pqxx::no_null<common::rule_action> {};
     export template<> struct string_traits<common::rule_action> {
-        static constexpr bool converts_to_string{true};
-        static constexpr bool converts_from_string{true};
-
-        static constexpr zview to_buf(char *begin, char *end, common::rule_action const &value) {
+        [[nodiscard]] static constexpr std::string_view to_buf(std::span<char> buf, common::rule_action const &value, ctx c = {}) {
             if(std::to_underlying(value) >= common::rule_action_names.size()) {
                 throw pqxx::conversion_error{std::format("Could not convert {} to rule_action", std::to_underlying(value))};
             }
             return common::rule_action_names[static_cast<std::underlying_type_t<common::rule_action>>(value)];
         }
-        static char *into_buf(char *begin, char *end, common::rule_action const &value) {
-            if(std::to_underlying(value) >= common::rule_action_names.size()) {
-                throw pqxx::conversion_error{std::format("Could not convert {} to rule_action", std::to_underlying(value))};
-            }
-            const char* str = common::rule_action_names[static_cast<std::underlying_type_t<common::rule_action>>(value)];
-            auto size = std::char_traits<char>::length(str)+1;
-            if(static_cast<std::size_t>(end - begin) < size) {
-                throw pqxx::conversion_error{std::format("Buffer too small for rule_action")};
-            }
-            return std::copy(str, str + size, begin);
+        [[nodiscard]] static constexpr std::size_t size_buffer(common::rule_action const &value) noexcept {
+            return 0; // no extra buffer needed
         }
-        constexpr static std::size_t size_buffer(common::rule_action const &value) noexcept {
-            return sizeof("TRANSFORM");
-        }
-        static common::rule_action from_string(std::string_view text) {
+        [[nodiscard]] static constexpr common::rule_action from_string(std::string_view text, ctx c = {}) {
             for(std::underlying_type_t<common::rule_action> i{}; i < common::rule_action_names.size(); i++) {
                 if(text == common::rule_action_names[i]) {
                     return static_cast<common::rule_action>(i);
@@ -137,35 +96,67 @@ namespace pqxx {
     export template<> std::string const type_name<glz::generic>{"glz::generic"};
     export template<> struct nullness<glz::generic> : pqxx::no_null<glz::generic> {};
     export template<> struct string_traits<glz::generic> {
-        static constexpr bool converts_from_string{true};
-
-        static glz::generic from_string(std::string_view text) {
+        [[nodiscard]] static constexpr glz::generic from_string(std::string_view text, ctx c = {}) {
             auto ret = glz::read_json<glz::generic>(text);
             if(!ret) {
                 throw pqxx::conversion_error{std::format("Could not convert {} to glz::generic: {}", text, glz::format_error(ret.error()))};
             }
             return *ret;
         }
+
+        // TODO: enable this once https://github.com/stephenberry/glaze/issues/2362 is fixed
+        /*[[nodiscard]] static constexpr std::size_t size_buffer_(glz::generic const &value) noexcept {
+            if(value.is_null()) return 4;
+            if(value.is_boolean()) return 5;
+            if(value.is_number()) return 32;
+            if(value.is_string()) {
+                return value.get_string().size() * 2 + 2;
+            }
+            if(value.is_array()) {
+                const auto& array = value.get_array();
+                if(array.empty()) return 2;
+
+                std::size_t total = 2;
+                for(const auto& item : array) {
+                    total += size_buffer_(item) + 1;
+                }
+                return total;
+            }
+            if(value.is_object()) {
+                const auto& object = value.get_object();
+                if(object.empty()) return 2;
+
+                std::size_t total = 2;
+                for(const auto& [key, value] : object) {
+                    total += key.size() * 2 + 2 + 1 + size_buffer_(value) + 1;
+                }
+                return total;
+            }
+            return 0;
+        }
+
+        [[nodiscard]] static constexpr std::size_t size_buffer(glz::generic const &value) noexcept {
+            constexpr std::size_t min_size = 512;
+            return std::max(size_buffer_(value), min_size);
+        }
+
+        [[nodiscard]] static std::string_view to_buf(std::span<char> buf, glz::generic const &value, ctx c = {}) {
+            auto ec = glz::write_json(value, buf);
+        }*/
     };
 }
 
 namespace backend::database {
 
-export template<typename T>
-T parse_array(std::string_view sv, const pqxx::connection& conn) {
-    pqxx::array<std::ranges::range_value_t<T>> arr{sv, conn};
-    return T{arr.cbegin(), arr.cend()};
-}
-
 common::standard_filters parse_filters(const pqxx::row& row, const pqxx::connection& conn) {
     common::standard_filters filters;
-    filters.resources.values = parse_array<std::set<unsigned int>>(row["filter_resources"].as<std::string>(), conn);
+    filters.resources.values = row["filter_resources"].as<std::set<unsigned int>>();
     filters.resources.type = row["filter_resources_type"].as<common::filter_type>();
-    filters.scopes.values = parse_array<std::set<std::string>>(row["filter_scopes"].as<std::string>(), conn);
+    filters.scopes.values = row["filter_scopes"].as<std::set<std::string>>();
     filters.scopes.type = row["filter_scopes_type"].as<common::filter_type>();
-    filters.severities.values = parse_array<std::set<common::log_severity>>(row["filter_severities"].as<std::string>(), conn);
+    filters.severities.values = row["filter_severities"].as<std::set<common::log_severity>>();
     filters.severities.type = row["filter_severities_type"].as<common::filter_type>();
-    filters.attributes.values = parse_array<std::set<std::string>>(row["filter_attributes"].as<std::string>(), conn);
+    filters.attributes.values = row["filter_attributes"].as<std::set<std::string>>();
     filters.attributes.type = row["filter_attributes_type"].as<common::filter_type>();
     filters.attribute_values.values = row["filter_attribute_values"].as<glz::generic>();
     filters.attribute_values.type = row["filter_attribute_values_type"].as<common::filter_type>();

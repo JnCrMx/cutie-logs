@@ -13,27 +13,33 @@ find_package(ZLIB REQUIRED)
 
 FetchContent_Declare(opentelemetry-proto
   GIT_REPOSITORY https://github.com/open-telemetry/opentelemetry-proto.git
-  GIT_TAG        v1.9.0)
+  GIT_TAG        v1.10.0
+  GIT_SHALLOW TRUE)
 FetchContent_Declare(pistache
   GIT_REPOSITORY https://github.com/JnCrMx/pistache.git
-  GIT_TAG        cmake-optional-rapidjson)
+  GIT_TAG        cmake-optional-rapidjson
+  GIT_SHALLOW TRUE)
 FetchContent_Declare(gzip-hpp
   GIT_REPOSITORY https://github.com/mapbox/gzip-hpp.git
   GIT_TAG        master
+  GIT_SHALLOW TRUE
   SOURCE_SUBDIR  include)
 FetchContent_Declare(pqxx
   GIT_REPOSITORY https://github.com/jtv/libpqxx.git
-  GIT_TAG        7.10.5)
+  GIT_TAG        8.0.0
+  GIT_SHALLOW TRUE)
 FetchContent_Declare(argparse
   GIT_REPOSITORY https://github.com/p-ranav/argparse.git
-  GIT_TAG        v3.2)
+  GIT_TAG        v3.2
+  GIT_SHALLOW TRUE)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG        v7.0.2
+  GIT_TAG        v7.2.0
   GIT_SHALLOW TRUE)
 FetchContent_Declare(cpr
   GIT_REPOSITORY https://github.com/libcpr/cpr.git
-  GIT_TAG        1.14.2)
+  GIT_TAG        1.14.2
+  GIT_SHALLOW TRUE)
 
 set(PISTACHE_BUILD_TESTS OFF CACHE BOOL "Pistache: Build tests" FORCE)
 set(PISTACHE_USE_RAPIDJSON OFF CACHE BOOL "Pistache: Use RapidJSON" FORCE)
