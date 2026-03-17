@@ -36,7 +36,14 @@ namespace pqxx {
             return common::log_severity_names[static_cast<std::underlying_type_t<common::log_severity>>(value)];
         }
         [[nodiscard]] static constexpr std::size_t size_buffer(common::log_severity const &value) noexcept {
-            return 0; // no extra buffer needed
+            constexpr std::size_t size = [](){
+                std::size_t size = 0;
+                for(const auto& name : common::log_severity_names) {
+                    size = std::max(size, std::string_view::traits_type::length(name));
+                }
+                return size;
+            }();
+            return size;
         }
 
         [[nodiscard]] static constexpr common::log_severity from_string(std::string_view text, ctx c = {}) {
@@ -59,7 +66,14 @@ namespace pqxx {
             return common::filter_type_names[static_cast<std::underlying_type_t<common::filter_type>>(value)];
         }
         [[nodiscard]] static constexpr std::size_t size_buffer(common::filter_type const &value) noexcept {
-            return 0; // no extra buffer needed
+            constexpr std::size_t size = [](){
+                std::size_t size = 0;
+                for(const auto& name : common::filter_type_names) {
+                    size = std::max(size, std::string_view::traits_type::length(name));
+                }
+                return size;
+            }();
+            return size;
         }
         [[nodiscard]] static constexpr common::filter_type from_string(std::string_view text, ctx c = {}) {
             for(std::underlying_type_t<common::filter_type> i{}; i < common::filter_type_names.size(); i++) {
@@ -81,7 +95,14 @@ namespace pqxx {
             return common::rule_action_names[static_cast<std::underlying_type_t<common::rule_action>>(value)];
         }
         [[nodiscard]] static constexpr std::size_t size_buffer(common::rule_action const &value) noexcept {
-            return 0; // no extra buffer needed
+            constexpr std::size_t size = [](){
+                std::size_t size = 0;
+                for(const auto& name : common::rule_action_names) {
+                    size = std::max(size, std::string_view::traits_type::length(name));
+                }
+                return size;
+            }();
+            return size;
         }
         [[nodiscard]] static constexpr common::rule_action from_string(std::string_view text, ctx c = {}) {
             for(std::underlying_type_t<common::rule_action> i{}; i < common::rule_action_names.size(); i++) {
@@ -104,8 +125,7 @@ namespace pqxx {
             return *ret;
         }
 
-        // TODO: enable this once https://github.com/stephenberry/glaze/issues/2362 is fixed
-        /*[[nodiscard]] static constexpr std::size_t size_buffer_(glz::generic const &value) noexcept {
+        [[nodiscard]] static constexpr std::size_t size_buffer_(glz::generic const &value) noexcept {
             if(value.is_null()) return 4;
             if(value.is_boolean()) return 5;
             if(value.is_number()) return 32;
@@ -142,7 +162,15 @@ namespace pqxx {
 
         [[nodiscard]] static std::string_view to_buf(std::span<char> buf, glz::generic const &value, ctx c = {}) {
             auto ec = glz::write_json(value, buf);
-        }*/
+            if(ec) {
+                if(ec.ec == glz::error_code::buffer_overflow) {
+                    throw pqxx::conversion_overrun{std::format("buffer overflow at count = {}", ec.count)};
+                } else {
+                    throw pqxx::conversion_error{glz::format_error(ec)};
+                }
+            }
+            return std::string_view{buf.data(), ec.count};
+        }
     };
 }
 
@@ -202,12 +230,11 @@ export class Database {
         unsigned int ensure_resource(pqxx::connection& conn, const glz::generic& attributes, unsigned int tries = 3) {
             try {
                 pqxx::work txn(conn);
-                std::string attribute_string = attributes.dump().value();
-                pqxx::result res = txn.exec(pqxx::prepped{"find_resource"}, pqxx::params{attribute_string});
+                pqxx::result res = txn.exec(pqxx::prepped{"find_resource"}, pqxx::params{txn, attributes});
                 if(res.size() == 1) {
                     return res[0][0].as<unsigned int>();
                 } else if(res.size() == 0) {
-                    res = txn.exec(pqxx::prepped{"insert_resource"}, pqxx::params{attribute_string});
+                    res = txn.exec(pqxx::prepped{"insert_resource"}, pqxx::params{txn, attributes});
                     txn.commit();
                     return res[0][0].as<unsigned int>();
                 } else {
@@ -252,7 +279,7 @@ export class Database {
             try {
                 pqxx::work txn(conn);
                 std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double, std::chrono::seconds::period>> ts_seconds = timestamp;
-                txn.exec(pqxx::prepped{"insert_log"}, {resource, ts_seconds.time_since_epoch().count(), scope, severity, attributes.dump().value(), body.dump().value()});
+                txn.exec(pqxx::prepped{"insert_log"}, pqxx::params{txn, resource, ts_seconds.time_since_epoch().count(), scope, severity, attributes, body});
 
                 if(attributes.is_object() && attributes.size() > 0){
                     std::string select_for_update = "SELECT * FROM log_attributes WHERE attribute IN (";
@@ -274,7 +301,7 @@ export class Database {
 
                     for(const auto& key : keys) {
                         const auto& value = attributes[key];
-                        txn.exec(pqxx::prepped{"update_attribute"}, {key, 1,
+                        txn.exec(pqxx::prepped{"update_attribute"}, pqxx::params{key, 1,
                             static_cast<int>(value.is_null()), static_cast<int>(value.is_number()), static_cast<int>(value.is_string()),
                             static_cast<int>(value.is_boolean()), static_cast<int>(value.is_array()), static_cast<int>(value.is_object())
                         });

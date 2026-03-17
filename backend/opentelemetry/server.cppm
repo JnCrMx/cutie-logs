@@ -117,17 +117,17 @@ namespace backend::opentelemetry {
                     if(!provider) {
                         logger->error("Failed to create notification provider {} for rule {}:{}: {}",
                             rule.notification_provider, rule.id, rule.name, provider.error().message);
-                        txn.exec(pqxx::prepped{"update_alert_result"}, {rule.id, false, provider.error().message});
+                        txn.exec(pqxx::prepped{"update_alert_result"}, pqxx::params{rule.id, false, provider.error().message});
                         continue;
                     }
                     auto result = (*provider)->notify(*logger, msg, ip_filter);
                     if(!result) {
                         logger->error("Failed to send notification for rule {}:{}: {}",
                             rule.id, rule.name, result.error().message);
-                        txn.exec(pqxx::prepped{"update_alert_result"}, {rule.id, false, result.error().message});
+                        txn.exec(pqxx::prepped{"update_alert_result"}, pqxx::params{rule.id, false, result.error().message});
                         continue;
                     }
-                    txn.exec(pqxx::prepped{"update_alert_result"}, {rule.id, true, std::nullopt});
+                    txn.exec(pqxx::prepped{"update_alert_result"}, pqxx::params{rule.id, true, std::nullopt});
                 }
                 txn.commit();
             }

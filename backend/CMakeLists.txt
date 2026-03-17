@@ -34,7 +34,7 @@ FetchContent_Declare(argparse
   GIT_SHALLOW TRUE)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG        v7.2.0
+  GIT_TAG        v7.2.1
   GIT_SHALLOW TRUE)
 FetchContent_Declare(cpr
   GIT_REPOSITORY https://github.com/libcpr/cpr.git

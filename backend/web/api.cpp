@@ -534,47 +534,34 @@ void Server::setup_api_routes() {
             std::vector<std::string> filter_scopes{rule.filters.scopes.values.begin(), rule.filters.scopes.values.end()};
             std::vector<common::log_severity> filter_severities{rule.filters.severities.values.begin(), rule.filters.severities.values.end()};
             std::vector<std::string> filter_attributes{rule.filters.attributes.values.begin(), rule.filters.attributes.values.end()};
-            std::string filter_attribute_values = glz::write_json(rule.filters.attribute_values.values).value_or("null");
 
             try {
                 pqxx::result cleanup_rule;
                 if constexpr (update) {
                     cleanup_rule = txn.exec(pqxx::prepped{"update_cleanup_rule"},
-                        pqxx::params{
+                        pqxx::params{txn,
                             rule.name, rule.description, rule.enabled, rule.execution_interval.count(),
                             rule.filter_minimum_age.count(),
                             filter_resources, rule.filters.resources.type,
                             filter_scopes, rule.filters.scopes.type,
                             filter_severities, rule.filters.severities.type,
                             filter_attributes, rule.filters.attributes.type,
-                            filter_attribute_values, rule.filters.attribute_values.type,
-                            rule.action, rule.action_options.and_then([](const glz::generic& v) -> std::optional<std::string> {
-                                if(auto r = glz::write_json(v)) {
-                                    return r.value();
-                                } else {
-                                    return std::nullopt;
-                                }
-                            }),
+                            rule.filters.attribute_values.values, rule.filters.attribute_values.type,
+                            rule.action, rule.action_options,
                             id
                         }
                     );
                 } else {
                     cleanup_rule = txn.exec(pqxx::prepped{"insert_cleanup_rule"},
-                        pqxx::params{
+                        pqxx::params{txn,
                             rule.name, rule.description, rule.enabled, rule.execution_interval.count(),
                             rule.filter_minimum_age.count(),
                             filter_resources, rule.filters.resources.type,
                             filter_scopes, rule.filters.scopes.type,
                             filter_severities, rule.filters.severities.type,
                             filter_attributes, rule.filters.attributes.type,
-                            filter_attribute_values, rule.filters.attribute_values.type,
-                            rule.action, rule.action_options.and_then([](const glz::generic& v) -> std::optional<std::string> {
-                                if(auto r = glz::write_json(v)) {
-                                    return r.value();
-                                } else {
-                                    return std::nullopt;
-                                }
-                            }),
+                            rule.filters.attribute_values.values, rule.filters.attribute_values.type,
+                            rule.action, rule.action_options,
                         }
                     );
                 }
@@ -622,7 +609,7 @@ void Server::setup_api_routes() {
         db.queue_work([this, id, response = std::move(response)](pqxx::connection& conn) mutable {
             pqxx::work txn{conn};
             try {
-                auto result = txn.exec(pqxx::prepped{"delete_cleanup_rule"}, id);
+                auto result = txn.exec(pqxx::prepped{"delete_cleanup_rule"}, pqxx::params{id});
                 if(result.affected_rows() == 0) {
                     response.send(Pistache::Http::Code::Not_Found, std::format("Cleanup rule with id {} not found", id));
                     return;
@@ -685,33 +672,32 @@ void Server::setup_api_routes() {
             std::vector<std::string> filter_scopes{rule.filters.scopes.values.begin(), rule.filters.scopes.values.end()};
             std::vector<common::log_severity> filter_severities{rule.filters.severities.values.begin(), rule.filters.severities.values.end()};
             std::vector<std::string> filter_attributes{rule.filters.attributes.values.begin(), rule.filters.attributes.values.end()};
-            std::string filter_attribute_values = glz::write_json(rule.filters.attribute_values.values).value_or("null");
 
             try {
                 pqxx::result alert_rule;
                 if constexpr (update) {
                     alert_rule = txn.exec(pqxx::prepped{"update_alert_rule"},
-                        pqxx::params{
+                        pqxx::params{txn,
                             rule.name, rule.description, rule.enabled,
-                            rule.notification_provider, glz::write_json(rule.notification_options).value_or("{}"),
+                            rule.notification_provider, rule.notification_options,
                             filter_resources, rule.filters.resources.type,
                             filter_scopes, rule.filters.scopes.type,
                             filter_severities, rule.filters.severities.type,
                             filter_attributes, rule.filters.attributes.type,
-                            filter_attribute_values, rule.filters.attribute_values.type,
+                            rule.filters.attribute_values.values, rule.filters.attribute_values.type,
                             id
                         }
                     );
                 } else {
                     alert_rule = txn.exec(pqxx::prepped{"insert_alert_rule"},
-                        pqxx::params{
+                        pqxx::params{txn,
                             rule.name, rule.description, rule.enabled,
-                            rule.notification_provider, glz::write_json(rule.notification_options).value_or("{}"),
+                            rule.notification_provider, rule.notification_options,
                             filter_resources, rule.filters.resources.type,
                             filter_scopes, rule.filters.scopes.type,
                             filter_severities, rule.filters.severities.type,
                             filter_attributes, rule.filters.attributes.type,
-                            filter_attribute_values, rule.filters.attribute_values.type
+                            rule.filters.attribute_values.values, rule.filters.attribute_values.type
                         }
                     );
                 }
@@ -764,7 +750,7 @@ void Server::setup_api_routes() {
         db.queue_work([this, id, response = std::move(response)](pqxx::connection& conn) mutable {
             pqxx::work txn{conn};
             try {
-                auto result = txn.exec(pqxx::prepped{"delete_alert_rule"}, id);
+                auto result = txn.exec(pqxx::prepped{"delete_alert_rule"}, pqxx::params{id});
                 if(result.affected_rows() == 0) {
                     response.send(Pistache::Http::Code::Not_Found, std::format("Alert rule with id {} not found", id));
                     return;
