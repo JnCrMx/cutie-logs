@@ -38,7 +38,7 @@ export void hide_alert(std::string_view id) {
 }
 export void show_alert(std::string id, const std::string& title, const std::string& message, std::chrono::milliseconds duration) {
     show_alert(id, title, message);
-    webpp::set_timeout(std::chrono::seconds(3), [id = std::move(id)](){
+    webpp::set_timeout(duration, [id = std::move(id)](){
         hide_alert(id);
     });
 }

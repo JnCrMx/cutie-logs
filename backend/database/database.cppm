@@ -29,30 +29,24 @@ namespace pqxx {
     export template<> std::string const type_name<common::log_severity>{"log_severity"};
     export template<> struct nullness<common::log_severity> : pqxx::no_null<common::log_severity> {};
     export template<> struct string_traits<common::log_severity> {
-        static constexpr bool converts_to_string{true};
-        static constexpr bool converts_from_string{true};
-
-        static constexpr zview to_buf(char *begin, char *end, common::log_severity const &value) {
+        [[nodiscard]] static constexpr std::string_view to_buf(std::span<char> buf, common::log_severity const &value, ctx c = {}) {
             if(std::to_underlying(value) >= common::log_severity_names.size()) {
                 throw pqxx::conversion_error{std::format("Could not convert {} to log_severity", std::to_underlying(value))};
             }
             return common::log_severity_names[static_cast<std::underlying_type_t<common::log_severity>>(value)];
         }
-        static char *into_buf(char *begin, char *end, common::log_severity const &value) {
-            if(std::to_underlying(value) >= common::log_severity_names.size()) {
-                throw pqxx::conversion_error{std::format("Could not convert {} to log_severity", std::to_underlying(value))};
-            }
-            const char* str = common::log_severity_names[static_cast<std::underlying_type_t<common::log_severity>>(value)];
-            auto size = std::char_traits<char>::length(str)+1;
-            if(static_cast<std::size_t>(end - begin) < size) {
-                throw pqxx::conversion_error{std::format("Buffer too small for log_severity")};
-            }
-            return std::copy(str, str + size, begin);
+        [[nodiscard]] static constexpr std::size_t size_buffer(common::log_severity const &value) noexcept {
+            constexpr std::size_t size = [](){
+                std::size_t size = 0;
+                for(const auto& name : common::log_severity_names) {
+                    size = std::max(size, std::string_view::traits_type::length(name));
+                }
+                return size;
+            }();
+            return size;
         }
-        constexpr static std::size_t size_buffer(common::log_severity const &value) noexcept {
-            return sizeof("UNSPECIFIED");
-        }
-        static common::log_severity from_string(std::string_view text) {
+
+        [[nodiscard]] static constexpr common::log_severity from_string(std::string_view text, ctx c = {}) {
             for(std::underlying_type_t<common::log_severity> i{}; i < common::log_severity_names.size(); i++) {
                 if(text == common::log_severity_names[i]) {
                     return static_cast<common::log_severity>(i);
@@ -65,30 +59,23 @@ namespace pqxx {
     export template<> std::string const type_name<common::filter_type>{"filter_type"};
     export template<> struct nullness<common::filter_type> : pqxx::no_null<common::filter_type> {};
     export template<> struct string_traits<common::filter_type> {
-        static constexpr bool converts_to_string{true};
-        static constexpr bool converts_from_string{true};
-
-        static constexpr zview to_buf(char *begin, char *end, common::filter_type const &value) {
+        [[nodiscard]] static constexpr std::string_view to_buf(std::span<char> buf, common::filter_type const &value, ctx c = {}) {
             if(std::to_underlying(value) >= common::filter_type_names.size()) {
                 throw pqxx::conversion_error{std::format("Could not convert {} to filter_type", std::to_underlying(value))};
             }
             return common::filter_type_names[static_cast<std::underlying_type_t<common::filter_type>>(value)];
         }
-        static char *into_buf(char *begin, char *end, common::filter_type const &value) {
-            if(std::to_underlying(value) >= common::filter_type_names.size()) {
-                throw pqxx::conversion_error{std::format("Could not convert {} to filter_type", std::to_underlying(value))};
-            }
-            const char* str = common::filter_type_names[static_cast<std::underlying_type_t<common::filter_type>>(value)];
-            auto size = std::char_traits<char>::length(str)+1;
-            if(static_cast<std::size_t>(end - begin) < size) {
-                throw pqxx::conversion_error{std::format("Buffer too small for filter_type")};
-            }
-            return std::copy(str, str + size, begin);
+        [[nodiscard]] static constexpr std::size_t size_buffer(common::filter_type const &value) noexcept {
+            constexpr std::size_t size = [](){
+                std::size_t size = 0;
+                for(const auto& name : common::filter_type_names) {
+                    size = std::max(size, std::string_view::traits_type::length(name));
+                }
+                return size;
+            }();
+            return size;
         }
-        constexpr static std::size_t size_buffer(common::filter_type const &value) noexcept {
-            return sizeof("INCLUDE");
-        }
-        static common::filter_type from_string(std::string_view text) {
+        [[nodiscard]] static constexpr common::filter_type from_string(std::string_view text, ctx c = {}) {
             for(std::underlying_type_t<common::filter_type> i{}; i < common::filter_type_names.size(); i++) {
                 if(text == common::filter_type_names[i]) {
                     return static_cast<common::filter_type>(i);
@@ -101,30 +88,23 @@ namespace pqxx {
     export template<> std::string const type_name<common::rule_action>{"rule_action"};
     export template<> struct nullness<common::rule_action> : pqxx::no_null<common::rule_action> {};
     export template<> struct string_traits<common::rule_action> {
-        static constexpr bool converts_to_string{true};
-        static constexpr bool converts_from_string{true};
-
-        static constexpr zview to_buf(char *begin, char *end, common::rule_action const &value) {
+        [[nodiscard]] static constexpr std::string_view to_buf(std::span<char> buf, common::rule_action const &value, ctx c = {}) {
             if(std::to_underlying(value) >= common::rule_action_names.size()) {
                 throw pqxx::conversion_error{std::format("Could not convert {} to rule_action", std::to_underlying(value))};
             }
             return common::rule_action_names[static_cast<std::underlying_type_t<common::rule_action>>(value)];
         }
-        static char *into_buf(char *begin, char *end, common::rule_action const &value) {
-            if(std::to_underlying(value) >= common::rule_action_names.size()) {
-                throw pqxx::conversion_error{std::format("Could not convert {} to rule_action", std::to_underlying(value))};
-            }
-            const char* str = common::rule_action_names[static_cast<std::underlying_type_t<common::rule_action>>(value)];
-            auto size = std::char_traits<char>::length(str)+1;
-            if(static_cast<std::size_t>(end - begin) < size) {
-                throw pqxx::conversion_error{std::format("Buffer too small for rule_action")};
-            }
-            return std::copy(str, str + size, begin);
+        [[nodiscard]] static constexpr std::size_t size_buffer(common::rule_action const &value) noexcept {
+            constexpr std::size_t size = [](){
+                std::size_t size = 0;
+                for(const auto& name : common::rule_action_names) {
+                    size = std::max(size, std::string_view::traits_type::length(name));
+                }
+                return size;
+            }();
+            return size;
         }
-        constexpr static std::size_t size_buffer(common::rule_action const &value) noexcept {
-            return sizeof("TRANSFORM");
-        }
-        static common::rule_action from_string(std::string_view text) {
+        [[nodiscard]] static constexpr common::rule_action from_string(std::string_view text, ctx c = {}) {
             for(std::underlying_type_t<common::rule_action> i{}; i < common::rule_action_names.size(); i++) {
                 if(text == common::rule_action_names[i]) {
                     return static_cast<common::rule_action>(i);
@@ -137,35 +117,74 @@ namespace pqxx {
     export template<> std::string const type_name<glz::generic>{"glz::generic"};
     export template<> struct nullness<glz::generic> : pqxx::no_null<glz::generic> {};
     export template<> struct string_traits<glz::generic> {
-        static constexpr bool converts_from_string{true};
-
-        static glz::generic from_string(std::string_view text) {
+        [[nodiscard]] static constexpr glz::generic from_string(std::string_view text, ctx c = {}) {
             auto ret = glz::read_json<glz::generic>(text);
             if(!ret) {
                 throw pqxx::conversion_error{std::format("Could not convert {} to glz::generic: {}", text, glz::format_error(ret.error()))};
             }
             return *ret;
         }
+
+        [[nodiscard]] static constexpr std::size_t size_buffer_(glz::generic const &value) noexcept {
+            if(value.is_null()) return 4;
+            if(value.is_boolean()) return 5;
+            if(value.is_number()) return 32;
+            if(value.is_string()) {
+                return value.get_string().size() * 2 + 2;
+            }
+            if(value.is_array()) {
+                const auto& array = value.get_array();
+                if(array.empty()) return 2;
+
+                std::size_t total = 2;
+                for(const auto& item : array) {
+                    total += size_buffer_(item) + 1;
+                }
+                return total;
+            }
+            if(value.is_object()) {
+                const auto& object = value.get_object();
+                if(object.empty()) return 2;
+
+                std::size_t total = 2;
+                for(const auto& [key, value] : object) {
+                    total += key.size() * 2 + 2 + 1 + size_buffer_(value) + 1;
+                }
+                return total;
+            }
+            return 0;
+        }
+
+        [[nodiscard]] static constexpr std::size_t size_buffer(glz::generic const &value) noexcept {
+            constexpr std::size_t min_size = 512;
+            return std::max(size_buffer_(value), min_size);
+        }
+
+        [[nodiscard]] static std::string_view to_buf(std::span<char> buf, glz::generic const &value, ctx c = {}) {
+            auto ec = glz::write_json(value, buf);
+            if(ec) {
+                if(ec.ec == glz::error_code::buffer_overflow) {
+                    throw pqxx::conversion_overrun{std::format("buffer overflow at count = {}", ec.count)};
+                } else {
+                    throw pqxx::conversion_error{glz::format_error(ec)};
+                }
+            }
+            return std::string_view{buf.data(), ec.count};
+        }
     };
 }
 
 namespace backend::database {
 
-export template<typename T>
-T parse_array(std::string_view sv, const pqxx::connection& conn) {
-    pqxx::array<std::ranges::range_value_t<T>> arr{sv, conn};
-    return T{arr.cbegin(), arr.cend()};
-}
-
 common::standard_filters parse_filters(const pqxx::row& row, const pqxx::connection& conn) {
     common::standard_filters filters;
-    filters.resources.values = parse_array<std::set<unsigned int>>(row["filter_resources"].as<std::string>(), conn);
+    filters.resources.values = row["filter_resources"].as<std::set<unsigned int>>();
     filters.resources.type = row["filter_resources_type"].as<common::filter_type>();
-    filters.scopes.values = parse_array<std::set<std::string>>(row["filter_scopes"].as<std::string>(), conn);
+    filters.scopes.values = row["filter_scopes"].as<std::set<std::string>>();
     filters.scopes.type = row["filter_scopes_type"].as<common::filter_type>();
-    filters.severities.values = parse_array<std::set<common::log_severity>>(row["filter_severities"].as<std::string>(), conn);
+    filters.severities.values = row["filter_severities"].as<std::set<common::log_severity>>();
     filters.severities.type = row["filter_severities_type"].as<common::filter_type>();
-    filters.attributes.values = parse_array<std::set<std::string>>(row["filter_attributes"].as<std::string>(), conn);
+    filters.attributes.values = row["filter_attributes"].as<std::set<std::string>>();
     filters.attributes.type = row["filter_attributes_type"].as<common::filter_type>();
     filters.attribute_values.values = row["filter_attribute_values"].as<glz::generic>();
     filters.attribute_values.type = row["filter_attribute_values_type"].as<common::filter_type>();
@@ -177,7 +196,7 @@ export class Database {
         constexpr static unsigned int default_worker_count = 4;
 
         Database(const std::string& connection_string, unsigned int worker_count = default_worker_count)
-            : logger(spdlog::default_logger()->clone("database"))
+            : connection_string(connection_string), logger(spdlog::default_logger()->clone("database"))
         {
             connections.reserve(worker_count);
             for(int i = 0; i < worker_count; i++) {
@@ -211,12 +230,11 @@ export class Database {
         unsigned int ensure_resource(pqxx::connection& conn, const glz::generic& attributes, unsigned int tries = 3) {
             try {
                 pqxx::work txn(conn);
-                std::string attribute_string = attributes.dump().value();
-                pqxx::result res = txn.exec(pqxx::prepped{"find_resource"}, pqxx::params{attribute_string});
+                pqxx::result res = txn.exec(pqxx::prepped{"find_resource"}, pqxx::params{txn, attributes});
                 if(res.size() == 1) {
                     return res[0][0].as<unsigned int>();
                 } else if(res.size() == 0) {
-                    res = txn.exec(pqxx::prepped{"insert_resource"}, pqxx::params{attribute_string});
+                    res = txn.exec(pqxx::prepped{"insert_resource"}, pqxx::params{txn, attributes});
                     txn.commit();
                     return res[0][0].as<unsigned int>();
                 } else {
@@ -261,7 +279,7 @@ export class Database {
             try {
                 pqxx::work txn(conn);
                 std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double, std::chrono::seconds::period>> ts_seconds = timestamp;
-                txn.exec(pqxx::prepped{"insert_log"}, {resource, ts_seconds.time_since_epoch().count(), scope, severity, attributes.dump().value(), body.dump().value()});
+                txn.exec(pqxx::prepped{"insert_log"}, pqxx::params{txn, resource, ts_seconds.time_since_epoch().count(), scope, severity, attributes, body});
 
                 if(attributes.is_object() && attributes.size() > 0){
                     std::string select_for_update = "SELECT * FROM log_attributes WHERE attribute IN (";
@@ -283,7 +301,7 @@ export class Database {
 
                     for(const auto& key : keys) {
                         const auto& value = attributes[key];
-                        txn.exec(pqxx::prepped{"update_attribute"}, {key, 1,
+                        txn.exec(pqxx::prepped{"update_attribute"}, pqxx::params{key, 1,
                             static_cast<int>(value.is_null()), static_cast<int>(value.is_number()), static_cast<int>(value.is_string()),
                             static_cast<int>(value.is_boolean()), static_cast<int>(value.is_array()), static_cast<int>(value.is_object())
                         });
@@ -482,6 +500,34 @@ export class Database {
                 "UPDATE logs SET attributes = $4::jsonb WHERE resource = $1 AND timestamp = to_timestamp($2::double precision) AND scope = $3");
         }
 
+        void reconnect(int index, pqxx::connection& conn, unsigned int attempt = 0, unsigned int max_attempts = 5) {
+            try {
+                logger->info("Reconnecting to database (conneciton {}, attempt {})...", index, attempt+1);
+                if(conn.is_open()) {
+                    conn.close();
+                }
+                conn = pqxx::connection(connection_string);
+                conn.set_session_var("application_name", std::format("backend-worker-{}", index));
+                prepare_statements(conn);
+                logger->info("Reconnected to database (connection {}, attempt {})", index, attempt+1);
+                return;
+            } catch(const std::exception& e) {
+                logger->error("Failed to reconnect to database (connection {}, attempt {}): {}", index, attempt+1, e.what());
+            } catch(...) {
+                logger->error("Failed to reconnect to database (connection {}, attempt {})", index, attempt+1);
+            }
+
+            if(attempt < max_attempts) {
+                std::chrono::seconds backoff{1<<attempt};
+                logger->info("Reconnecting in {} seconds...", backoff.count());
+                std::this_thread::sleep_for(backoff);
+                reconnect(index, conn, attempt + 1, max_attempts);
+            } else {
+                logger->critical("Failed to reconnect to database (connection {}) after {} attempts", index, max_attempts);
+                std::terminate();
+            }
+        }
+
         void worker(unsigned int id, pqxx::connection& conn, std::stop_token st) {
             logger->debug("Worker {} started", id);
             prepare_statements(conn);
@@ -521,11 +567,24 @@ export class Database {
                     break;
                 }
 
-                work(conn);
+                try {
+                    work(conn);
+                } catch(const pqxx::failure& failure) {
+                    logger->error("pqxx failure in worker {}: {}", id, failure.what());
+                    if(failure.poisons_connection()) {
+                        logger->error("Connection of worker {} is poisoned. Reconnecting...");
+                        reconnect(id, conn);
+                    }
+                } catch(const std::exception& ex) {
+                    logger->error("Unhandled exception in worker {}: {}", id, ex.what());
+                } catch(...) {
+                    logger->error("Unhandled unknown exception in worker {}", id);
+                }
                 promise.set_value();
             }
         }
 
+        std::string connection_string;
         std::shared_ptr<spdlog::logger> logger;
         std::vector<pqxx::connection> connections;
         std::vector<std::jthread> threads;

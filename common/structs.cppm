@@ -93,9 +93,7 @@ export namespace common {
         }
     };
 
-    struct logs_response {
-        std::vector<common::log_entry> logs;
-    };
+    using logs_response = std::vector<common::log_entry>;
     static_assert(serializable<logs_response>);
 
     struct logs_attributes_response {

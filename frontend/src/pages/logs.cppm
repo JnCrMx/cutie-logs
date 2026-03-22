@@ -92,17 +92,21 @@ export class logs : public page {
             unsigned int offset = current_page * page_limit;
             auto url = std::format("/api/v1/logs?limit={}&offset={}&attributes={}&scopes={}&resources={}",
                 page_limit, offset, attributes_selector, scopes_selector, resources_selector);
-            auto logs =
-                glz::read<common::beve_opts, common::logs_response>(co_await webpp::coro::fetch(url, utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes)))
-                .value_or(common::logs_response{});
-            is_last_page = logs.logs.size() < page_limit;
+            common::logs_response logs{};
+            if(auto error = glz::read_beve_delimited<common::beve_opts, common::logs_response>(logs,
+                co_await webpp::coro::fetch(url, utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes))))
+            {
+                components::show_alert("run_query_alert", std::string{"Failed to parse logs"_},
+                    glz::format_error(error), std::chrono::seconds(30));
+            }
+            is_last_page = logs.size() < page_limit;
 
             webpp::get_element_by_id("run_button_icon")->remove_class("hidden");
             webpp::get_element_by_id("run_button_loading")->add_class("hidden");
 
             using namespace Webxx;
             auto list = ul{{_class{"list rounded-box shadow gap-1"}},
-                each(logs.logs, [&](const auto& entry) {
+                each(logs, [&](const auto& entry) {
                     const auto& res = resources->resources.find(entry.resource);
                     auto obj = common::log_entry_stencil_object::create(entry, resources->resources);
                     auto r = common::stencil(stencil_format, obj, stencil_functions);
@@ -127,8 +131,8 @@ export class logs : public page {
 
             unsigned int offset = current_page * page_limit;
             auto url = std::format("/api/v1/logs/stencil?limit={}&offset={}&attributes={}&scopes={}&resources={}&stencil={}",
-                limit, offset, attributes_selector, scopes_selector, resources_selector, stencil_format);
-            webpp::eval("window.open('{}', '_blank');", url);
+                limit, offset, attributes_selector, scopes_selector, resources_selector, glz::url_encode(stencil_format));
+            webpp::eval("window.open({}, '_blank');", glz::write_json(url).value_or("\"error\""));
 
             co_return;
         };
@@ -306,7 +310,10 @@ export class logs : public page {
                     dv{{_id{"pagination_top"}, _class{"mx-auto my-4"}}},
                     dv{{_id{"logs"}, _class{"overflow-x-auto"}}},
                     dv{{_id{"pagination_bottom"}, _class{"mx-auto my-4"}}},
-                }
+                },
+                dv{{_id{"toasts"}, _class{"toast toast-top toast-end z-50"}},
+                    components::alert("run_query_alert", "mb-4")
+                },
             };
         }
 };

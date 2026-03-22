@@ -108,9 +108,12 @@ auto refresh() -> webpp::coroutine<void> {
     });
     webpp::get_element_by_id("modals-resources")->inner_html(Webxx::render(resource_modals));
 
-    auto example = glz::read<common::beve_opts, common::logs_response>(co_await example_future).value_or(common::logs_response{});
-    if(!example.logs.empty()) {
-        example_entry = example.logs.front();
+    common::logs_response example{};
+    if(auto error = glz::read_beve_delimited<common::beve_opts, common::logs_response>(example, co_await example_future)) {
+        webpp::log("Failed to parse example log line: {}", glz::format_error(error));
+    }
+    if(!example.empty()) {
+        example_entry = example.front();
     } else {
         example_entry = common::log_entry{};
     }

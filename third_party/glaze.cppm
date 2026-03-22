@@ -11,7 +11,10 @@ export namespace glz {
     using glz::write_json;
     using glz::read_json;
     using glz::write_beve;
+    using glz::write_beve_append;
+    using glz::write_beve_append_with_delimiter;
     using glz::read_beve;
+    using glz::read_beve_delimited;
     using glz::format_error;
     using glz::error_code;
     using glz::error_ctx;

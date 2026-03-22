@@ -138,7 +138,7 @@ auto selection_detail(std::string_view title,
                         saved_selections[key] = checked; // maintain those two seperately, so saved_selections can contain values not present in selections
                         save_selections(profile, identifier.sv(), saved_selections);
                     });
-                if(selections[key]) {
+                if(selections.contains(key) && selections[key]) {
                     checkbox.data.attributes.push_back(_checked{});
                 }
 
