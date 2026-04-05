@@ -55,7 +55,7 @@ find_package(spdlog REQUIRED)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../third_party ${CMAKE_CURRENT_BINARY_DIR}/third_party)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../common ${CMAKE_CURRENT_BINARY_DIR}/common)
 
-add_library(protoModule STATIC)
+add_library(protobufGen STATIC)
 set(proto_files
   ${opentelemetry-proto_SOURCE_DIR}/opentelemetry/proto/common/v1/common.proto
   ${opentelemetry-proto_SOURCE_DIR}/opentelemetry/proto/resource/v1/resource.proto
@@ -63,15 +63,18 @@ set(proto_files
   ${opentelemetry-proto_SOURCE_DIR}/opentelemetry/proto/collector/logs/v1/logs_service.proto
 )
 protobuf_generate(
-  TARGET protoModule
+  TARGET protobufGen
   LANGUAGE cpp
   PROTOS ${proto_files}
-  IMPORT_DIRS ${opentelemetry-proto_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
+  IMPORT_DIRS ${opentelemetry-proto_SOURCE_DIR}
 )
-target_include_directories(protoModule PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(protobufGen PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+
+add_library(protoModule STATIC)
 target_sources(protoModule PUBLIC FILE_SET CXX_MODULES FILES
   proto.cppm
 )
+target_link_libraries(protoModule PUBLIC protobufGen)
 
 set(SOURCES
   main.cpp
