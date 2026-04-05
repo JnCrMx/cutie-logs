@@ -35,6 +35,7 @@ export namespace glz {
     using glz::BEVE;
     using glz::get;
     using glz::set;
+    using glz::write_padding_bytes;
 
     using glz::reflect;
     using glz::reflectable;

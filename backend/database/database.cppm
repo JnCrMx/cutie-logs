@@ -156,15 +156,16 @@ namespace pqxx {
         }
 
         [[nodiscard]] static constexpr std::size_t size_buffer(glz::generic const &value) noexcept {
-            constexpr std::size_t min_size = 512;
-            return std::max(size_buffer_(value), min_size);
+            return size_buffer_(value) + glz::write_padding_bytes;
         }
 
         [[nodiscard]] static std::string_view to_buf(std::span<char> buf, glz::generic const &value, ctx c = {}) {
             auto ec = glz::write_json(value, buf);
-            if(ec) {
+            if(ec) [[unlikely]] {
                 if(ec.ec == glz::error_code::buffer_overflow) {
-                    throw pqxx::conversion_overrun{std::format("buffer overflow at count = {}", ec.count)};
+                    std::string json = glz::write_json(value).value(); // allocating here is okay-ish, because we are in the exceptional case
+                    throw pqxx::conversion_overrun{std::format("buffer overflow at count = {} for buffer size = {} and json = \"{}\" with actual size = {}",
+                        ec.count, buf.size(), json, json.size())};
                 } else {
                     throw pqxx::conversion_error{glz::format_error(ec)};
                 }
