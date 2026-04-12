@@ -18,39 +18,60 @@ import backend.utils;
 import backend.database;
 import backend.notifications;
 
-glz::generic to_json(const ::opentelemetry::proto::common::v1::AnyValue& v) {
-    if(v.has_bool_value()) {
-        return v.bool_value();
-    } else if(v.has_int_value()) {
-        return v.int_value();
-    } else if(v.has_double_value()) {
-        return v.double_value();
-    } else if(v.has_string_value()) {
-        std::string s = v.string_value();
-        // remove non-printable characters
-        s.erase(std::remove_if(s.begin(), s.end(), [](unsigned char c) { return !std::isprint(c); }), s.end());
-        return s;
-    } else if(v.has_kvlist_value()) {
-        auto obj = glz::generic::object_t{};
-        for(auto& kv : v.kvlist_value().values()) {
-            obj[kv.key()] = to_json(kv.value());
+glz::generic to_json(const hpp_proto::default_traits::optional_indirect_t<::opentelemetry::proto::common::v1::AnyValue<hpp_proto::default_traits>>& v);
+glz::generic to_json(const ::opentelemetry::proto::common::v1::AnyValue<hpp_proto::default_traits>& v) {
+    return std::visit([](auto&& value) -> glz::generic {
+        using T = std::decay_t<decltype(value)>;
+
+        if constexpr(std::is_same_v<T, std::monostate>) {
+            return glz::generic::null_t{};
+        } else if constexpr(std::is_same_v<T, bool>) {
+            return value;
+        } else if constexpr(std::is_same_v<T, std::int32_t>) {
+            return value;
+        } else if constexpr(std::is_same_v<T, std::int64_t>) {
+            return value;
+        } else if constexpr(std::is_same_v<T, double>) {
+            return value;
+        } else if constexpr(std::is_same_v<T, hpp_proto::default_traits::string_t>) {
+            hpp_proto::default_traits::string_t s = value;
+            s.erase(std::remove_if(s.begin(), s.end(), [](unsigned char c) { return !std::isprint(c); }), s.end());
+            return s;
+        } else if constexpr(std::is_same_v<T, ::opentelemetry::proto::common::v1::ArrayValue<hpp_proto::default_traits>>) {
+            auto arr = glz::generic::array_t{};
+            for(auto& elem : value.values) {
+                arr.push_back(to_json(elem));
+            }
+            return arr;
+        } else if constexpr(std::is_same_v<T, ::opentelemetry::proto::common::v1::KeyValueList<hpp_proto::default_traits>>) {
+            auto obj = glz::generic::object_t{};
+            for(auto& kv : value.values) {
+                obj[kv.key] = to_json(kv.value);
+            }
+            return obj;
+        } else if constexpr(std::is_same_v<T, hpp_proto::default_traits::bytes_t>) {
+            auto arr = glz::generic::array_t{};
+            for(auto& b : value) {
+                arr.push_back(static_cast<unsigned char>(b));
+            }
+            return arr;
+        } else {
+            static_assert(false, "Unhandled type");
         }
-        return obj;
-    } else if(v.has_array_value()) {
-        auto arr = glz::generic::array_t{};
-        for(auto& elem : v.array_value().values()) {
-            arr.push_back(to_json(elem));
-        }
-        return arr;
-    }
-    return glz::generic::null_t{};
+    }, v.value);
 }
-glz::generic::object_t to_json(const ::google::protobuf::RepeatedPtrField<::opentelemetry::proto::common::v1::KeyValue>& kv) {
+glz::generic::object_t to_json(const hpp_proto::default_traits::repeated_t<::opentelemetry::proto::common::v1::KeyValue<hpp_proto::default_traits>>& kv) {
     auto obj = glz::generic::object_t{};
     for(const auto& elem : kv) {
-        obj[elem.key()] = to_json(elem.value());
+        obj[elem.key] = to_json(elem.value);
     }
     return obj;
+}
+glz::generic to_json(const hpp_proto::default_traits::optional_indirect_t<::opentelemetry::proto::common::v1::AnyValue<hpp_proto::default_traits>>& v) {
+    return v.transform([](auto&& value){return to_json(value);}).value_or(glz::generic::null_t{});
+}
+glz::generic to_json(const std::optional<::opentelemetry::proto::common::v1::AnyValue<hpp_proto::default_traits>>& v) {
+    return v.transform([](auto&& value){return to_json(value);}).value_or(glz::generic::null_t{});
 }
 
 namespace backend::opentelemetry {
@@ -162,8 +183,14 @@ namespace backend::opentelemetry {
                     }
 
                     ::opentelemetry::proto::collector::logs::v1::ExportLogsServiceRequest req;
-                    if(!req.ParseFromString(body)) {
-                        logger->warn("{} | Failed to parse request body", request.address());
+                    if(auto status = hpp_proto::read_binpb(req, body); !status.ok()) {
+                        std::string hexdump{};
+                        hexdump.reserve(body.size() * 3);
+                        for(char c : body) {
+                            hexdump += fmt::format("{:02x} ", static_cast<unsigned char>(c));
+                        }
+
+                        logger->error("{} | Failed to parse request body ({}): {}", request.address(), static_cast<int>(status.ec), hexdump);
                         response.send(Pistache::Http::Code::Bad_Request, "Invalid request body");
                         return Pistache::Rest::Route::Result::Failure;
                     }
@@ -174,17 +201,17 @@ namespace backend::opentelemetry {
                             std::unordered_set<decltype(std::declval<timestamp_t>().time_since_epoch().count())> seen_timestamps;
                             static uint64_t timestamp_fix_offset = 0;
 
-                            for(auto& resourceLog : req.resource_logs()) {
-                                glz::generic::object_t resource_attributes = to_json(resourceLog.resource().attributes());
+                            for(auto& resourceLog : req.resource_logs) {
+                                glz::generic::object_t resource_attributes = to_json(resourceLog.resource->attributes);
                                 unsigned int resource = db.ensure_resource(conn, resource_attributes);
                                 common::log_resource log_resource{
                                     .id = resource,
                                     .attributes = std::move(resource_attributes),
                                 };
 
-                                for(auto& scopeLog : resourceLog.scope_logs()) {
-                                    for(auto& log : scopeLog.log_records()) {
-                                        std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> ts{std::chrono::nanoseconds(log.time_unix_nano())};
+                                for(auto& scopeLog : resourceLog.scope_logs) {
+                                    for(auto& log : scopeLog.log_records) {
+                                        std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> ts{std::chrono::nanoseconds(log.time_unix_nano)};
                                         // check if ts includes anything below seconds
                                         if(ts == std::chrono::floor<std::chrono::seconds>(ts)) {
                                             auto fixed_ts = ts + (std::chrono::microseconds(timestamp_fix_offset++) % std::chrono::seconds(1));
@@ -197,15 +224,15 @@ namespace backend::opentelemetry {
                                         }
                                         seen_timestamps.insert(ts.time_since_epoch().count());
 
-                                        glz::generic::object_t attributes = to_json(log.attributes());
-                                        glz::generic body = to_json(log.body());
-                                        common::log_severity severity = static_cast<common::log_severity>(log.severity_number());
-                                        db.insert_log(conn, resource, ts, scopeLog.scope().name(), severity, attributes, body);
+                                        glz::generic::object_t attributes = to_json(log.attributes);
+                                        glz::generic body = to_json(log.body);
+                                        common::log_severity severity = static_cast<common::log_severity>(log.severity_number);
+                                        db.insert_log(conn, resource, ts, scopeLog.scope->name, severity, attributes, body);
 
                                         common::log_entry log_entry{
                                             .resource = resource,
                                             .timestamp = std::chrono::time_point_cast<std::chrono::duration<double>>(ts).time_since_epoch().count(),
-                                            .scope = scopeLog.scope().name(),
+                                            .scope = scopeLog.scope->name,
                                             .severity = severity,
                                             .attributes = std::move(attributes),
                                             .body = std::move(body)
@@ -216,7 +243,7 @@ namespace backend::opentelemetry {
                             }
                             response.send(Pistache::Http::Code::Ok, "");
                         } catch(const std::exception& e) {
-                            logger->error("{} | Unhandled exception: {} for request {}", address, e.what(), req.DebugString());
+                            logger->error("{} | Unhandled exception: {} for request {}", address, e.what(), *glz::write_json(req));
                             response.send(Pistache::Http::Code::Internal_Server_Error, "Internal server error");
                         }
                     });
