@@ -42,6 +42,12 @@ glz::generic to_json(const ::opentelemetry::proto::common::v1::AnyValue& v) {
             arr.push_back(to_json(elem));
         }
         return arr;
+    } else if(v.has_bytes_value()) {
+        auto arr = glz::generic::array_t{};
+        for(char c : v.bytes_value()) {
+            arr.push_back(static_cast<unsigned char>(c));
+        }
+        return arr;
     }
     return glz::generic::null_t{};
 }

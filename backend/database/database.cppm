@@ -177,7 +177,7 @@ namespace pqxx {
 
 namespace backend::database {
 
-common::standard_filters parse_filters(const pqxx::row& row, const pqxx::connection& conn) {
+common::standard_filters parse_filters(const pqxx::row_ref& row, const pqxx::connection& conn) {
     common::standard_filters filters;
     filters.resources.values = row["filter_resources"].as<std::set<unsigned int>>();
     filters.resources.type = row["filter_resources_type"].as<common::filter_type>();

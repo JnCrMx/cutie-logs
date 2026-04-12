@@ -24,20 +24,20 @@ set(CMAKE_LINK_DEPENDS_USE_LINKER OFF)
 FetchContent_Declare(webpp
   GIT_REPOSITORY https://github.com/JnCrMx/webpp.git
   GIT_TAG main
-  GIT_SHALLOW TRUE)
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(webxx
   GIT_REPOSITORY https://github.com/JnCrMx/webxx.git
   GIT_TAG main
-  GIT_SHALLOW TRUE)
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG        v7.2.1
-  GIT_SHALLOW TRUE)
+  GIT_TAG        v7.3.3
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(i18n++
   GIT_REPOSITORY https://github.com/JnCrMx/i18n-cpp.git
   GIT_TAG trunk
-  GIT_SHALLOW TRUE
-  GIT_SUBMODULES_RECURSE FALSE)
+  GIT_SUBMODULES_RECURSE FALSE
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 
 add_compile_options(-fno-rtti -fno-exceptions -ftemplate-backtrace-limit=0)
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)

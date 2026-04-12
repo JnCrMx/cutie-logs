@@ -11,6 +11,7 @@ export namespace pqxx {
     using pqxx::work;
     using pqxx::result;
     using pqxx::row;
+    using pqxx::row_ref;
     using pqxx::prepped;
     using pqxx::params;
     using pqxx::notification;
