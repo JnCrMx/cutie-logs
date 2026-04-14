@@ -764,6 +764,21 @@ void Server::setup_api_routes() {
         });
         return Pistache::Rest::Route::Result::Ok;
     });
+    router.get("/api/v1/settings/indices", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        db.queue_work([this, response = std::move(response)](pqxx::connection& conn) mutable {
+            pqxx::work txn{conn};
+            try {
+                auto result = txn.exec(pqxx::prepped{"get_indices"});
+                common::attribute_index_response res;
+                for(const auto& row : result) {
+                }
+            } catch(const std::exception& e) {
+                response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
+                return;
+            }
+        });
+        return Pistache::Rest::Route::Result::Ok;
+    });
 }
 
 }

@@ -267,6 +267,22 @@ export namespace common {
         std::map<std::string, notification_provider_info> notification_providers;
     };
     static_assert(serializable<shared_settings>);
+
+    enum class index_type {
+        TRIGRAM, FULLTEXT, NUMBER, BOOLEAN
+    };
+    struct attribute_index {
+        std::string attribute;
+        index_type type;
+        bool complete;
+        std::optional<double> progress;
+    };
+    static_assert(serializable<attribute_index>);
+
+    struct attribute_index_response {
+        std::unordered_map<std::string, attribute_index> indices;
+    };
+    static_assert(serializable<attribute_index_response>);
 }
 
 export namespace glz {
