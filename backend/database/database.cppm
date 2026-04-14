@@ -499,6 +499,10 @@ export class Database {
                 "UPDATE cleanup_rules SET last_execution = NOW() WHERE id = $1");
             conn.prepare("update_log_attributes",
                 "UPDATE logs SET attributes = $4::jsonb WHERE resource = $1 AND timestamp = to_timestamp($2::double precision) AND scope = $3");
+            conn.prepare("get_indices",
+                "SELECT c.relname AS index_name, parent_c.relname AS parent_index, obj_description(c.oid, 'pg_class') AS index_comment, NOT i.indisvalid AS is_invalid "
+                "FROM pg_class c JOIN pg_index i ON c.oid = i.indexrelid LEFT JOIN pg_inherits inh ON c.oid = inh.inhrelid LEFT JOIN pg_class parent_c ON inh.inhparent = parent_c.oid "
+                "WHERE c.relkind IN ('i', 'I') AND c.relname LIKE 'logs_managed_%';");
         }
 
         void reconnect(int index, pqxx::connection& conn, unsigned int attempt = 0, unsigned int max_attempts = 5) {
