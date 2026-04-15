@@ -68,6 +68,7 @@ namespace backend::opentelemetry {
             static Pistache::Http::Endpoint::Options default_options() {
                 return Pistache::Http::Endpoint::options()
                     .threads(4)
+                    .threadsName("http-otel")
                     .flags(Pistache::Tcp::Options::ReuseAddr);
             }
 

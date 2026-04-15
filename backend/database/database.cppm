@@ -217,7 +217,7 @@ export class Database {
                 auto& thread = threads.emplace_back([this, i](std::stop_token st) {
                     worker(i, connections[i], st);
                 });
-                pthread_setname_np(thread.native_handle(), std::format("backend-worker-{}", i).c_str());
+                pthread_setname_np(thread.native_handle(), std::format("db-worker-{}", i).c_str());
             }
         }
 
@@ -541,21 +541,15 @@ export class Database {
                 std::promise<void> promise;
                 {
                     std::unique_lock lock(mutex);
-                    if(queue.empty()) {
-                        // timeout, so we will check for notifications, even if we don't have work
-                        bool no_timeout = cv.wait_for(lock, std::chrono::seconds(10), [this, &st] {
-                            return st.stop_requested() || !queue.empty();
-                        });
-                        if(!no_timeout) {
-                            continue;
-                        }
-                    }
 
+                    // timeout, so we will check for notifications, even if we don't have work
+                    bool has_work = cv.wait_for(lock, st, std::chrono::seconds(10), [this] {
+                        return !queue.empty();
+                    });
                     if(st.stop_requested()) {
                         break;
                     }
-
-                    if(queue.empty()) {
+                    if(!has_work) {
                         continue;
                     }
 
@@ -564,24 +558,24 @@ export class Database {
                     queue.pop_front();
                 }
 
-                if(st.stop_requested()) {
-                    break;
-                }
-
                 try {
                     work(conn);
+                    promise.set_value();
                 } catch(const pqxx::failure& failure) {
                     logger->error("pqxx failure in worker {}: {}", id, failure.what());
+                    promise.set_exception(std::current_exception());
+
                     if(failure.poisons_connection()) {
                         logger->error("Connection of worker {} is poisoned. Reconnecting...");
                         reconnect(id, conn);
                     }
                 } catch(const std::exception& ex) {
                     logger->error("Unhandled exception in worker {}: {}", id, ex.what());
+                    promise.set_exception(std::current_exception());
                 } catch(...) {
                     logger->error("Unhandled unknown exception in worker {}", id);
+                    promise.set_exception(std::current_exception());
                 }
-                promise.set_value();
             }
         }
 
@@ -590,7 +584,7 @@ export class Database {
         std::vector<pqxx::connection> connections;
         std::vector<std::jthread> threads;
         std::mutex mutex;
-        std::condition_variable cv;
+        std::condition_variable_any cv;
         std::deque<std::pair<std::move_only_function<void(pqxx::connection&)>, std::promise<void>>> queue;
 };
 
