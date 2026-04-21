@@ -867,6 +867,43 @@ void Server::setup_api_routes() {
         });
         return Pistache::Rest::Route::Result::Ok;
     });
+    router.del("/api/v1/settings/indices/:attribute/:type", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        auto attribute = request.param(":attribute").as<std::string>();
+        auto type = request.param(":type").as<int>();
+        db.queue_work([this, attribute = std::move(attribute), type, response = std::move(response)](pqxx::connection& conn) mutable {
+            pqxx::work txn{conn};
+            std::string index_name = "logs_managed_" + txn.esc(attribute) + "_" + std::to_string(type) + "_idx";
+            std::string sql = "DROP INDEX " + index_name;
+
+            try {
+                logger->debug("Dropping index with SQL: {}", sql);
+                txn.exec(sql);
+
+                txn.commit();
+
+                response.send(Pistache::Http::Code::No_Content);
+            }
+            catch(const pqxx::sql_error& e) {
+                if(e.sqlstate() == "42704") {
+                    response.send(Pistache::Http::Code::Not_Found, std::format("Index on attribute \"{}\" with type {} not found: \"{}\"", attribute, type, index_name));
+                    return;
+                } else {
+                    spdlog::error("Failed to drop index: [{}, {}] {}", e.name(), e.sqlstate(), e.what());
+                    response.send(Pistache::Http::Code::Internal_Server_Error, std::format("[{}, {}] {}", e.name(), e.sqlstate(), e.what()));
+                    return;
+                }
+            } catch(const pqxx::failure& e) {
+                spdlog::error("Failed to drop index: [{}, {}] {}", e.name(), e.sqlstate(), e.what());
+                response.send(Pistache::Http::Code::Internal_Server_Error, std::format("[{}, {}] {}", e.name(), e.sqlstate(), e.what()));
+                return;
+            } catch(const std::exception& e) {
+                spdlog::error("Failed to drop index: {}", e.what());
+                response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
+                return;
+            }
+        });
+        return Pistache::Rest::Route::Result::Ok;
+    });
 }
 
 }
