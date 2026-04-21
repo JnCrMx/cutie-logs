@@ -765,14 +765,102 @@ void Server::setup_api_routes() {
         return Pistache::Rest::Route::Result::Ok;
     });
     router.get("/api/v1/settings/indices", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-        db.queue_work([this, response = std::move(response)](pqxx::connection& conn) mutable {
-            pqxx::work txn{conn};
+        bool accepts_beve = accepts(request, mime::application_beve);
+        db.queue_work([this, accepts_beve, response = std::move(response)](pqxx::connection& conn) mutable {
+            pqxx::nontransaction txn{conn};
             try {
                 auto result = txn.exec(pqxx::prepped{"get_indices"});
                 common::attribute_index_response res;
                 for(const auto& row : result) {
+                    if(!row["parent_index"].is_null() || row["index_comment"].is_null()) {
+                        continue;
+                    }
+                    auto comment = row["index_comment"].as<std::string>();
+                    auto r = glz::read<common::json_opts, common::attribute_index>(comment);
+                    if(!r) {
+                        spdlog::warn("Failed to parse index metadata for index {}: {}", row["index_name"].as<std::string>(), glz::format_error(r, comment));
+                        continue;
+                    }
+                    auto index = std::move(*r);
+                    index.invalid = row["is_invalid"].as<bool>();
+                    res[index.attribute].push_back(std::move(index));
                 }
+                send_response(response, accepts_beve, res);
+            } catch(const pqxx::failure& e) {
+                spdlog::error("Failed to query indices: [{}, {}] {}", e.name(), e.sqlstate(), e.what());
+                response.send(Pistache::Http::Code::Internal_Server_Error, std::format("[{}, {}] {}", e.name(), e.sqlstate(), e.what()));
+                return;
             } catch(const std::exception& e) {
+                spdlog::error("Failed to query indices: {}", e.what());
+                response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
+                return;
+            }
+        });
+        return Pistache::Rest::Route::Result::Ok;
+    });
+    router.put("/api/v1/settings/indices/:attribute/:type", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        bool accepts_beve = accepts(request, mime::application_beve);
+        auto attribute = request.param(":attribute").as<std::string>();
+        auto type = request.param(":type").as<int>();
+        db.queue_work([this, accepts_beve, attribute = std::move(attribute), type, response = std::move(response)](pqxx::connection& conn) mutable {
+            pqxx::work txn{conn};
+            std::string index_name = "logs_managed_" + txn.esc(attribute) + "_" + std::to_string(type) + "_idx";
+            std::string sql = "CREATE INDEX " + index_name + " ON logs ";
+            switch(type) {
+                case static_cast<int>(common::index_type::NUMERIC):
+                    sql += "((attributes->>'" + txn.esc(attribute) + "')::numeric)";
+                    break;
+                case static_cast<int>(common::index_type::JSON):
+                    sql += "USING GIN ((attributes->'" + txn.esc(attribute) + "'))";
+                    break;
+                case static_cast<int>(common::index_type::TRIGRAM):
+                    sql += "USING GIN (((attributes->>'" + txn.esc(attribute) + "')::text) gin_trgm_ops)";
+                    break;
+                case static_cast<int>(common::index_type::FULLTEXT):
+                    sql += "USING GIN (jsonb_to_tsvector('english', attributes->'" + txn.esc(attribute) + "', '\"all\"'))";
+                    break;
+                default:
+                    response.send(Pistache::Http::Code::Bad_Request, "Invalid index type");
+                    return;
+            }
+
+            try {
+                logger->debug("Creating index with SQL: {}", sql);
+                txn.exec(sql); // TODO: run index creation on each partition individually in the background
+
+                common::attribute_index index{
+                    .attribute = attribute,
+                    .type = static_cast<common::index_type>(type),
+                    .created_at = std::chrono::sys_seconds{std::chrono::duration_cast<std::chrono::seconds>(
+                        std::chrono::system_clock::now().time_since_epoch())},
+                    .complete = true,
+                    .progress = std::nullopt,
+                    .index_name = index_name,
+                    .sql = sql,
+                    .invalid = std::nullopt
+                };
+                std::string comment_sql = "COMMENT ON INDEX " + index_name + " IS '" + txn.esc(glz::write<common::json_opts>(index).value()) + "'";
+                txn.exec(comment_sql);
+
+                txn.commit();
+
+                send_response(response, accepts_beve, index);
+            }
+            catch(const pqxx::sql_error& e) {
+                if(e.sqlstate() == "42P07") {
+                    response.send(Pistache::Http::Code::Conflict, std::format("Index on attribute \"{}\" with type {} already exists: \"{}\"", attribute, type, index_name));
+                    return;
+                } else {
+                    spdlog::error("Failed to create index: [{}, {}] {}", e.name(), e.sqlstate(), e.what());
+                    response.send(Pistache::Http::Code::Internal_Server_Error, std::format("[{}, {}] {}", e.name(), e.sqlstate(), e.what()));
+                    return;
+                }
+            } catch(const pqxx::failure& e) {
+                spdlog::error("Failed to create index: [{}, {}] {}", e.name(), e.sqlstate(), e.what());
+                response.send(Pistache::Http::Code::Internal_Server_Error, std::format("[{}, {}] {}", e.name(), e.sqlstate(), e.what()));
+                return;
+            } catch(const std::exception& e) {
+                spdlog::error("Failed to create index: {}", e.what());
                 response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
                 return;
             }

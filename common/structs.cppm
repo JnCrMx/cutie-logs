@@ -269,19 +269,26 @@ export namespace common {
     static_assert(serializable<shared_settings>);
 
     enum class index_type {
-        TRIGRAM, FULLTEXT, NUMBER, BOOLEAN
+        NUMERIC  = 1,
+        JSON     = 2,
+        TRIGRAM  = 100,
+        FULLTEXT = 101,
     };
     struct attribute_index {
         std::string attribute;
         index_type type;
+        std::chrono::sys_seconds created_at;
+
         bool complete;
         std::optional<double> progress;
+
+        std::string index_name;
+        std::string sql;
+        std::optional<bool> invalid;
     };
     static_assert(serializable<attribute_index>);
 
-    struct attribute_index_response {
-        std::unordered_map<std::string, attribute_index> indices;
-    };
+    using attribute_index_response = std::unordered_map<std::string, std::vector<attribute_index>>;
     static_assert(serializable<attribute_index_response>);
 }
 
