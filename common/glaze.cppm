@@ -14,6 +14,6 @@ export constexpr auto beve_opts = [](){
     opts.structs_as_arrays = true;
     return opts;
 }();
-export constexpr auto json_opts = glz::opts{.format = glz::JSON, .minified = true};
+export constexpr auto json_opts = glz::opts{.format = glz::JSON};
 
 }
