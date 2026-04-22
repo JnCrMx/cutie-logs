@@ -7,6 +7,7 @@ module;
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 #include <vector>
 
 export module common:structs;
@@ -290,6 +291,25 @@ export namespace common {
 
     using attribute_index_response = std::unordered_map<std::string, std::vector<attribute_index>>;
     static_assert(serializable<attribute_index_response>);
+
+    struct attribute_query {
+        std::string attribute;
+        index_type type;
+
+        std::optional<std::string> search;
+        std::optional<double> exact_value;
+        std::optional<double> min_value;
+        std::optional<double> max_value;
+    };
+    static_assert(serializable<attribute_query>);
+
+    struct body_query {
+        std::optional<std::string> body;
+    };
+    static_assert(serializable<body_query>);
+
+    using query = std::variant<body_query, attribute_query>;
+    static_assert(serializable<query>);
 }
 
 export namespace glz {

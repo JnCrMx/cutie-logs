@@ -466,6 +466,27 @@ void Server::setup_api_routes() {
         });
         return Pistache::Rest::Route::Result::Ok;
     });
+
+    router.post("/api/v1/search", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        bool accepts_beve = accepts(request, mime::application_beve);
+
+        std::expected<common::cleanup_rule, glz::error_ctx> query;
+        if(isContentType(request, mime::application_json)) {
+            query = glz::read<common::json_opts, common::cleanup_rule>(request.body());
+        } else if(isContentType(request, mime::application_beve)) {
+            query = glz::read<common::beve_opts, common::cleanup_rule>(request.body());
+        } else {
+            response.send(Pistache::Http::Code::Unsupported_Media_Type, "Unsupported media type");
+            return Pistache::Rest::Route::Result::Ok;
+        }
+        if(!query) {
+            response.send(Pistache::Http::Code::Bad_Request, std::format("Failed to parse request body: {}", glz::format_error(query.error(), request.body())));
+            return Pistache::Rest::Route::Result::Ok;
+        }
+
+        return Pistache::Rest::Route::Result::Ok;
+    });
+
     router.get("/api/v1/logs/resources", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         bool accepts_beve = accepts(request, mime::application_beve);
         db.queue_work([this, accepts_beve, response = std::move(response)](pqxx::connection& conn) mutable {
