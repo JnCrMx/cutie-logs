@@ -1,5 +1,6 @@
 module;
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <expected>
 #include <format>
@@ -354,6 +355,108 @@ std::expected<void, std::string> check_alert_rule(const common::alert_rule& rule
     return {};
 }
 
+std::string build_search_filter(pqxx::transaction_base& txn, const common::search_query& query);
+std::string build_search_subfilter(pqxx::transaction_base& txn, const common::body_query& query) {
+    if(query.types.empty()) {
+        return "(FALSE)";
+    }
+
+    std::string sql = "";
+    for(common::search_type t : query.types) {
+        switch(t) {
+            case common::search_type::fulltext:
+                sql += "jsonb_to_tsvector('english', \"body\", '\"all\"') @@ to_tsquery('" + txn.esc(query.search) + "') OR ";
+                break;
+            case common::search_type::text_equal:
+                sql += "\"body\"::text = '" + txn.esc(query.search) + "' OR ";
+                break;
+            case common::search_type::text_like:
+                sql += "\"body\"::text LIKE '" + txn.esc(query.search) + "' OR ";
+                break;
+            case common::search_type::text_contains:
+                sql += "\"body\"::text LIKE '%" + txn.esc(query.search) + "%' OR ";
+                break;
+            case common::search_type::text_starts_with:
+                sql += "\"body\"::text LIKE '" + txn.esc(query.search) + "%' OR ";
+                break;
+            case common::search_type::text_ends_with:
+                sql += "\"body\"::text LIKE '%" + txn.esc(query.search) + "' OR ";
+                break;
+            default:
+                throw std::runtime_error(std::format("unsupported search type {} for body_query", static_cast<int>(t)));
+        }
+    }
+
+    assert(!sql.empty());
+    return "(" + sql.substr(0, sql.size()-4) + ")";
+}
+std::string build_search_subfilter(pqxx::transaction_base& txn, const common::attribute_query& query) {
+    // TODO
+    throw std::runtime_error("attribute_query not implemented");
+}
+std::string build_search_subfilter(pqxx::transaction_base& txn, const common::and_query& query) {
+    if(query.queries.empty()) {
+        return "(TRUE)";
+    }
+
+    std::string sql;
+    for(const auto& q : query.queries) {
+        sql += build_search_filter(txn, q) + " AND ";
+    }
+
+    assert(!sql.empty());
+    return "(" + sql.substr(0, sql.size()-5) + ")";
+}
+std::string build_search_subfilter(pqxx::transaction_base& txn, const common::or_query& query) {
+    if(query.queries.empty()) {
+        return "(FALSE)";
+    }
+
+    std::string sql;
+    for(const auto& q : query.queries) {
+        sql += build_search_filter(txn, q) + " OR ";
+    }
+
+    assert(!sql.empty());
+    return "(" + sql.substr(0, sql.size()-4) + ")";
+}
+std::string build_search_subfilter(pqxx::transaction_base& txn, const common::detail::not_query& query) {
+    return "(NOT " + build_search_filter(txn, *query.query) + ")";
+}
+
+std::string build_search_filter(pqxx::transaction_base& txn, const common::search_query& query) {
+    return std::visit([&](auto&& q){
+        return build_search_subfilter(txn, q);
+    }, query);
+}
+
+std::string build_search_query(pqxx::transaction_base& txn, const common::search_query& q, unsigned int limit = 100) {
+    std::string query = "SELECT resource, extract(epoch from timestamp) as unix_time, scope, severity, body, attributes "
+        "FROM logs WHERE ";
+    query += build_search_filter(txn, q);
+    query += " LIMIT " + std::to_string(limit);
+    return query;
+}
+std::vector<common::log_entry> search_logs(pqxx::transaction_base& txn, const common::search_query& q, unsigned int limit = 100) {
+    std::string query = build_search_query(txn, q, limit);
+    spdlog::trace("Search query: {}", query);
+
+    auto result = txn.exec(query);
+    std::vector<common::log_entry> logs;
+    logs.reserve(result.size());
+    for(const auto& row : result) {
+        auto& l = logs.emplace_back(
+            row["resource"].as<unsigned int>(),
+            row["unix_time"].as<double>(),
+            row["scope"].as<std::string>(),
+            row["severity"].as<common::log_severity>()
+        );
+        l.body = row["body"].as<std::optional<glz::generic>>().value_or(glz::generic::null_t{});
+        l.attributes = row["attributes"].as<glz::generic>();
+    }
+    return logs;
+}
+
 void Server::setup_api_routes() {
     router.get("/api/v1/healthz", [](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         response.send(Pistache::Http::Code::Ok, "OK");
@@ -467,14 +570,36 @@ void Server::setup_api_routes() {
         return Pistache::Rest::Route::Result::Ok;
     });
 
+    router.get("/api/v1/search", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        bool accepts_beve = accepts(request, mime::application_beve);
+        constexpr auto url_decode = [](std::string_view sv) -> std::string { return glz::url_decode(sv); };
+        auto q = request.query().get("q").transform(url_decode).value_or("");
+
+        db.queue_work([this, accepts_beve, response = std::move(response), q = std::move(q)](pqxx::connection& conn) mutable {
+            pqxx::nontransaction txn{conn};
+            try {
+                common::logs_response res = search_logs(txn, common::body_query{q});
+                send_response(response, false, res);
+            } catch(const pqxx::failure& e) {
+                spdlog::error("Failed to create index: [{}, {}] {}", e.name(), e.sqlstate(), e.what());
+                response.send(Pistache::Http::Code::Internal_Server_Error, std::format("[{}, {}] {}", e.name(), e.sqlstate(), e.what()));
+                return;
+            } catch(const std::exception& e) {
+                spdlog::error("Failed to create index: {}", e.what());
+                response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
+                return;
+            }
+        });
+        return Pistache::Rest::Route::Result::Ok;
+    });
     router.post("/api/v1/search", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
         bool accepts_beve = accepts(request, mime::application_beve);
 
-        std::expected<common::cleanup_rule, glz::error_ctx> query;
+        std::expected<common::search_query, glz::error_ctx> query;
         if(isContentType(request, mime::application_json)) {
-            query = glz::read<common::json_opts, common::cleanup_rule>(request.body());
+            query = glz::read<common::json_opts, common::search_query>(request.body());
         } else if(isContentType(request, mime::application_beve)) {
-            query = glz::read<common::beve_opts, common::cleanup_rule>(request.body());
+            query = glz::read<common::beve_opts, common::search_query>(request.body());
         } else {
             response.send(Pistache::Http::Code::Unsupported_Media_Type, "Unsupported media type");
             return Pistache::Rest::Route::Result::Ok;
@@ -484,6 +609,21 @@ void Server::setup_api_routes() {
             return Pistache::Rest::Route::Result::Ok;
         }
 
+        db.queue_work([this, accepts_beve, response = std::move(response), query = std::move(*query)](pqxx::connection& conn) mutable {
+            pqxx::nontransaction txn{conn};
+            try {
+                common::logs_response res = search_logs(txn, query);
+                send_response(response, false, res);
+            } catch(const pqxx::failure& e) {
+                spdlog::error("Failed to create index: [{}, {}] {}", e.name(), e.sqlstate(), e.what());
+                response.send(Pistache::Http::Code::Internal_Server_Error, std::format("[{}, {}] {}", e.name(), e.sqlstate(), e.what()));
+                return;
+            } catch(const std::exception& e) {
+                spdlog::error("Failed to create index: {}", e.what());
+                response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
+                return;
+            }
+        });
         return Pistache::Rest::Route::Result::Ok;
     });
 

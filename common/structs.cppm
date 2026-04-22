@@ -2,6 +2,7 @@ module;
 #include <array>
 #include <chrono>
 #include <map>
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
@@ -292,25 +293,86 @@ export namespace common {
     using attribute_index_response = std::unordered_map<std::string, std::vector<attribute_index>>;
     static_assert(serializable<attribute_index_response>);
 
+    enum class search_type {
+        fulltext,
+        text_equal,
+        text_like,
+        text_contains,
+        text_starts_with,
+        text_ends_with,
+        boolean_equal,
+        number_equal,
+        number_greater_than,
+        number_greater_than_or_equal,
+        number_less_than,
+        number_less_than_or_equal,
+        number_in_range,
+    };
+
     struct attribute_query {
         std::string attribute;
-        index_type type;
+        std::set<search_type> types;
 
         std::optional<std::string> search;
         std::optional<double> exact_value;
         std::optional<double> min_value;
         std::optional<double> max_value;
+
+        auto operator<=>(const attribute_query&) const = default;
     };
     static_assert(serializable<attribute_query>);
 
     struct body_query {
-        std::optional<std::string> body;
+        std::string search;
+        std::set<search_type> types = {search_type::fulltext, search_type::text_contains};
+
+        auto operator<=>(const body_query&) const = default;
     };
     static_assert(serializable<body_query>);
 
-    using query = std::variant<body_query, attribute_query>;
-    static_assert(serializable<query>);
+    namespace detail {
+        struct not_query;
+    }
+
+    using search_query = std::variant<body_query, attribute_query, struct and_query, struct or_query, detail::not_query>;
+
+    struct and_query {
+        std::vector<search_query> queries;
+
+        bool operator<(const and_query& other) const;
+    };
+
+    struct or_query {
+        std::vector<search_query> queries;
+
+        bool operator<(const or_query& other) const;
+    };
+
+    namespace detail {
+        struct not_query {
+            std::shared_ptr<search_query> query;
+
+            bool operator<(const not_query& other) const;
+        };
+    }
+
+    struct not_query {
+        detail::not_query inner;
+
+        not_query(search_query&& query) : inner{std::make_shared<search_query>(std::move(query))} {}
+
+        operator detail::not_query&&() {
+            return std::move(inner);
+        }
+    };
 }
+
+export template <>
+struct glz::meta<common::search_query> {
+    static constexpr std::string_view tag = "type";
+    static constexpr auto ids = std::array{"body", "attribute", "and", "or", "not"};
+};
+static_assert(common::serializable<common::search_query>);
 
 export namespace glz {
     template<typename Rep, typename Period>
