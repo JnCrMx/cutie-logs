@@ -25,7 +25,7 @@ ADD . /src
 WORKDIR /src
 
 RUN --mount=type=tmpfs,target=/tmp/build \
-    cmake -S . -B /tmp/build -DCMAKE_BUILD_TYPE=Release \
+    cmake -S . -B /tmp/build -DCMAKE_BUILD_TYPE=RelWithDebInfo \
         -DCUTIE_LOGS_GENERATE_POT=OFF \
         -DCUTIE_LOGS_BUILD_TESTS=OFF \
         -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 \
