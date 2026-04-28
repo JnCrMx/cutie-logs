@@ -20,6 +20,7 @@ namespace backend::web {
             static Pistache::Http::Endpoint::Options default_options() {
                 return Pistache::Http::Endpoint::options()
                     .threads(4)
+                    .threadsName("http-web")
                     .flags(Pistache::Tcp::Options::ReuseAddr);
             }
 

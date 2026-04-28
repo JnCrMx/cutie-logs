@@ -31,7 +31,7 @@ FetchContent_Declare(webxx
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG        v7.3.3
+  GIT_TAG        v7.4.0
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(i18n++
   GIT_REPOSITORY https://github.com/JnCrMx/i18n-cpp.git
