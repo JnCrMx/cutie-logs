@@ -34,7 +34,7 @@ FetchContent_Declare(argparse
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG        v7.3.3
+  GIT_TAG        v7.4.0
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(cpr
   GIT_REPOSITORY https://github.com/libcpr/cpr.git
