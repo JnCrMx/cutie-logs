@@ -23,18 +23,21 @@ set(CMAKE_LINK_DEPENDS_USE_LINKER OFF)
 
 FetchContent_Declare(webpp
   GIT_REPOSITORY https://github.com/JnCrMx/webpp.git
-  GIT_TAG main)
+  GIT_TAG main
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(webxx
   GIT_REPOSITORY https://github.com/JnCrMx/webxx.git
-  GIT_TAG main)
+  GIT_TAG main
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG        v7.0.2
-  GIT_SHALLOW TRUE)
+  GIT_TAG        v7.4.0
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(i18n++
   GIT_REPOSITORY https://github.com/JnCrMx/i18n-cpp.git
   GIT_TAG trunk
-  GIT_SUBMODULES_RECURSE FALSE)
+  GIT_SUBMODULES_RECURSE FALSE
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 
 add_compile_options(-fno-rtti -fno-exceptions -ftemplate-backtrace-limit=0)
 set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
@@ -95,7 +98,7 @@ target_link_libraries(mainpage PRIVATE common stdModule webxxModule glazeModule 
 target_link_options(mainpage PRIVATE -Wl,--no-entry)
 target_link_options(mainpage PRIVATE -nostartfiles)
 target_compile_options(mainpage PRIVATE --embed-dir=${CMAKE_CURRENT_SOURCE_DIR} -Wno-c23-extensions)
-if(GENERATE_POT)
+if(CUTIE_LOGS_GENERATE_POT)
   include(${i18n++_SOURCE_DIR}/i18n++Use.cmake)
 
   add_executable(i18n::i18n-merge-pot IMPORTED)

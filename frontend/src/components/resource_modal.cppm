@@ -14,19 +14,6 @@ namespace frontend::components {
 using namespace Webxx;
 using namespace mfk::i18n::literals;
 
-std::string resource_name(unsigned int id, const common::log_resource& resource) {
-    // TODO: make this configurable
-    if(resource.attributes.contains("service.name")) {
-        return resource.attributes.at("service.name").get_string();
-    }
-    if(resource.attributes.contains("k8s.namespace.name")) {
-        if(resource.attributes.contains("k8s.pod.name")) {
-            return std::format("{}/{}", resource.attributes.at("k8s.namespace.name").get_string(), resource.attributes.at("k8s.pod.name").get_string());
-        }
-    }
-    return "Resource #{}"_(id);
-}
-
 export struct resource_modal : component<resource_modal> {
     static Webxx::fragment render_attribute_value(const glz::generic& v) {
         using namespace Webxx;
@@ -87,7 +74,7 @@ export struct resource_modal : component<resource_modal> {
                     form{{_method{"dialog"}},
                         button{{_class{"btn btn-sm btn-circle btn-ghost absolute right-2 top-2"}}, "x"}
                     },
-                    h3{{_class{"text-lg font-bold"}}, "Resource \"{}\" (#{})"_(sanitize(resource_name(id, resource)), id)},
+                    h3{{_class{"text-lg font-bold"}}, "Resource \"{}\" (#{})"_(sanitize(resource_name(resource)), id)},
                     dv{{_class{"overflow-auto"}},
                         table{{_class{"table table-zebra w-full"}},
                             thead{tr{

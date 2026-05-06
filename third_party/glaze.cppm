@@ -3,6 +3,7 @@ module;
 #include "fake_std.hpp"
 #endif
 #include <glaze/glaze.hpp>
+#include <glaze/net/url.hpp>
 
 #if BUILD_TARGET_backend
 #include <glaze/net/http_server.hpp>
@@ -14,7 +15,10 @@ export namespace glz {
     using glz::write_json;
     using glz::read_json;
     using glz::write_beve;
+    using glz::write_beve_append;
+    using glz::write_beve_append_with_delimiter;
     using glz::read_beve;
+    using glz::read_beve_delimited;
     using glz::format_error;
     using glz::error_code;
     using glz::error_ctx;
@@ -35,6 +39,7 @@ export namespace glz {
     using glz::BEVE;
     using glz::get;
     using glz::set;
+    using glz::write_padding_bytes;
 
     using glz::reflect;
     using glz::reflectable;
@@ -44,7 +49,8 @@ export namespace glz {
     using glz::glaze_object_t;
     using glz::string_literal;
 
-    using glz::stencil;
+    using glz::url_decode;
+    using glz::url_encode;
 
 #if BUILD_TARGET_backend
     using glz::http_server;

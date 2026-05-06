@@ -423,13 +423,13 @@ export class settings : public page {
                 webpp::response res = co_await webpp::coro::fetch(std::format("/api/v1/settings/cleanup_rules/{}", rule.id), request);
                 if(!res.ok()) {
                     std::string message = co_await res.co_text();
-                    components::show_alert("settings_cleanup_rules_error", res.status_text(), message);
+                    components::show_alert("settings_cleanup_rules_error", res.status_text(), message, std::chrono::seconds(30));
                     co_return;
                 }
                 auto new_rule_expected = glz::read<common::beve_opts, common::cleanup_rule>(co_await res.co_bytes());
                 if(!new_rule_expected) {
                     components::show_alert("settings_cleanup_rules_error", std::string{"Failed to parse rule"_},
-                        glz::format_error(new_rule_expected.error()));
+                        glz::format_error(new_rule_expected.error()), std::chrono::seconds(30));
                     co_return;
                 }
 
@@ -464,13 +464,13 @@ export class settings : public page {
                 webpp::response res = co_await webpp::coro::fetch(std::format("/api/v1/settings/alert_rules/{}", rule.id), request);
                 if(!res.ok()) {
                     std::string message = co_await res.co_text();
-                    components::show_alert("settings_alert_rules_error", res.status_text(), message);
+                    components::show_alert("settings_alert_rules_error", res.status_text(), message, std::chrono::seconds(30));
                     co_return;
                 }
                 auto new_rule_expected = glz::read<common::beve_opts, common::alert_rule>(co_await res.co_bytes());
                 if(!new_rule_expected) {
                     components::show_alert("settings_alert_rules_error", std::string{"Failed to parse rule"_},
-                        glz::format_error(new_rule_expected.error()));
+                        glz::format_error(new_rule_expected.error()), std::chrono::seconds(30));
                     co_return;
                 }
 
@@ -708,13 +708,9 @@ export class settings : public page {
                             webpp::eval("localStorage.setItem('default_theme', '{}');", default_theme);
 
                             components::show_alert("settings_ui_alert", std::string{"Settings saved"_},
-                                std::string{"Your UI settings have been saved successfully."_});
-                            webpp::set_timeout(std::chrono::seconds(3), [](){
-                                components::hide_alert("settings_ui_alert");
-                            });
+                                std::string{"Your UI settings have been saved successfully."_}, std::chrono::seconds(5));
                         }),
                 },
-                components::alert<components::alert_types::success>("settings_ui_alert", "mt-4"),
             };
         }
 
@@ -724,7 +720,6 @@ export class settings : public page {
 
             using namespace Webxx;
             return fragment{
-                components::alert("settings_cleanup_rules_error", "mb-4"),
                 dv{{_class{"flex flex-col gap-4 w-fit mb-4"}},
                     ctx.on_click(button{{_class{"btn btn-primary"}}, assets::icons::add, "Add cleanup rule"_},
                         [this](webpp::event e) {
@@ -755,7 +750,6 @@ export class settings : public page {
 
             using namespace Webxx;
             return fragment{
-                components::alert("settings_alert_rules_error", "mb-4"),
                 dv{{_class{"flex flex-col gap-4 w-fit mb-4"}},
                     ctx.on_click(button{{_class{"btn btn-primary"}}, assets::icons::add, "Add alert rule"_},
                         [this](webpp::event e) {
@@ -797,6 +791,11 @@ export class settings : public page {
                     dv{{_id{"settings_alert_rules"}, _class{"tab-content border-base-300 bg-base-100 p-10"}}, render_alert_rules()},
                 },
                 dv{{_id{"dialog_placeholder"}}},
+                dv{{_id{"toasts"}, _class{"toast toast-top toast-end z-50"}},
+                    components::alert("settings_cleanup_rules_error", "mb-4"),
+                    components::alert("settings_alert_rules_error", "mb-4"),
+                    components::alert<components::alert_types::success>("settings_ui_alert", "mt-4"),
+                },
             };
         }
 };

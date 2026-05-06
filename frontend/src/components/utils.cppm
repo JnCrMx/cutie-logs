@@ -5,6 +5,8 @@ import webpp;
 import webxx;
 import glaze;
 
+import frontend.utils;
+
 namespace Webxx {
     constexpr static char customDataTipAttr[] = "data-tip";
     export using _dataTip = attr<customDataTipAttr>;
@@ -298,25 +300,7 @@ export class profile_data {
         std::vector<std::function<void(profile_data&)>> callbacks;
 };
 
-export std::string sanitize(std::string_view sv) {
-    std::string out{};
-    out.reserve(sv.size());
-    for(auto c : sv) {
-        switch(c) {
-            case '<':
-                out.append("&lt;");
-                break;
-            case '>':
-                out.append("&gt;");
-                break;
-            case '&':
-                out.append("&amp;");
-                break;
-            default:
-                out.append({c});
-        }
-    }
-    return out;
-}
+export using utils::sanitize;
+export using utils::resource_name;
 
 }

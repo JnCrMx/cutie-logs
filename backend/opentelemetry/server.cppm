@@ -42,6 +42,12 @@ glz::generic to_json(const ::opentelemetry::proto::common::v1::AnyValue& v) {
             arr.push_back(to_json(elem));
         }
         return arr;
+    } else if(v.has_bytes_value()) {
+        auto arr = glz::generic::array_t{};
+        for(char c : v.bytes_value()) {
+            arr.push_back(static_cast<unsigned char>(c));
+        }
+        return arr;
     }
     return glz::generic::null_t{};
 }
@@ -62,11 +68,12 @@ namespace backend::opentelemetry {
             static Pistache::Http::Endpoint::Options default_options() {
                 return Pistache::Http::Endpoint::options()
                     .threads(4)
+                    .threadsName("http-otel")
                     .flags(Pistache::Tcp::Options::ReuseAddr);
             }
 
-            Server(database::Database& db, Pistache::Address address = default_address(), Pistache::Http::Endpoint::Options options = default_options())
-                : db(db), address(address), server(address), router(), logger(spdlog::default_logger()->clone("opentelemetry"))
+            Server(database::Database& db, NetworkIpFilter* ip_filter, Pistache::Address address = default_address(), Pistache::Http::Endpoint::Options options = default_options())
+                : db(db), ip_filter(ip_filter), address(address), server(address), router(), logger(spdlog::default_logger()->clone("opentelemetry"))
             {
                 server.init(options);
 
@@ -117,17 +124,17 @@ namespace backend::opentelemetry {
                     if(!provider) {
                         logger->error("Failed to create notification provider {} for rule {}:{}: {}",
                             rule.notification_provider, rule.id, rule.name, provider.error().message);
-                        txn.exec(pqxx::prepped{"update_alert_result"}, {rule.id, false, provider.error().message});
+                        txn.exec(pqxx::prepped{"update_alert_result"}, pqxx::params{rule.id, false, provider.error().message});
                         continue;
                     }
-                    auto result = (*provider)->notify(msg);
+                    auto result = (*provider)->notify(*logger, msg, ip_filter);
                     if(!result) {
                         logger->error("Failed to send notification for rule {}:{}: {}",
                             rule.id, rule.name, result.error().message);
-                        txn.exec(pqxx::prepped{"update_alert_result"}, {rule.id, false, result.error().message});
+                        txn.exec(pqxx::prepped{"update_alert_result"}, pqxx::params{rule.id, false, result.error().message});
                         continue;
                     }
-                    txn.exec(pqxx::prepped{"update_alert_result"}, {rule.id, true, std::nullopt});
+                    txn.exec(pqxx::prepped{"update_alert_result"}, pqxx::params{rule.id, true, std::nullopt});
                 }
                 txn.commit();
             }
@@ -178,6 +185,7 @@ namespace backend::opentelemetry {
                                 glz::generic::object_t resource_attributes = to_json(resourceLog.resource().attributes());
                                 unsigned int resource = db.ensure_resource(conn, resource_attributes);
                                 common::log_resource log_resource{
+                                    .id = resource,
                                     .attributes = std::move(resource_attributes),
                                 };
 
@@ -230,6 +238,7 @@ namespace backend::opentelemetry {
             Pistache::Http::Endpoint server;
             Pistache::Rest::Router router;
             database::Database& db;
+            NetworkIpFilter* ip_filter;
 
             std::map<unsigned int, common::alert_rule> alert_rules;
     };

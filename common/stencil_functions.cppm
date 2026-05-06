@@ -18,31 +18,6 @@ import :structs;
 
 namespace common {
 
-uint32_t parse_ipv4(std::string_view x) {
-    uint32_t result = 0;
-    int count = 0;
-    for(auto& c : x) {
-        if(c == '.') {
-            ++count;
-        }
-    }
-    if(count != 3) {
-        return 0;
-    }
-    std::string_view s = x;
-    for(int i = 0; i < 4; ++i) {
-        auto pos = s.find('.');
-        if(pos == std::string_view::npos) {
-            pos = s.size();
-        }
-        auto part = s.substr(0, pos);
-        int part_int = parse_int(part).value_or(0);
-        result = (result << 8) | (part_int & 0xFF);
-        s.remove_prefix(pos + 1);
-    }
-    return result;
-}
-
 glz::generic get_path(glz::generic x, std::string_view path) {
     if(path.empty()) {
         return x;
@@ -79,6 +54,13 @@ concept log_with_resource = requires(T t) {
 };
 
 export struct stencil_functions {
+    struct {
+        template<typename T>
+        std::string operator()(T, std::string_view x) const {
+            return std::string{x};
+        }
+    } string;
+
     std::add_pointer_t<double(glz::generic)> get_number = [](glz::generic x){
         if(!x.is_number()) {
             return 0.0;
@@ -245,15 +227,26 @@ export struct stencil_functions {
     };
 
     std::add_pointer_t<uint32_t(std::string)> parse_ipv4 = [](std::string x) -> uint32_t {
-        return ::common::parse_ipv4(x);
+        return ::common::parse_ipv4(x).value_or(0);
     };
+    std::add_pointer_t<__uint128_t(std::string)> parse_ipv6 = [](std::string x) -> __uint128_t {
+        return ::common::parse_ipv6(x).value_or(0);
+    };
+    struct {
+        std::string operator()(uint32_t x) const {
+            return ::common::ipv4_to_string(x);
+        }
+        std::string operator()(__uint128_t x) const {
+            return ::common::ipv6_to_string(x);
+        }
+    } ip_to_string;
 
     struct {
         std::string operator()(const log_with_resource auto& o) const {
             return o.resource->guess_name().value_or(std::format("Resource #{}", o.log->resource));
         }
         std::string operator()(const log_resource& r) const {
-            return r.guess_name().value_or("Unknown Resource");
+            return r.guess_name().value_or(std::format("Resource #{}", r.id));
         }
     } resource_name;
 
@@ -329,12 +322,13 @@ export struct advanced_stencil_functions {
             return result;
         }
         glz::generic operator()(std::string x) const {
-            if(x.contains(":")) {
+            if(auto ipv4 = parse_ipv4(x)) {
+                return (*this)(*ipv4);
+            } else if(auto ipv6 = parse_ipv6(x)) {
+                return (*this)(*ipv6);
+            } else {
                 return glz::generic{};
-            } else if(x.contains(".")) {
-                return (*this)(parse_ipv4(x));
             }
-            return glz::generic{};
         }
     } lookup{m_mmdbs};
 };

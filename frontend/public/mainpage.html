@@ -18,6 +18,7 @@
         import { instantiateStreaming } from "./webpp.js";
 
         const { instance, functions } = await instantiateStreaming(fetch("./mainpage.wasm"));
+        instance.exports.memory.grow(10);
         instance.exports._initialize();
         instance.exports.main();
 

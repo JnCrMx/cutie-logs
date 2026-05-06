@@ -3,6 +3,9 @@ module;
 #include <memory>
 #include <string>
 
+#include <netinet/in.h>
+#include <curl/curl.h>
+
 module backend.notifications;
 
 import :provider;
@@ -10,10 +13,36 @@ import cpr;
 import glaze;
 import common;
 import spdlog;
+import backend.utils;
 
 namespace backend::notifications {
 
 class webhook_provider : public provider {
+    private:
+        struct curl_opensocket_data_t {
+            NetworkIpFilter* ipFilter;
+            spdlog::logger& logger;
+        };
+        static curl_socket_t curl_opensocket_function(void* clientp, curlsocktype purpose, curl_sockaddr* address) {
+            if(purpose == CURLSOCKTYPE_IPCXN) {
+                bool accept = static_cast<curl_opensocket_data_t*>(clientp)->ipFilter->filter(&address->addr);
+                if(!accept) {
+                    std::string ip_string = "invalid IP address";
+                    if(address->family == AF_INET) {
+                        auto* sockaddr = reinterpret_cast<sockaddr_in*>(&address->addr);
+                        uint32_t ip = ntohl(sockaddr->sin_addr.s_addr);
+                        ip_string = common::ipv4_to_string(ip);
+                    } else if(address->family == AF_INET6) {
+                        auto* sockaddr = reinterpret_cast<sockaddr_in6*>(&address->addr);
+                        __uint128_t ip = common::ntoh128(std::bit_cast<__uint128_t>(sockaddr->sin6_addr.s6_addr));
+                        ip_string = common::ipv6_to_string(ip);
+                    }
+                    static_cast<curl_opensocket_data_t*>(clientp)->logger.warn("Blocking webhook request to IP address \"{}\" due to network IP filter rules", ip_string);
+                    return CURL_SOCKET_BAD;
+                }
+            }
+            return socket(address->family, address->socktype, address->protocol);
+        }
     public:
         webhook_provider(spdlog::logger&, const glz::generic& options, const glz::generic& default_template) {
             if(!options.contains("url")) {
@@ -35,7 +64,7 @@ class webhook_provider : public provider {
             }
         }
 
-        std::expected<void, error> notify(const common::alert_stencil_object& msg) override {
+        std::expected<void, error> notify(spdlog::logger& logger, const common::alert_stencil_object& msg, NetworkIpFilter* ipFilter) override {
             glz::generic payload = common::stencil_json(m_template, msg);
             auto json_payload = glz::write_json(payload);
             if(!json_payload) {
@@ -43,7 +72,18 @@ class webhook_provider : public provider {
                     "Failed to serialize JSON payload: " + glz::format_error(json_payload.error()));
             }
 
-            auto res = cpr::Post(cpr::Url{m_url}, cpr::Body(*json_payload), cpr::Header{{"Content-Type", "application/json"}});
+            curl_opensocket_data_t curl_opensocket_data{ipFilter, logger};
+
+            cpr::Session session{};
+            session.SetUrl(cpr::Url{m_url});
+            session.SetBody(cpr::Body{std::move(*json_payload)});
+            session.SetHeader(cpr::Header{{"Content-Type", "application/json"}});
+            if(ipFilter) {
+                curl_easy_setopt(session.GetCurlHolder()->handle, CURLOPT_OPENSOCKETFUNCTION, curl_opensocket_function);
+                curl_easy_setopt(session.GetCurlHolder()->handle, CURLOPT_OPENSOCKETDATA, &curl_opensocket_data);
+            }
+
+            auto res = session.Post();
             if(res.status_code == 0) {
                 return std::unexpected<error>(std::in_place, error_code::internal_error,
                     "Failed to send notification: " + res.error.message);

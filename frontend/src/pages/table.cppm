@@ -26,6 +26,43 @@ export class table : public page {
         std::vector<std::string> table_column_order;
         std::map<std::string, std::string> table_custom_columns;
 
+        template<typename Key>
+        auto render_pagination() {
+            static event_context ctx;
+            ctx.clear();
+
+            using namespace Webxx;
+
+            auto prev = button{{_class{"join-item btn"}}, "«"};
+            if(current_page == 0) { prev.data.attributes.emplace_back<_disabled>(""); }
+
+            auto next = button{{_class{"join-item btn"}}, "»"};
+            if(is_last_page) { next.data.attributes.emplace_back<_disabled>(""); }
+
+            return dv{{_class{"join"}},
+                ctx.on_click(std::move(prev), [this](webpp::event){
+                    webpp::get_element_by_id("run_button_icon")->add_class("hidden");
+                    webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
+
+                    if(current_page > 0) { current_page--; }
+                    webpp::coro::submit(run_query());
+                }),
+                ctx.on_click(button{{_class{"join-item btn"}}, "Page {}"_(current_page+1)}, [this](webpp::event){
+                    webpp::get_element_by_id("run_button_icon")->add_class("hidden");
+                    webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
+
+                    webpp::coro::submit(run_query());
+                }),
+                ctx.on_click(std::move(next), [this](webpp::event){
+                    webpp::get_element_by_id("run_button_icon")->add_class("hidden");
+                    webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
+
+                    if(!is_last_page) { current_page++; }
+                    webpp::coro::submit(run_query());
+                }),
+            };
+        };
+
         Webxx::fragment make_table() {
             using namespace Webxx;
             table_column_order = make_table_order(table_column_order);
@@ -98,7 +135,7 @@ export class table : public page {
                 thead{tr{
                     each(table_column_order, [&](const std::string& attr) { return make_th(attr); })
                 }},
-                each(logs.logs, [&, this](const common::log_entry& entry) {
+                each(logs, [&, this](const common::log_entry& entry) {
                     using sys_seconds_double = std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double>>;
                     auto timestamp_double = sys_seconds_double{std::chrono::duration<double>{entry.timestamp}};
                     auto timestamp = std::chrono::time_point_cast<std::chrono::sys_seconds::duration>(timestamp_double);
@@ -106,7 +143,7 @@ export class table : public page {
                     auto attributes = entry.attributes.is_object() ? entry.attributes.get_object() : glz::generic::object_t{};
                     auto e_timestamp = std::format("{:%Y-%m-%d %H:%M:%S}", timestamp);
                     auto e_resource = a{{_class{"link"}, _onClick{std::format("document.getElementById('modal_resource_{}').showModal()", entry.resource)}},
-                        sanitize(resource_name(entry.resource, std::get<0>(resources->resources[entry.resource])))};
+                        sanitize(resource_name(std::get<0>(resources->resources[entry.resource])))};
                     auto e_scope = sanitize(entry.scope);
                     auto e_severity = common::log_severity_names[std::to_underlying(entry.severity)];
                     auto e_body = sanitize(entry.body.is_string() ? entry.body.get_string() : entry.body.dump().value_or("error"));
@@ -131,7 +168,8 @@ export class table : public page {
                                 auto name = attr.substr(1);
                                 if(table_custom_columns.contains(name)) {
                                     const auto& stencil = table_custom_columns.at(name);
-                                    auto r = common::stencil(stencil, entry, stencil_functions);
+                                    auto obj = common::log_entry_stencil_object::create(entry, resources->resources);
+                                    auto r = common::stencil(stencil, obj, stencil_functions);
                                     if(r) {
                                         return td{sanitize(*r)};
                                     } else {
@@ -190,7 +228,7 @@ export class table : public page {
                     order.push_back(n);
                 }
             }
-            for(const auto& entry : logs.logs) {
+            for(const auto& entry : logs) {
                 if(!entry.body.is_null() && (!entry.body.is_string() || !entry.body.get_string().empty())) {
                     if(std::find_if(order.begin(), order.end(), [](const std::string& str){
                         return str.starts_with(":B:");
@@ -223,18 +261,25 @@ export class table : public page {
             std::string attributes_selector = build_attributes_selector(selected_attributes);
             std::string scopes_selector = build_scopes_selector(selected_scopes);
             std::string resources_selector = build_resources_selector(selected_resources);
-            constexpr unsigned int limit = 100;
 
-            auto url = std::format("/api/v1/logs?limit={}&attributes={}&scopes={}&resources={}",
-                limit, attributes_selector, scopes_selector, resources_selector);
-            logs =
-                glz::read<common::beve_opts, common::logs_response>(co_await webpp::coro::fetch(url, utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes)))
-                .value_or(common::logs_response{});
+            unsigned int offset = current_page * page_limit;
+            auto url = std::format("/api/v1/logs?limit={}&offset={}&attributes={}&scopes={}&resources={}",
+                page_limit, offset, attributes_selector, scopes_selector, resources_selector);
+            if(auto error = glz::read_beve_delimited<common::beve_opts, common::logs_response>(logs,
+                co_await webpp::coro::fetch(url, utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes))))
+            {
+                components::show_alert("run_query_alert", std::string{"Failed to parse logs"_},
+                    glz::format_error(error), std::chrono::seconds(30));
+            }
+            is_last_page = logs.size() < page_limit;
 
             webpp::get_element_by_id("run_button_icon")->remove_class("hidden");
             webpp::get_element_by_id("run_button_loading")->add_class("hidden");
 
             render_table();
+
+            webpp::get_element_by_id("pagination_top")->inner_html(Webxx::render(render_pagination<struct top>()));
+            webpp::get_element_by_id("pagination_bottom")->inner_html(Webxx::render(render_pagination<struct bottom>()));
 
             co_return;
         };
@@ -242,7 +287,7 @@ export class table : public page {
         void update_attributes() {
             selected_attributes.clear();
             std::transform(attributes->attributes.begin(), attributes->attributes.end(), std::inserter(selected_attributes, selected_attributes.end()),
-                [](const auto& attr) { return std::pair{attr.first, false}; }); // all attributes are deselected by default
+                [](const auto& attr) { return std::pair{attr.first, false}; });
             webpp::get_element_by_id("attributes")->inner_html(Webxx::render(
                 components::selection<"attributes">("Select Attributes"_,
                     attributes->attributes, selected_attributes, &profile, attributes->total_logs, true)));
@@ -250,18 +295,18 @@ export class table : public page {
         void update_scopes() {
             selected_scopes.clear();
             std::transform(scopes->scopes.begin(), scopes->scopes.end(), std::inserter(selected_scopes, selected_scopes.end()),
-                [](const auto& scope) { return std::pair{scope.first, false}; }); // all scopes are deselected by default
+                [](const auto& scope) { return std::pair{scope.first, false}; });
             webpp::get_element_by_id("scopes")->inner_html(Webxx::render(
                 components::selection<"scopes">("Filter Scopes"_, scopes->scopes, selected_scopes, &profile, 1, false)));
         }
         void update_resources() {
             transformed_resources.clear();
             for(const auto& [id, e] : resources->resources) {
-                transformed_resources[std::to_string(id)] = {resource_name(id, std::get<0>(e)), std::get<1>(e)};
+                transformed_resources[std::to_string(id)] = {resource_name(std::get<0>(e)), std::get<1>(e)};
             }
             selected_resources.clear();
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
-                [](const auto& res) { return std::pair{res.first, true}; }); // all resources are selected by default
+                [](const auto& res) { return std::pair{res.first, false}; });
 
             components::selection_button magic_button{
                 .text = std::string{"Select similar"_},
@@ -287,6 +332,10 @@ export class table : public page {
         std::string stencil_format;
         std::unordered_map<std::string, bool> selected_attributes, selected_resources, selected_scopes;
         std::unordered_map<std::string, std::tuple<std::string, unsigned int>> transformed_resources;
+
+        unsigned int current_page = 0;
+        bool is_last_page = false;
+        constexpr static unsigned int page_limit = 100;
     public:
         table(profile_data& profile, r<common::log_entry>& example_entry, r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes, r<common::logs_resources_response>& resources,
             std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs)
@@ -347,7 +396,8 @@ export class table : public page {
                                     auto validator = *webpp::get_element_by_id("column_stencil_validator");
                                     stencil_format = textarea["value"].as<std::string>().value_or("");
 
-                                    validate_stencil(textarea, validator, stencil_format, *example_entry, stencil_functions);
+                                    auto obj = common::log_entry_stencil_object::create(*example_entry, resources->resources);
+                                    validate_stencil(textarea, validator, stencil_format, obj, stencil_functions);
                                     co_return;
                                 }());
                             }
@@ -414,6 +464,8 @@ export class table : public page {
                         }, [this](webpp::event) {
                             webpp::get_element_by_id("run_button_icon")->add_class("hidden");
                             webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
+
+                            current_page = 0;
                             webpp::coro::submit(run_query());
                         }),
                         ctx.on_click(button{{_id{"reset_table_button"}, _class{"btn btn-secondary btn-disabled"}},
@@ -429,9 +481,14 @@ export class table : public page {
                             "Add custom column"_
                         },
                     },
-                    dv{{_id{"table"}, _class{"mt-4 overflow-x-auto"}}},
-                    dialog_add_custom_column(ctx),
-                }
+                    dv{{_id{"pagination_top"}, _class{"mx-auto my-4"}}},
+                    dv{{_id{"table"}, _class{"overflow-x-auto"}}},
+                    dv{{_id{"pagination_bottom"}, _class{"mx-auto my-4"}}},
+                },
+                dialog_add_custom_column(ctx),
+                dv{{_id{"toasts"}, _class{"toast toast-top toast-end z-50"}},
+                    components::alert("run_query_alert", "mb-4")
+                },
             };
         }
 };

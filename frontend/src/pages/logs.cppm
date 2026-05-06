@@ -37,7 +37,8 @@ export class logs : public page {
                             stencil_format = textarea["value"].as<std::string>().value_or("");
                             profile.set_data("stencil", stencil_format);
 
-                            validate_stencil(textarea, validator, stencil_format, *example_entry, stencil_functions);
+                            auto obj = common::log_entry_stencil_object::create(*example_entry, resources->resources);
+                            validate_stencil(textarea, validator, stencil_format, obj, stencil_functions);
                             co_return;
                         }());
                     }),
@@ -46,25 +47,69 @@ export class logs : public page {
             };
         }
 
+        template<typename Key>
+        auto render_pagination() {
+            static event_context ctx;
+            ctx.clear();
+
+            using namespace Webxx;
+
+            auto prev = button{{_class{"join-item btn"}}, "«"};
+            if(current_page == 0) { prev.data.attributes.emplace_back<_disabled>(""); }
+
+            auto next = button{{_class{"join-item btn"}}, "»"};
+            if(is_last_page) { next.data.attributes.emplace_back<_disabled>(""); }
+
+            return dv{{_class{"join"}},
+                ctx.on_click(std::move(prev), [this](webpp::event){
+                    webpp::get_element_by_id("run_button_icon")->add_class("hidden");
+                    webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
+
+                    if(current_page > 0) { current_page--; }
+                    webpp::coro::submit(run_query());
+                }),
+                ctx.on_click(button{{_class{"join-item btn"}}, "Page {}"_(current_page+1)}, [this](webpp::event){
+                    webpp::get_element_by_id("run_button_icon")->add_class("hidden");
+                    webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
+
+                    webpp::coro::submit(run_query());
+                }),
+                ctx.on_click(std::move(next), [this](webpp::event){
+                    webpp::get_element_by_id("run_button_icon")->add_class("hidden");
+                    webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
+
+                    if(!is_last_page) { current_page++; }
+                    webpp::coro::submit(run_query());
+                }),
+            };
+        };
+
         webpp::coroutine<void> run_query() {
             std::string attributes_selector = build_attributes_selector(selected_attributes);
             std::string scopes_selector = build_scopes_selector(selected_scopes);
             std::string resources_selector = build_resources_selector(selected_resources);
-            constexpr unsigned int limit = 100;
 
-            auto url = std::format("/api/v1/logs?limit={}&attributes={}&scopes={}&resources={}",
-                limit, attributes_selector, scopes_selector, resources_selector);
-            auto logs =
-                glz::read<common::beve_opts, common::logs_response>(co_await webpp::coro::fetch(url, utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes)))
-                .value_or(common::logs_response{});
+            unsigned int offset = current_page * page_limit;
+            auto url = std::format("/api/v1/logs?limit={}&offset={}&attributes={}&scopes={}&resources={}",
+                page_limit, offset, attributes_selector, scopes_selector, resources_selector);
+            common::logs_response logs{};
+            if(auto error = glz::read_beve_delimited<common::beve_opts, common::logs_response>(logs,
+                co_await webpp::coro::fetch(url, utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes))))
+            {
+                components::show_alert("run_query_alert", std::string{"Failed to parse logs"_},
+                    glz::format_error(error), std::chrono::seconds(30));
+            }
+            is_last_page = logs.size() < page_limit;
 
             webpp::get_element_by_id("run_button_icon")->remove_class("hidden");
             webpp::get_element_by_id("run_button_loading")->add_class("hidden");
 
             using namespace Webxx;
-            auto list = ul{{_class{"list rounded-box shadow p-4 gap-1"}},
-                each(logs.logs, [&](const auto& entry) {
-                    auto r = common::stencil(stencil_format, entry, stencil_functions);
+            auto list = ul{{_class{"list rounded-box shadow gap-1"}},
+                each(logs, [&](const auto& entry) {
+                    const auto& res = resources->resources.find(entry.resource);
+                    auto obj = common::log_entry_stencil_object::create(entry, resources->resources);
+                    auto r = common::stencil(stencil_format, obj, stencil_functions);
                     return li{{_class{"list-item"}},
                         code{{_class{r ? "whitespace-pre" : "whitespace-pre text-error font-bold"}},
                             sanitize(*r.or_else([](auto err) -> decltype(r) { return "Stencil invalid: \"{}\""_(err); }))}
@@ -72,6 +117,9 @@ export class logs : public page {
                 })
             };
             webpp::get_element_by_id("logs")->inner_html(Webxx::render(list));
+
+            webpp::get_element_by_id("pagination_top")->inner_html(Webxx::render(render_pagination<struct top>()));
+            webpp::get_element_by_id("pagination_bottom")->inner_html(Webxx::render(render_pagination<struct bottom>()));
 
             co_return;
         };
@@ -81,9 +129,10 @@ export class logs : public page {
             std::string scopes_selector = build_scopes_selector(selected_scopes);
             std::string resources_selector = build_resources_selector(selected_resources);
 
-            auto url = std::format("/api/v1/logs/stencil?limit={}&attributes={}&scopes={}&resources={}&stencil={}",
-                limit, attributes_selector, scopes_selector, resources_selector, stencil_format);
-            webpp::eval("window.open('{}', '_blank');", url);
+            unsigned int offset = current_page * page_limit;
+            auto url = std::format("/api/v1/logs/stencil?limit={}&offset={}&attributes={}&scopes={}&resources={}&stencil={}",
+                limit, offset, attributes_selector, scopes_selector, resources_selector, glz::url_encode(stencil_format));
+            webpp::eval("window.open({}, '_blank');", glz::write_json(url).value_or("\"error\""));
 
             co_return;
         };
@@ -98,7 +147,7 @@ export class logs : public page {
         void update_attributes() {
             selected_attributes.clear();
             std::transform(attributes->attributes.begin(), attributes->attributes.end(), std::inserter(selected_attributes, selected_attributes.end()),
-                [](const auto& attr) { return std::pair{attr.first, false}; }); // all attributes are deselected by default
+                [](const auto& attr) { return std::pair{attr.first, false}; });
 
             components::selection_button magic_button{
                 .text = std::string{"Auto-select"_},
@@ -110,8 +159,13 @@ export class logs : public page {
                         return false;
                     }
                     for(std::string_view attr : *required_attributes) {
-                        if(!attr.starts_with("attributes.")) continue;
-                        attr.remove_prefix(std::string_view::traits_type::length("attributes."));
+                        if(attr.starts_with("attributes.")) {
+                            attr.remove_prefix(std::string_view::traits_type::length("attributes."));
+                        } else if(attr.starts_with(".attributes.")) {
+                            attr.remove_prefix(std::string_view::traits_type::length(".attributes."));
+                        } else {
+                            continue;
+                        }
 
                         if(auto pos = attr.find('.'); pos != std::string_view::npos) {
                             if(pos < 1) continue; // TODO: fix this once stencils with root are properly implemented
@@ -135,18 +189,18 @@ export class logs : public page {
         void update_scopes() {
             selected_scopes.clear();
             std::transform(scopes->scopes.begin(), scopes->scopes.end(), std::inserter(selected_scopes, selected_scopes.end()),
-                [](const auto& scope) { return std::pair{scope.first, false}; }); // all scopes are deselected by default
+                [](const auto& scope) { return std::pair{scope.first, false}; });
             webpp::get_element_by_id("scopes")->inner_html(Webxx::render(
                 components::selection<"scopes">("Filter Scopes"_, scopes->scopes, selected_scopes, &profile, 1, false)));
         }
         void update_resources() {
             transformed_resources.clear();
             for(const auto& [id, e] : resources->resources) {
-                transformed_resources[std::to_string(id)] = {resource_name(id, std::get<0>(e)), std::get<1>(e)};
+                transformed_resources[std::to_string(id)] = {resource_name(std::get<0>(e)), std::get<1>(e)};
             }
             selected_resources.clear();
             std::transform(transformed_resources.begin(), transformed_resources.end(), std::inserter(selected_resources, selected_resources.end()),
-                [](const auto& res) { return std::pair{res.first, true}; }); // all resources are selected by default
+                [](const auto& res) { return std::pair{res.first, false}; });
 
             components::selection_button magic_button{
                 .text = std::string{"Select similar"_},
@@ -172,6 +226,10 @@ export class logs : public page {
         std::string stencil_format;
         std::unordered_map<std::string, bool> selected_attributes, selected_resources, selected_scopes;
         std::unordered_map<std::string, std::tuple<std::string, unsigned int>> transformed_resources;
+
+        unsigned int current_page = 0;
+        bool is_last_page = false;
+        constexpr static unsigned int page_limit = 100;
     public:
         logs(profile_data& profile, r<common::log_entry>& example_entry, r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes, r<common::logs_resources_response>& resources,
             std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs)
@@ -215,6 +273,8 @@ export class logs : public page {
                             }, [this](webpp::event) {
                                 webpp::get_element_by_id("run_button_icon")->add_class("hidden");
                                 webpp::get_element_by_id("run_button_loading")->remove_class("hidden");
+
+                                current_page = 0;
                                 webpp::coro::submit(run_query());
                             }),
                             dv{{_class{"dropdown dropdown-hover dropdown-top md:dropdown-bottom dropdown-end"}},
@@ -247,8 +307,13 @@ export class logs : public page {
                             }
                         }
                     },
-                    dv{{_id{"logs"}, _class{"mt-4 overflow-x-auto"}}},
-                }
+                    dv{{_id{"pagination_top"}, _class{"mx-auto my-4"}}},
+                    dv{{_id{"logs"}, _class{"overflow-x-auto"}}},
+                    dv{{_id{"pagination_bottom"}, _class{"mx-auto my-4"}}},
+                },
+                dv{{_id{"toasts"}, _class{"toast toast-top toast-end z-50"}},
+                    components::alert("run_query_alert", "mb-4")
+                },
             };
         }
 };

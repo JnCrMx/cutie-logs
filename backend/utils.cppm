@@ -1,17 +1,18 @@
 module;
 #include <cstdint>
-#include <string>
 #include <fstream>
-#include <unordered_map>
-#include <sstream>
 #include <iomanip>
+#include <sstream>
+#include <string>
+#include <unordered_map>
 #include <vector>
-#include <filesystem>
 
 export module backend.utils;
 
 import spdlog;
 import pistache;
+
+export import :network_ip_filter;
 
 export template<>
 struct fmt::formatter<Pistache::Address> : fmt::formatter<std::string>

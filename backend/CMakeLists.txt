@@ -13,27 +13,33 @@ find_package(ZLIB REQUIRED)
 
 FetchContent_Declare(opentelemetry-proto
   GIT_REPOSITORY https://github.com/open-telemetry/opentelemetry-proto.git
-  GIT_TAG        v1.9.0)
+  GIT_TAG        v1.10.0
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(pistache
   GIT_REPOSITORY https://github.com/JnCrMx/pistache.git
-  GIT_TAG        cmake-optional-rapidjson)
+  GIT_TAG        cmake-optional-rapidjson
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(gzip-hpp
   GIT_REPOSITORY https://github.com/mapbox/gzip-hpp.git
   GIT_TAG        master
-  SOURCE_SUBDIR  include)
+  SOURCE_SUBDIR  include
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(pqxx
   GIT_REPOSITORY https://github.com/jtv/libpqxx.git
-  GIT_TAG        7.10.5)
+  GIT_TAG        8.0.1
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(argparse
   GIT_REPOSITORY https://github.com/p-ranav/argparse.git
-  GIT_TAG        v3.2)
+  GIT_TAG        v3.2
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG        v7.0.2
-  GIT_SHALLOW TRUE)
+  GIT_TAG        v7.4.0
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(cpr
   GIT_REPOSITORY https://github.com/libcpr/cpr.git
-  GIT_TAG        1.14.2)
+  GIT_TAG        1.14.2
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 
 set(PISTACHE_BUILD_TESTS OFF CACHE BOOL "Pistache: Build tests" FORCE)
 set(PISTACHE_USE_RAPIDJSON OFF CACHE BOOL "Pistache: Use RapidJSON" FORCE)
@@ -49,7 +55,7 @@ find_package(spdlog REQUIRED)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../third_party ${CMAKE_CURRENT_BINARY_DIR}/third_party)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../common ${CMAKE_CURRENT_BINARY_DIR}/common)
 
-add_library(protoModule STATIC)
+add_library(protobufGen STATIC)
 set(proto_files
   ${opentelemetry-proto_SOURCE_DIR}/opentelemetry/proto/common/v1/common.proto
   ${opentelemetry-proto_SOURCE_DIR}/opentelemetry/proto/resource/v1/resource.proto
@@ -57,15 +63,18 @@ set(proto_files
   ${opentelemetry-proto_SOURCE_DIR}/opentelemetry/proto/collector/logs/v1/logs_service.proto
 )
 protobuf_generate(
-  TARGET protoModule
+  TARGET protobufGen
   LANGUAGE cpp
   PROTOS ${proto_files}
-  IMPORT_DIRS ${opentelemetry-proto_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
+  IMPORT_DIRS ${opentelemetry-proto_SOURCE_DIR}
 )
-target_include_directories(protoModule PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(protobufGen PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+
+add_library(protoModule STATIC)
 target_sources(protoModule PUBLIC FILE_SET CXX_MODULES FILES
   proto.cppm
 )
+target_link_libraries(protoModule PUBLIC protobufGen)
 
 set(SOURCES
   main.cpp
@@ -80,6 +89,7 @@ set(MODULE_SOURCES
   backend.cppm
   self_sink.cppm
   utils.cppm
+  network_ip_filter.cppm
   database/database.cppm
   jobs/jobs.cppm
   notifications/notifications.cppm
@@ -104,14 +114,6 @@ add_custom_command(
 )
 target_sources(server PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/migrations.inc)
 
-add_executable(test_notifications "test/notifications.cpp"
-  notifications/providers/webhook.cpp
-)
-target_sources(test_notifications PRIVATE FILE_SET CXX_MODULES FILES
-  notifications/notifications.cppm
-  notifications/provider.cppm
-)
-target_link_libraries(test_notifications PRIVATE
-  common
-  spdlogModule glazeModule cprModule
-)
+if(CUTIE_LOGS_BUILD_TESTS)
+  add_subdirectory("test")
+endif()

@@ -21,9 +21,9 @@ generatePOT:
       short: GeneratePOT
       long: Generate .pot file
       settings:
-        GENERATE_POT: true
+        CUTIE_LOGS_GENERATE_POT: true
     no:
       short: NoPOT
       long: Do not generate .pot file
       settings:
-        GENERATE_POT: false
+        CUTIE_LOGS_GENERATE_POT: false

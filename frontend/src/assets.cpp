@@ -98,5 +98,10 @@ namespace frontend::assets {
             #embed "assets/icons/magic.svg"
         };
         const std::string_view magic{magic_data, sizeof(magic_data)};
+
+        constexpr char arrow_up_data[] = {
+            #embed "assets/icons/arrow_up.svg"
+        };
+        const std::string_view arrow_up{arrow_up_data, sizeof(arrow_up_data)};
     }
 }

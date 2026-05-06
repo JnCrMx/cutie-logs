@@ -24,6 +24,7 @@ export namespace common {
     concept serializable = serializable_beve<T> && serializable_json<T>;
 
     struct log_resource {
+        unsigned int id;
         glz::generic attributes;
         double created_at;
 
@@ -71,15 +72,28 @@ export namespace common {
     static_assert(serializable<log_entry>);
 
     struct log_entry_stencil_object {
-        const log_resource* resource;
         const log_entry* log;
+        const log_resource* resource;
 
         static constexpr auto root = "log";
+
+        static log_entry_stencil_object create(const log_entry& log, const std::unordered_map<unsigned int, log_resource>& resources) {
+            const auto& res = resources.find(log.resource);
+            return log_entry_stencil_object{
+                .log = &log,
+                .resource = res == resources.end() ? nullptr : &res->second,
+            };
+        }
+        static log_entry_stencil_object create(const log_entry& log, const std::unordered_map<unsigned int, std::tuple<log_resource, unsigned int>>& resources) {
+            const auto& res = resources.find(log.resource);
+            return log_entry_stencil_object{
+                .log = &log,
+                .resource = res == resources.end() ? nullptr : &std::get<0>(res->second),
+            };
+        }
     };
 
-    struct logs_response {
-        std::vector<common::log_entry> logs;
-    };
+    using logs_response = std::vector<common::log_entry>;
     static_assert(serializable<logs_response>);
 
     struct logs_attributes_response {

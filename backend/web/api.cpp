@@ -25,6 +25,7 @@ namespace backend::web {
 namespace mime {
 
 constexpr auto application_json = "application/json";
+constexpr auto application_ndjson = "application/x-ndjson";
 constexpr auto application_octed = "application/octet-stream";
 constexpr auto application_beve = "application/prs.beve";
 constexpr auto text_plain = "text/plain";
@@ -51,37 +52,132 @@ void send_response(glz::response& response, bool beve, const T& data) {
     response.body(res_data);
 }
 
-std::string build_scope_filter(const std::string& scopes) {
-    std::string filter = "scope IN (";
-    for(const auto& scope : scopes | std::views::split(',')) {
-        filter += "'";
-        std::string_view sv{scope};
-        if(sv != "<empty>") {
-            filter += sv;
+// template<typename T>
+// void stream_response(Pistache::Http::ResponseStream& stream, bool beve, const T& data, bool first) {
+//     if(beve) {
+//         std::string buffer{};
+//         if(first) {
+//             [[maybe_unused]] auto _ = glz::write_beve_append<common::beve_opts>(data, buffer);
+//         } else {
+//             [[maybe_unused]] auto _ = glz::write_beve_append_with_delimiter<common::beve_opts>(data, buffer);
+//         }
+//         stream.write(buffer.data(), buffer.size());
+//     } else {
+//         const char newline = '\n';
+//         if(!first) {
+//             stream.write(&newline, 1);
+//         }
+//         auto res_data = *glz::write<common::json_opts>(data);
+//         stream.write(res_data.data(), res_data.size());
+//     }
+// }
+
+struct query_parameters {
+    struct all_attributes{};
+
+    unsigned int limit = 100;
+    unsigned int offset = 0;
+    std::optional<std::variant<std::vector<std::string>, all_attributes>> attributes; // NOT escaped yet!
+    std::vector<std::string> scopes; // NOT escaped yet!
+    std::vector<unsigned int> resources;
+};
+query_parameters parse_parameters(const Pistache::Rest::Request& request) {
+    constexpr auto url_decode = [](std::string_view sv) -> std::string { return glz::url_decode(sv); };
+    auto attributes = request.query().get("attributes").transform(url_decode);
+    auto scopes = request.query().get("scopes").transform(url_decode);
+    auto resources = request.query().get("resources").transform(url_decode);
+    auto limit = request.query().get("limit").transform(url_decode);
+    auto offset = request.query().get("offset").transform(url_decode);
+
+    query_parameters params{};
+    if(attributes) {
+        if(attributes == "*") {
+            params.attributes = query_parameters::all_attributes{};
+        } else {
+            auto& v = std::get<std::vector<std::string>>(*(params.attributes = std::vector<std::string>{}));
+            for(const auto& a : *attributes | std::views::split(',')) {
+                std::string_view sv{a};
+                v.emplace_back(sv);
+            }
         }
-        filter += "',";
+    }
+    if(scopes) {
+        for(const auto& s : *scopes | std::views::split(',')) {
+            std::string_view sv{s};
+            if(sv == "<empty>") {
+                params.scopes.emplace_back("");
+            } else {
+                params.scopes.emplace_back(sv);
+            }
+        }
+    }
+    if(resources) {
+        for(const auto& r : *resources | std::views::split(',')) {
+            unsigned int ri{};
+            if(std::from_chars(r.data(), r.data() + r.size(), ri).ec == std::errc{}) {
+                params.resources.push_back(ri);
+            }
+        }
+    }
+    if(limit) {
+        unsigned int li{};
+        if(std::from_chars(limit->data(), limit->data() + limit->size(), li).ec == std::errc{}) {
+            params.limit = li;
+        }
+    }
+    if(offset) {
+        unsigned int oi{};
+        if(std::from_chars(offset->data(), offset->data() + offset->size(), oi).ec == std::errc{}) {
+            params.offset = oi;
+        }
+    }
+    return params;
+}
+std::expected<void, std::string> validate_parameters(const query_parameters& params, bool needs_attributes, bool streaming) {
+    if(needs_attributes && !params.attributes) {
+        return std::unexpected("not attributes parameter given");
+    }
+
+    auto limit = streaming ? max_query_limit_streaming : max_query_limit;
+    if(params.limit > limit) {
+        return std::unexpected(std::format("maximum query limit of {} exceeded", limit));
+    }
+
+    return std::expected<void, std::string>{};
+}
+std::expected<query_parameters, std::string> validate_parameters(const Pistache::Rest::Request& request, bool needs_attributes, bool streaming) {
+    auto params = parse_parameters(request);
+    auto e = validate_parameters(params, needs_attributes, streaming);
+    return e.transform([&](){
+        return std::move(params);
+    });
+}
+
+std::string build_scope_filter(pqxx::transaction_base& txn, const std::vector<std::string>& scopes) {
+    std::string filter = "scope IN (";
+    for(const auto& scope : scopes) {
+        filter += "'" + txn.esc(scope) + "',";
     }
     filter.pop_back();
     filter += ")";
     return filter;
 }
-std::string build_resource_filter(const std::string& resources) {
+std::string build_resource_filter(const std::vector<unsigned int>& resources) {
     std::string filter = "resource IN (";
-    for(const auto& resource : resources | std::views::split(',')) {
-        filter += std::to_string(std::stoi(std::string{std::string_view{resource}}));
-        filter += ",";
+    for(const auto& resource : resources) {
+        filter += std::to_string(resource) + ",";
     }
     filter.pop_back();
     filter += ")";
     return filter;
 }
 
-std::string build_query(pqxx::transaction_base& txn, const std::string& attributes, const std::string& scopes, const std::string& resources, const std::string& filter, const std::string& limit, const std::string& offset) {
-    std::string query = "SELECT resource, timestamp, extract(epoch from timestamp) as unix_time, scope, severity, body";
-    if(attributes == "*") {
+std::string build_query(pqxx::transaction_base& txn, const query_parameters& params, bool force_all_attributes = false) {
+    std::string query = "SELECT resource, extract(epoch from timestamp) as unix_time, scope, severity, body";
+    if(force_all_attributes || std::holds_alternative<query_parameters::all_attributes>(*params.attributes)) {
         query += ", attributes";
     } else {
-        for(const auto& attr : attributes | std::views::split(',')) {
+        for(const auto& attr : std::get<std::vector<std::string>>(*params.attributes)) {
             query += ", attributes->'";
             query += txn.esc(std::string_view{attr});
             query += "'";
@@ -89,20 +185,20 @@ std::string build_query(pqxx::transaction_base& txn, const std::string& attribut
     }
     query += " FROM logs";
     query += " WHERE TRUE";
-    if(!scopes.empty()) {
-        query += " AND " + build_scope_filter(scopes);
+    if(!params.scopes.empty()) {
+        query += " AND " + build_scope_filter(txn, params.scopes);
     }
-    if(!resources.empty()) {
-        query += " AND " + build_resource_filter(resources);
+    if(!params.resources.empty()) {
+        query += " AND " + build_resource_filter(params.resources);
     }
     query += " ORDER BY timestamp DESC";
-    query += " LIMIT " + std::to_string(std::stoi(limit));
-    query += " OFFSET " + std::to_string(std::stoi(offset));
+    query += " LIMIT " + std::to_string(params.limit);
+    query += " OFFSET " + std::to_string(params.offset);
     return query;
 }
 
-std::vector<common::log_entry> get_logs(pqxx::transaction_base& txn, const std::string& attributes, const std::string& scopes, const std::string& resources, const std::string& filter, const std::string& limit, const std::string& offset) {
-    std::string query = build_query(txn, attributes, scopes, resources, filter, limit, offset);
+std::vector<common::log_entry> get_logs(pqxx::transaction_base& txn, const query_parameters& params) {
+    std::string query = build_query(txn, params);
 
     auto result = txn.exec(query);
     std::vector<common::log_entry> logs;
@@ -116,20 +212,109 @@ std::vector<common::log_entry> get_logs(pqxx::transaction_base& txn, const std::
         );
         l.body = row["body"].as<std::optional<glz::generic>>().value_or(glz::generic::null_t{});
         unsigned int i=row.column_number("body")+1;
-        if(attributes == "*") {
+        if(std::holds_alternative<query_parameters::all_attributes>(*params.attributes)) {
             l.attributes = row["attributes"].as<glz::generic>();
         } else {
-            for(const auto& attr : attributes | std::views::split(',')) {
-                auto sv = std::string_view{attr};
+            for(const auto& attr : std::get<std::vector<std::string>>(*params.attributes)) {
                 auto json = row[i].as<std::optional<glz::generic>>();
                 if(json) {
-                    l.attributes[sv] = std::move(*json);
+                    l.attributes[attr] = std::move(*json);
                 }
                 i++;
             }
         }
     }
     return logs;
+}
+
+void stream_logs_all_attributes(pqxx::transaction_base& txn, const query_parameters& params, std::invocable<const common::log_entry&, unsigned int> auto&& consumer) {
+    std::string query = build_query(txn, params, true);
+    unsigned int row_index = 0;
+    for(const auto& [resource, timestamp, scope, severity, body, attributes] :
+        txn.stream<unsigned int, double, std::string, common::log_severity, glz::generic, glz::generic>(query))
+    {
+        common::log_entry log{resource, timestamp, scope, severity, attributes, body};
+        consumer(log, row_index++);
+    }
+}
+
+namespace detail {
+    template<typename ... T>
+    using tuple_cat_t = decltype(std::tuple_cat(std::declval<T>()...));
+
+    template<typename T, typename Seq>
+    struct expander;
+
+    template<typename T, std::size_t... Is>
+    struct expander<T, std::index_sequence<Is...>> {
+        template<typename E, std::size_t>
+        using elem = E;
+        using type = std::tuple<elem<T, Is>...>;
+    };
+    template <class Type, std::size_t N>
+    struct tuple_N {
+        using type = typename expander<Type, std::make_index_sequence<N>>::type;
+    };
+
+    template<typename Tuple>
+    struct stream_helper;
+
+    template<typename... Args>
+    struct stream_helper<std::tuple<Args...>> {
+        static auto stream(pqxx::transaction_base& txn, std::string_view query) {
+            return txn.stream<Args...>(query);
+        }
+    };
+
+    template<std::size_t... Is>
+    void assign_attributes(common::log_entry& log, const auto& fields, const std::vector<std::string>& attr_names, std::index_sequence<Is...>) {
+        (..., [&](){
+            if(const auto& value = std::get<5 + Is>(fields)) {
+                log.attributes[attr_names[Is]] = value;
+            }
+        }());
+    }
+
+    template<std::size_t N, std::size_t MAX = 25>
+    void stream_logs_N(pqxx::transaction_base& txn, const query_parameters& params, std::invocable<const common::log_entry&, unsigned int> auto&& consumer) {
+        const auto& attributes = std::get<std::vector<std::string>>(*params.attributes);
+        if(N < attributes.size()) {
+            if constexpr (N >= MAX) { // at this point, just query all attributes
+                return stream_logs_all_attributes(txn, params, std::move(consumer));
+            } else {
+                return stream_logs_N<N+1>(txn, params, std::move(consumer));
+            }
+        }
+
+        std::string query = build_query(txn, params);
+
+        using base_tuple = std::tuple<unsigned int, double, std::string, common::log_severity, glz::generic>;
+        using attributes_tuple = tuple_N<std::optional<glz::generic>, N>::type;
+        using tuple = tuple_cat_t<base_tuple, attributes_tuple>;
+
+        auto stream = stream_helper<tuple>::stream(txn, query);
+        unsigned int row_index = 0;
+        for(const auto& fields : stream) {
+            common::log_entry log{};
+            log.resource = std::get<0>(fields);
+            log.timestamp = std::get<1>(fields);
+            log.scope = std::get<2>(fields);
+            log.severity = std::get<3>(fields);
+            log.body = std::get<4>(fields);
+            log.attributes = glz::generic::object_t{};
+            assign_attributes(log, fields, attributes, std::make_index_sequence<N>{});
+
+            consumer(log, row_index++);
+        }
+    }
+}
+
+void stream_logs(pqxx::transaction_base& txn, const query_parameters& params, std::invocable<const common::log_entry&, unsigned int> auto&& consumer) {
+    if(std::holds_alternative<query_parameters::all_attributes>(*params.attributes)) {
+        return stream_logs_all_attributes(txn, params, std::move(consumer));
+    } else {
+        return detail::stream_logs_N<0>(txn, params, std::move(consumer));
+    }
 }
 
 std::expected<void, std::string> check_cleanup_rule(const common::cleanup_rule& rule) {
@@ -182,6 +367,26 @@ void Server::setup_api_routes() {
 
                 response.status(200);
                 send_response(response, accepts_beve, res);
+        bool accepts_ndjson = accepts(request, mime::application_ndjson);
+        bool streaming = accepts_beve || accepts_ndjson; // we can stream both BEVE and NDJSON
+        auto params = validate_parameters(request, true, streaming);
+        if(!params) {
+            response.send(Pistache::Http::Code::Bad_Request, params.error());
+            return Pistache::Rest::Route::Result::Ok;
+        }
+        db.queue_work([this, accepts_beve, streaming, response = std::move(response), params = std::move(*params)](pqxx::connection& conn) mutable {
+            pqxx::nontransaction txn{conn};
+            try {
+                if(streaming) {
+                    auto stream = response.stream(Pistache::Http::Code::Ok);
+                    stream_logs(txn, params, [&](const common::log_entry& entry, unsigned int row_index){
+                        stream_response(stream, accepts_beve, entry, row_index == 0);
+                    });
+                    stream.ends();
+                } else {
+                    common::logs_response res = get_logs(txn, params);
+                    send_response(response, false, res);
+                }
             } catch(const pqxx::sql_error& e) {
                 response.status(500).content_type(mime::text_plain).body(e.what());
             }
@@ -204,13 +409,27 @@ void Server::setup_api_routes() {
                 std::string query = "SELECT resource, extract(epoch from timestamp) as unix_time, scope, severity, attributes, body FROM logs WHERE TRUE";
                 if(!scopes.empty()) {
                     query += " AND " + build_scope_filter(scopes);
+    router.get("/api/v1/logs/stencil", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        constexpr auto url_decode = [](std::string_view sv) -> std::string { return glz::url_decode(sv); };
+        auto params = validate_parameters(request, false, true /* /stencil always streams */);
+        if(!params) {
+            response.send(Pistache::Http::Code::Bad_Request, params.error());
+            return Pistache::Rest::Route::Result::Ok;
+        }
+        auto stencil = request.query().get("stencil").transform(url_decode).value_or("");
+        db.queue_work([this, response = std::move(response), params = std::move(*params), stencil = std::move(stencil)](pqxx::connection& conn) mutable {
+            pqxx::nontransaction txn{conn};
+            try {
+                auto result = txn.exec(pqxx::prepped{"get_resources"});
+                std::unordered_map<unsigned int, common::log_resource> resources;
+                for(const auto& row : result) {
+                    unsigned int id = row["id"].as<unsigned int>();
+                    unsigned int count = row["count"].as<unsigned int>();
+                    common::log_resource& r = resources[id];
+                    r.id = id;
+                    r.attributes = row["attributes"].as<glz::generic>();
+                    r.created_at = row["created_at"].as<double>();
                 }
-                if(!resources.empty()) {
-                    query += " AND " + build_resource_filter(resources);
-                }
-                query += " ORDER BY timestamp DESC";
-                query += " LIMIT " + std::to_string(std::stoi(limit));
-                query += " OFFSET " + std::to_string(std::stoi(offset));
 
                 std::string data{};
                 for(auto [resource, timestamp, scope, severity, attributes, body] :
@@ -222,6 +441,15 @@ void Server::setup_api_routes() {
                         +"\n";
                 }
                 response.status(200).content_type(mime::text_plain).body(data);
+                auto stream = response.stream(Pistache::Http::Code::Ok);
+                stream_logs_all_attributes(txn, params, [&](const common::log_entry& entry, unsigned int row_index) {
+                    auto obj = common::log_entry_stencil_object::create(entry, resources);
+                    std::string line = *common::stencil(stencil, obj)
+                        .or_else([](auto err) -> std::expected<std::string, std::string> { return std::format("Stencil invalid: \"{}\"", err); })
+                        +"\n";
+                    stream.write(line.data(), line.size());
+                });
+                stream.ends();
             } catch(const pqxx::sql_error& e) {
                 response.status(500).content_type(mime::text_plain).body(e.what());
             }
@@ -268,6 +496,7 @@ void Server::setup_api_routes() {
                 unsigned int id = row["id"].as<unsigned int>();
                 unsigned int count = row["count"].as<unsigned int>();
                 common::log_resource r;
+                r.id = id;
                 r.attributes = row["attributes"].as<glz::generic>();
                 r.created_at = row["created_at"].as<double>();
                 res.resources[id] = {r, count};
@@ -326,47 +555,34 @@ void Server::setup_api_routes() {
             std::vector<std::string> filter_scopes{rule.filters.scopes.values.begin(), rule.filters.scopes.values.end()};
             std::vector<common::log_severity> filter_severities{rule.filters.severities.values.begin(), rule.filters.severities.values.end()};
             std::vector<std::string> filter_attributes{rule.filters.attributes.values.begin(), rule.filters.attributes.values.end()};
-            std::string filter_attribute_values = glz::write_json(rule.filters.attribute_values.values).value_or("null");
 
             try {
                 pqxx::result cleanup_rule;
                 if constexpr (update) {
                     cleanup_rule = txn.exec(pqxx::prepped{"update_cleanup_rule"},
-                        pqxx::params{
+                        pqxx::params{txn,
                             rule.name, rule.description, rule.enabled, rule.execution_interval.count(),
                             rule.filter_minimum_age.count(),
                             filter_resources, rule.filters.resources.type,
                             filter_scopes, rule.filters.scopes.type,
                             filter_severities, rule.filters.severities.type,
                             filter_attributes, rule.filters.attributes.type,
-                            filter_attribute_values, rule.filters.attribute_values.type,
-                            rule.action, rule.action_options.and_then([](const glz::generic& v) -> std::optional<std::string> {
-                                if(auto r = glz::write_json(v)) {
-                                    return r.value();
-                                } else {
-                                    return std::nullopt;
-                                }
-                            }),
+                            rule.filters.attribute_values.values, rule.filters.attribute_values.type,
+                            rule.action, rule.action_options,
                             id
                         }
                     );
                 } else {
                     cleanup_rule = txn.exec(pqxx::prepped{"insert_cleanup_rule"},
-                        pqxx::params{
+                        pqxx::params{txn,
                             rule.name, rule.description, rule.enabled, rule.execution_interval.count(),
                             rule.filter_minimum_age.count(),
                             filter_resources, rule.filters.resources.type,
                             filter_scopes, rule.filters.scopes.type,
                             filter_severities, rule.filters.severities.type,
                             filter_attributes, rule.filters.attributes.type,
-                            filter_attribute_values, rule.filters.attribute_values.type,
-                            rule.action, rule.action_options.and_then([](const glz::generic& v) -> std::optional<std::string> {
-                                if(auto r = glz::write_json(v)) {
-                                    return r.value();
-                                } else {
-                                    return std::nullopt;
-                                }
-                            }),
+                            rule.filters.attribute_values.values, rule.filters.attribute_values.type,
+                            rule.action, rule.action_options,
                         }
                     );
                 }
@@ -414,7 +630,7 @@ void Server::setup_api_routes() {
         db.queue_work([this, id, response = std::move(response)](pqxx::connection& conn) mutable {
             pqxx::work txn{conn};
             try {
-                auto result = txn.exec(pqxx::prepped{"delete_cleanup_rule"}, id);
+                auto result = txn.exec(pqxx::prepped{"delete_cleanup_rule"}, pqxx::params{id});
                 if(result.affected_rows() == 0) {
                     response.send(Pistache::Http::Code::Not_Found, std::format("Cleanup rule with id {} not found", id));
                     return;
@@ -477,33 +693,32 @@ void Server::setup_api_routes() {
             std::vector<std::string> filter_scopes{rule.filters.scopes.values.begin(), rule.filters.scopes.values.end()};
             std::vector<common::log_severity> filter_severities{rule.filters.severities.values.begin(), rule.filters.severities.values.end()};
             std::vector<std::string> filter_attributes{rule.filters.attributes.values.begin(), rule.filters.attributes.values.end()};
-            std::string filter_attribute_values = glz::write_json(rule.filters.attribute_values.values).value_or("null");
 
             try {
                 pqxx::result alert_rule;
                 if constexpr (update) {
                     alert_rule = txn.exec(pqxx::prepped{"update_alert_rule"},
-                        pqxx::params{
+                        pqxx::params{txn,
                             rule.name, rule.description, rule.enabled,
-                            rule.notification_provider, glz::write_json(rule.notification_options).value_or("{}"),
+                            rule.notification_provider, rule.notification_options,
                             filter_resources, rule.filters.resources.type,
                             filter_scopes, rule.filters.scopes.type,
                             filter_severities, rule.filters.severities.type,
                             filter_attributes, rule.filters.attributes.type,
-                            filter_attribute_values, rule.filters.attribute_values.type,
+                            rule.filters.attribute_values.values, rule.filters.attribute_values.type,
                             id
                         }
                     );
                 } else {
                     alert_rule = txn.exec(pqxx::prepped{"insert_alert_rule"},
-                        pqxx::params{
+                        pqxx::params{txn,
                             rule.name, rule.description, rule.enabled,
-                            rule.notification_provider, glz::write_json(rule.notification_options).value_or("{}"),
+                            rule.notification_provider, rule.notification_options,
                             filter_resources, rule.filters.resources.type,
                             filter_scopes, rule.filters.scopes.type,
                             filter_severities, rule.filters.severities.type,
                             filter_attributes, rule.filters.attributes.type,
-                            filter_attribute_values, rule.filters.attribute_values.type
+                            rule.filters.attribute_values.values, rule.filters.attribute_values.type
                         }
                     );
                 }
@@ -556,7 +771,7 @@ void Server::setup_api_routes() {
         db.queue_work([this, id, response = std::move(response)](pqxx::connection& conn) mutable {
             pqxx::work txn{conn};
             try {
-                auto result = txn.exec(pqxx::prepped{"delete_alert_rule"}, id);
+                auto result = txn.exec(pqxx::prepped{"delete_alert_rule"}, pqxx::params{id});
                 if(result.affected_rows() == 0) {
                     response.send(Pistache::Http::Code::Not_Found, std::format("Alert rule with id {} not found", id));
                     return;

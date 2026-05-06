@@ -21,6 +21,7 @@ export namespace Pistache {
         using Pistache::Http::Code;
         using Pistache::Http::Endpoint;
         using Pistache::Http::ResponseWriter;
+        using Pistache::Http::ResponseStream;
         using Pistache::Http::Request;
         using Pistache::Http::Method;
         using Pistache::Http::operator<<;

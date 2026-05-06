@@ -149,9 +149,9 @@ std::expected<int, std::string> execute_transform_cleanup_job(const common::clea
                 }
             }
             int affected_rows = txn.exec(pqxx::prepped{"update_log_attributes"},
-                pqxx::params{
+                pqxx::params{txn,
                     log.resource, log.timestamp, log.scope,
-                    glz::write_json(log.attributes).value_or("{}")
+                    log.attributes
                 }
             ).affected_rows();
 
