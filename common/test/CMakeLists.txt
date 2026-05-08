@@ -6,3 +6,6 @@ target_link_libraries(test_mmdb PRIVATE common)
 
 add_executable(test_parse_ip "parse_ip.cpp")
 target_link_libraries(test_parse_ip PRIVATE common)
+
+add_executable(test_glaze "glaze.cpp")
+target_link_libraries(test_glaze PRIVATE common)

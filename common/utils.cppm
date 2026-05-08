@@ -11,6 +11,13 @@ export module common:utils;
 
 namespace common {
 
+export auto maybe(const auto& map, const auto& key) -> std::optional<std::decay_t<decltype(map.at(key))>> {
+    if(map.contains(key)) {
+        return map.at(key);
+    }
+    return std::nullopt;
+}
+
 export template<std::integral T>
 constexpr std::optional<T> from_chars(std::string_view sv, int base = 10, bool strict = true) {
     T value{};
