@@ -1,5 +1,7 @@
 module;
 #include <chrono>
+#include <functional>
+#include <future>
 #include <map>
 #include <memory>
 #include <unordered_set>
@@ -8,7 +10,6 @@ export module backend.opentelemetry;
 
 import glaze;
 import gzip;
-import pistache;
 import pqxx;
 import proto;
 import spdlog;
@@ -17,6 +18,12 @@ import common;
 import backend.utils;
 import backend.database;
 import backend.notifications;
+
+namespace mime {
+
+constexpr auto text_plain = "text/plain";
+
+}
 
 glz::generic to_json(const ::opentelemetry::proto::common::v1::AnyValue& v) {
     if(v.has_bool_value()) {
@@ -59,26 +66,21 @@ glz::generic::object_t to_json(const ::google::protobuf::RepeatedPtrField<::open
     return obj;
 }
 
+inline std::future<void> make_ready_future() {
+    std::promise<void> p;
+    p.set_value();
+    return p.get_future();
+}
+using common::maybe;
+
 namespace backend::opentelemetry {
     export class Server {
         public:
-            static Pistache::Address default_address() {
-                return Pistache::Address(Pistache::Ipv4::any(), Pistache::Port(4318));
-            }
-            static Pistache::Http::Endpoint::Options default_options() {
-                return Pistache::Http::Endpoint::options()
-                    .threads(4)
-                    .threadsName("http-otel")
-                    .flags(Pistache::Tcp::Options::ReuseAddr);
-            }
-
-            Server(database::Database& db, NetworkIpFilter* ip_filter, Pistache::Address address = default_address(), Pistache::Http::Endpoint::Options options = default_options())
-                : db(db), ip_filter(ip_filter), address(address), server(address), router(), logger(spdlog::default_logger()->clone("opentelemetry"))
+            Server(asio::io_context& ctx, database::Database& db, NetworkIpFilter* ip_filter, asio::ip::tcp::endpoint endpoint)
+                : db(db), ip_filter(ip_filter), endpoint(endpoint), server(ctx.get_executor()), logger(spdlog::default_logger()->clone("opentelemetry"))
             {
-                server.init(options);
-
-                router.post("/v1/logs", Pistache::Rest::Routes::bind(&Server::handle_log, this));
-                server.setHandler(router.handler());
+                router.post_async("/v1/logs", std::bind_front(&Server::handle_log, this));
+                server.mount("/", router);
 
                 auto f = db.queue_work([this](pqxx::connection& conn) {
                     {
@@ -96,13 +98,10 @@ namespace backend::opentelemetry {
                 logger->info("Loaded {} alert rule(s)", alert_rules.size());
             }
 
-            void serve() {
-                logger->info("Serving OpenTelemetry collector on http://{}", address);
-                server.serve();
-            }
-            void serve_threaded() {
-                logger->info("Serving OpenTelemetry collector on http://{}", address);
-                server.serveThreaded();
+            void start() {
+                logger->info("Serving OpenTelemetry collector on http://{}:{}/", endpoint.address().to_string(), endpoint.port());
+                server.bind(endpoint.address().to_string(), endpoint.port());
+                server.start(0);
             }
         private:
             void process_alerts(pqxx::connection& conn, const common::log_entry& log, const common::log_resource& resource) {
@@ -139,43 +138,43 @@ namespace backend::opentelemetry {
                 txn.commit();
             }
 
-            Pistache::Rest::Route::Result handle_log(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+            std::future<void> handle_log(const glz::request& request, glz::response& response) {
+                std::string remote = request.remote_ip + ":" + std::to_string(request.remote_port);
                 try {
-                    logger->trace("{} | Received a POST request to /v1/logs", request.address());
+                    logger->trace("{} | Received a POST request to /v1/logs", remote);
 
-                    if(request.body().empty()) {
-                        logger->warn("{} | Empty request body", request.address());
-                        response.send(Pistache::Http::Code::Bad_Request, "Empty request body");
-                        return Pistache::Rest::Route::Result::Failure;
+                    if(request.body.empty()) {
+                        logger->warn("{} | Empty request body", remote);
+                        response.status(400).content_type(mime::text_plain).body("Empty request body");
+                        return make_ready_future();
                     }
-                    if(request.headers().get<Pistache::Http::Header::ContentType>()->mime().raw() != "application/x-protobuf") {
-                        logger->warn("{} | Invalid Content-Type header", request.address());
-                        response.send(Pistache::Http::Code::Unsupported_Media_Type, "Invalid Content-Type header");
-                        return Pistache::Rest::Route::Result::Failure;
+                    if(maybe(request.headers, "content-type") != "application/x-protobuf") {
+                        logger->warn("{} | Invalid Content-Type header", remote);
+                        response.status(415).content_type(mime::text_plain).body("Invalid Content-Type header");
+                        return make_ready_future();
                     }
 
                     std::string body;
-                    if(request.headers().has<Pistache::Http::Header::ContentEncoding>()) {
-                        auto encoding = request.headers().get<Pistache::Http::Header::ContentEncoding>();
-                        if(encoding->encoding() == Pistache::Http::Header::Encoding::Gzip) {
-                            body = gzip::decompress(request.body().data(), request.body().size());
+                    if(auto encoding = maybe(request.headers, "content-encoding")) {
+                        if(*encoding == "gzip") {
+                            body = gzip::decompress(request.body.data(), request.body.size());
                         } else {
-                            logger->warn("{} | Unsupported Content-Encoding: {}", request.address(), Pistache::Http::Header::encodingString(encoding->encoding()));
-                            response.send(Pistache::Http::Code::Unsupported_Media_Type, "Unsupported Content-Encoding");
-                            return Pistache::Rest::Route::Result::Failure;
+                            logger->warn("{} | Unsupported Content-Encoding: {}", remote, *encoding);
+                            response.status(415).content_type(mime::text_plain).body("Unsupported Content-Encoding");
+                            return make_ready_future();
                         }
                     } else {
-                        body = request.body();
+                        body = request.body;
                     }
 
                     ::opentelemetry::proto::collector::logs::v1::ExportLogsServiceRequest req;
                     if(!req.ParseFromString(body)) {
-                        logger->warn("{} | Failed to parse request body", request.address());
-                        response.send(Pistache::Http::Code::Bad_Request, "Invalid request body");
-                        return Pistache::Rest::Route::Result::Failure;
+                        logger->warn("{} | Failed to parse request body", remote);
+                        response.status(400).content_type(mime::text_plain).body("Invalid request body");
+                        return make_ready_future();
                     }
 
-                    db.queue_work([this, address = request.address(), req = std::move(req), response = std::move(response)](pqxx::connection& conn) mutable {
+                    return db.queue_work([this, remote = std::move(remote), req = std::move(req), &response](pqxx::connection& conn) {
                         try {
                             using timestamp_t = std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>;
                             std::unordered_set<decltype(std::declval<timestamp_t>().time_since_epoch().count())> seen_timestamps;
@@ -195,7 +194,7 @@ namespace backend::opentelemetry {
                                         // check if ts includes anything below seconds
                                         if(ts == std::chrono::floor<std::chrono::seconds>(ts)) {
                                             auto fixed_ts = ts + (std::chrono::microseconds(timestamp_fix_offset++) % std::chrono::seconds(1));
-                                            logger->warn("{} | Adjusted second-precision timestamp from {} to {}", address, ts.time_since_epoch().count(), fixed_ts.time_since_epoch().count());
+                                            logger->warn("{} | Adjusted second-precision timestamp from {} to {}", remote, ts.time_since_epoch().count(), fixed_ts.time_since_epoch().count());
                                             ts = fixed_ts;
                                         }
 
@@ -221,22 +220,22 @@ namespace backend::opentelemetry {
                                     }
                                 }
                             }
-                            response.send(Pistache::Http::Code::Ok, "");
+                            response.status(200).body("");
                         } catch(const std::exception& e) {
-                            logger->error("{} | Unhandled exception: {} for request {}", address, e.what(), req.DebugString());
-                            response.send(Pistache::Http::Code::Internal_Server_Error, "Internal server error");
+                            logger->error("{} | Unhandled exception: {} for request {}", remote, e.what(), req.DebugString());
+                            response.status(500).content_type(mime::text_plain).body(e.what());
                         }
                     });
                 } catch(const std::exception& e) {
-                    logger->error("{} | Unhandled exception: {}", request.address(), e.what());
+                    logger->error("{} | Unhandled exception: {}", remote, e.what());
                 }
-                return Pistache::Rest::Route::Result::Ok;
+                return make_ready_future();
             }
 
             std::shared_ptr<spdlog::logger> logger;
-            Pistache::Address address;
-            Pistache::Http::Endpoint server;
-            Pistache::Rest::Router router;
+            asio::ip::tcp::endpoint endpoint;
+            glz::http_server<false> server;
+            glz::http_router router;
             database::Database& db;
             NetworkIpFilter* ip_filter;
 

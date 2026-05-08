@@ -16,7 +16,6 @@ module backend.web;
 
 import glaze;
 import pqxx;
-import pistache;
 
 import common;
 
@@ -594,25 +593,29 @@ void Server::setup_api_routes() {
     });
     router.patch_async("/api/v1/settings/cleanup_rules/:id", [create_or_update_cleanup_rule](const glz::request& request, glz::response& response) -> std::future<void> {
         return create_or_update_cleanup_rule.template operator()<true>(request, response);
-    });/*
-    router.del("/api/v1/settings/cleanup_rules/:id", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-        auto id = request.param(":id").as<unsigned int>();
-        db.queue_work([this, id, response = std::move(response)](pqxx::connection& conn) mutable {
+    });
+    router.del_async("/api/v1/settings/cleanup_rules/:id", [this](const glz::request& request, glz::response& response) -> std::future<void> {
+        auto id = maybe(request.params, "id").and_then(parse_uint_strict);
+        if(!id) {
+            response.status(400).content_type(mime::text_plain).body("Missing or invalid id parameter in URL");
+            return make_ready_future();
+        }
+
+        return db.queue_work([this, id = *id, &response](pqxx::connection& conn) mutable {
             pqxx::work txn{conn};
             try {
                 auto result = txn.exec(pqxx::prepped{"delete_cleanup_rule"}, pqxx::params{id});
                 if(result.affected_rows() == 0) {
-                    response.send(Pistache::Http::Code::Not_Found, std::format("Cleanup rule with id {} not found", id));
+                    response.status(404).content_type(mime::text_plain).body(std::format("Cleanup rule with id {} not found", id));
                     return;
                 }
                 txn.commit();
-                response.send(Pistache::Http::Code::No_Content);
+                response.status(204);
             } catch(const std::exception& e) {
-                response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
+                response.status(500).content_type(mime::text_plain).body(e.what());
             }
         });
-        return Pistache::Rest::Route::Result::Ok;
-    });*/
+    });
 
     router.get_async("/api/v1/settings/alert_rules", [this](const glz::request& request, glz::response& response) -> std::future<void> {
         bool accepts_beve = accepts(request, mime::application_beve);
@@ -624,39 +627,44 @@ void Server::setup_api_routes() {
             response.status(200);
             send_response(response, accepts_beve, res);
         });
-    });/*
-    auto create_or_update_alert_rule = [this]<bool update>(const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+    });
+    auto create_or_update_alert_rule = [this]<bool update>(const glz::request& request, glz::response& response) {
         bool accepts_beve = accepts(request, mime::application_beve);
 
         std::expected<common::alert_rule, glz::error_ctx> rule;
         if(isContentType(request, mime::application_json)) {
-            rule = glz::read<common::json_opts, common::alert_rule>(request.body());
+            rule = glz::read<common::json_opts, common::alert_rule>(request.body);
         } else if(isContentType(request, mime::application_beve)) {
-            rule = glz::read<common::beve_opts, common::alert_rule>(request.body());
+            rule = glz::read<common::beve_opts, common::alert_rule>(request.body);
         } else {
-            response.send(Pistache::Http::Code::Unsupported_Media_Type, "Unsupported media type");
-            return Pistache::Rest::Route::Result::Ok;
+            response.status(400).content_type(mime::text_plain).body("Unsupported media type");
+            return make_ready_future();
         }
         if(!rule) {
-            response.send(Pistache::Http::Code::Bad_Request, std::format("Failed to parse request body: {}", glz::format_error(rule.error(), request.body())));
-            return Pistache::Rest::Route::Result::Ok;
+            response.status(400).content_type(mime::text_plain).body(std::format("Failed to parse request body: {}", glz::format_error(rule.error(), request.body)));
+            return make_ready_future();
         }
 
         if(auto res = check_alert_rule(*rule); !res) {
-            response.send(Pistache::Http::Code::Bad_Request, std::format("Invalid request body: {}", res.error()));
-            return Pistache::Rest::Route::Result::Ok;
+            response.status(400).content_type(mime::text_plain).body(std::format("Invalid request body: {}", res.error()));
+            return make_ready_future();
         }
 
         unsigned int id = 0;
         if constexpr (update) {
-            id = request.param(":id").as<unsigned int>();
+            if(auto maybe_id = maybe(request.params, "id").and_then(parse_uint_strict)) {
+                id = *maybe_id;
+            } else {
+                response.status(400).content_type(mime::text_plain).body("Missing or invalid id parameter in URL");
+                return make_ready_future();
+            }
             if(id != rule->id) {
-                response.send(Pistache::Http::Code::Bad_Request, "ID in URL and body do not match");
-                return Pistache::Rest::Route::Result::Ok;
+                response.status(400).content_type(mime::text_plain).body("ID in URL and body do not match");
+                return make_ready_future();
             }
         }
 
-        db.queue_work([this, accepts_beve, id, rule = std::move(*rule), response = std::move(response)](pqxx::connection& conn) mutable {
+        return db.queue_work([this, accepts_beve, id, rule = std::move(*rule), &response](pqxx::connection& conn) mutable {
             pqxx::work txn{conn};
 
             std::vector<unsigned int> filter_resources{rule.filters.resources.values.begin(), rule.filters.resources.values.end()};
@@ -696,7 +704,7 @@ void Server::setup_api_routes() {
                 txn.commit();
 
                 if(alert_rule.empty()) {
-                    response.send(Pistache::Http::Code::Internal_Server_Error, "Failed to insert/update alert rule");
+                    response.status(500).content_type(mime::text_plain).body("Failed to insert/update alert rule");
                     return;
                 }
 
@@ -721,40 +729,42 @@ void Server::setup_api_routes() {
 
                 send_response(response, accepts_beve, rule);
             } catch(const pqxx::unique_violation& e) {
-                response.send(Pistache::Http::Code::Conflict, std::format("Alert rule with name \"{}\" already exists", rule.name));
+                response.status(409).content_type(mime::text_plain).body(std::format("Alert rule with name \"{}\" already exists", rule.name));
                 return;
             } catch(const std::exception& e) {
-                response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
+                response.status(500).content_type(mime::text_plain).body(e.what());
                 return;
             }
         });
-        return Pistache::Rest::Route::Result::Ok;
     };
-    router.put("/api/v1/settings/alert_rules", [create_or_update_alert_rule](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-        return create_or_update_alert_rule.template operator()<false>(request, std::move(response));
+    router.put_async("/api/v1/settings/alert_rules", [create_or_update_alert_rule](const glz::request& request, glz::response& response) -> std::future<void> {
+        return create_or_update_alert_rule.template operator()<false>(request, response);
     });
-    router.patch("/api/v1/settings/alert_rules/:id", [create_or_update_alert_rule](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-        return create_or_update_alert_rule.template operator()<true>(request, std::move(response));
+    router.patch_async("/api/v1/settings/alert_rules/:id", [create_or_update_alert_rule](const glz::request& request, glz::response& response) -> std::future<void> {
+        return create_or_update_alert_rule.template operator()<true>(request, response);
     });
-    router.del("/api/v1/settings/alert_rules/:id", [this](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
-        auto id = request.param(":id").as<unsigned int>();
-        db.queue_work([this, id, response = std::move(response)](pqxx::connection& conn) mutable {
+    router.del_async("/api/v1/settings/alert_rules/:id", [this](const glz::request& request, glz::response& response) -> std::future<void> {
+        auto id = maybe(request.params, "id").and_then(parse_uint_strict);
+        if(!id) {
+            response.status(400).content_type(mime::text_plain).body("Missing or invalid id parameter in URL");
+            return make_ready_future();
+        }
+
+        return db.queue_work([this, id = *id, &response](pqxx::connection& conn) mutable {
             pqxx::work txn{conn};
             try {
                 auto result = txn.exec(pqxx::prepped{"delete_alert_rule"}, pqxx::params{id});
                 if(result.affected_rows() == 0) {
-                    response.send(Pistache::Http::Code::Not_Found, std::format("Alert rule with id {} not found", id));
+                    response.status(404).content_type(mime::text_plain).body(std::format("Alert rule with id {} not found", id));
                     return;
                 }
-                txn.notify("alert_rules");
                 txn.commit();
-                response.send(Pistache::Http::Code::No_Content);
+                response.status(204);
             } catch(const std::exception& e) {
-                response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
+                response.status(500).content_type(mime::text_plain).body(e.what());
             }
         });
-        return Pistache::Rest::Route::Result::Ok;
-    });*/
+    });
 }
 
 }

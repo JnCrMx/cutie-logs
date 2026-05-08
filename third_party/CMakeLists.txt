@@ -1,10 +1,5 @@
 # Backend modules
 if(${BUILD_TARGET} STREQUAL "backend")
-    add_library(pistacheModule STATIC)
-    target_sources(pistacheModule PUBLIC FILE_SET CXX_MODULES FILES pistache.cppm)
-    target_compile_features(pistacheModule PUBLIC cxx_std_23)
-    target_link_libraries(pistacheModule PUBLIC pistache)
-
     add_library(gzipModule STATIC)
     target_sources(gzipModule PUBLIC FILE_SET CXX_MODULES FILES gzip.cppm)
     target_compile_features(gzipModule PUBLIC cxx_std_23)

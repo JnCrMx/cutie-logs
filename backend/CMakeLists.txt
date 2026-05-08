@@ -15,10 +15,6 @@ FetchContent_Declare(opentelemetry-proto
   GIT_REPOSITORY https://github.com/open-telemetry/opentelemetry-proto.git
   GIT_TAG        v1.10.0
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
-FetchContent_Declare(pistache
-  GIT_REPOSITORY https://github.com/JnCrMx/pistache.git
-  GIT_TAG        cmake-optional-rapidjson
-  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(gzip-hpp
   GIT_REPOSITORY https://github.com/mapbox/gzip-hpp.git
   GIT_TAG        master
@@ -41,14 +37,12 @@ FetchContent_Declare(cpr
   GIT_TAG        1.14.2
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 
-set(PISTACHE_BUILD_TESTS OFF CACHE BOOL "Pistache: Build tests" FORCE)
-set(PISTACHE_USE_RAPIDJSON OFF CACHE BOOL "Pistache: Use RapidJSON" FORCE)
 set(CPR_ENABLE_CURL_HTTP_ONLY OFF CACHE BOOL "CPR: Enable only HTTP" FORCE)
 set(CPR_USE_SYSTEM_CURL ON CACHE BOOL "CPR: Use system libcurl" FORCE)
 set(SKIP_BUILD_TEST ON CACHE BOOL "" FORCE)
 set(BUILD_TEST OFF CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(opentelemetry-proto pistache gzip-hpp pqxx argparse glaze cpr)
+FetchContent_MakeAvailable(opentelemetry-proto gzip-hpp pqxx argparse glaze cpr)
 
 find_package(spdlog REQUIRED)
 
@@ -102,7 +96,7 @@ add_executable(server ${SOURCES})
 target_sources(server PRIVATE FILE_SET CXX_MODULES FILES ${MODULE_SOURCES})
 target_link_libraries(server PRIVATE
   common protoModule
-  pistacheModule gzipModule pqxxModule argparseModule spdlogModule glazeModule cprModule
+  gzipModule pqxxModule argparseModule spdlogModule glazeModule cprModule
   protobuf::libprotobuf)
 target_compile_options(server PRIVATE --embed-dir=${CMAKE_BINARY_DIR}/frontend/ --embed-dir=${CMAKE_SOURCE_DIR} -Wno-c23-extensions)
 add_dependencies(server frontend_files)

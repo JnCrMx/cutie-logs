@@ -9,5 +9,5 @@ target_sources(test_notifications PRIVATE FILE_SET CXX_MODULES BASE_DIRS ../ FIL
 )
 target_link_libraries(test_notifications PRIVATE
   common
-  pistacheModule spdlogModule glazeModule cprModule
+  spdlogModule glazeModule cprModule
 )

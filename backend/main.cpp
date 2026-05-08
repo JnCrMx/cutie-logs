@@ -8,7 +8,6 @@
 #include <thread>
 #include <vector>
 
-import pistache;
 import pqxx;
 import argparse;
 import spdlog;
@@ -217,6 +216,9 @@ int main(int argc, char** argv) {
         web_server.start();
     }
 
+    opentelemetry::Server opentelemetry_server(*io_ctx, db, &ip_filter, parse_endpoint(env_get(program, "--otel-address")));
+    opentelemetry_server.start();
+
     std::vector<std::jthread> asio_threads;
     for(unsigned int i=0; i<std::thread::hardware_concurrency(); i++) {
         asio_threads.emplace_back([i, io_ctx](){
@@ -225,8 +227,9 @@ int main(int argc, char** argv) {
         });
     }
 
-    opentelemetry::Server opentelemetry_server(db, &ip_filter, Pistache::Address(env_get(program, "--otel-address")));
-    opentelemetry_server.serve();
+    for(;;) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
 
     return 0;
 }
