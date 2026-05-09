@@ -107,16 +107,6 @@ namespace common {
         return std::expected<void, std::string>{};
     }
 
-    std::string_view trim(std::string_view str) {
-        while(!str.empty() && str.front() == ' ') {
-            str.remove_prefix(1);
-        }
-        while(!str.empty() && str.back() == ' ') {
-            str.remove_suffix(1);
-        }
-        return str;
-    }
-
     export template<typename T>
     concept has_base = requires(T t) {
         { t.base } -> glz::reflectable;

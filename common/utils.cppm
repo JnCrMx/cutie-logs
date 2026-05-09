@@ -18,6 +18,15 @@ export auto maybe(const auto& map, const auto& key) -> std::optional<std::decay_
     return std::nullopt;
 }
 
+export std::string_view trim(std::string_view sv, const char* chars = " \t\r\n") {
+    const auto strBegin = sv.find_first_not_of(chars);
+    if (strBegin == std::string_view::npos) {
+        return {};
+    }
+    const auto strEnd = sv.find_last_not_of(chars);
+    return sv.substr(strBegin, strEnd - strBegin + 1);
+}
+
 export template<std::integral T>
 constexpr std::optional<T> from_chars(std::string_view sv, int base = 10, bool strict = true) {
     T value{};

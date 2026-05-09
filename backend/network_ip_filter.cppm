@@ -40,13 +40,7 @@ export class NetworkIpFilter {
         NetworkIpFilter(std::string_view filterlist = "") {
             for(auto rule_ : filterlist | std::views::split(',')) {
                 std::string_view rule{rule_};
-
-                if(auto first = rule.find_first_not_of(" \t\r\n"); first != std::string_view::npos) {
-                    rule.remove_prefix(first);
-                }
-                if(auto last = rule.find_last_not_of(" \t\r\n"); last != std::string_view::npos) {
-                    rule.remove_suffix(rule.size() - last - 1);
-                }
+                rule = common::trim(rule);
                 if(rule.empty()) continue;
 
                 filter_action action = filter_action::deny; // if not action is given, default to block

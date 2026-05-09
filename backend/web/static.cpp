@@ -2,9 +2,10 @@ module;
 #include <array>
 #include <filesystem>
 #include <fstream>
-#include <string>
-#include <string_view>
+#include <ranges>
 #include <span>
+#include <string_view>
+#include <string>
 
 module backend.web;
 
@@ -52,8 +53,19 @@ constexpr char etag_prefix[] = "release_";
 #else
 constexpr char etag_prefix[] = "debug_";
 #endif
-constexpr auto etag_array = detail::concat<detail::str_to_array(etag_prefix), git_commit_hash>();
+constexpr auto etag_array = detail::concat<
+    detail::str_to_array("\""),
+    detail::concat<
+        detail::concat<
+            detail::str_to_array(etag_prefix),
+            git_commit_hash
+        >(),
+        detail::str_to_array("\"")
+    >()
+>();
 constexpr auto etag = std::string_view{etag_array};
+
+using common::maybe;
 
 struct entry {
     std::string_view path;
@@ -116,12 +128,23 @@ void Server::setup_static_routes() {
                     return;
                 }
             }
-            if(request.headers.contains("IfNoneMatch")) {
-                // auto if_none_match = request.headers().get<Pistache::Http::Header::IfNoneMatch>();
-                // if(!if_none_match->test(etag)) {
-                //     response.send(Pistache::Http::Code::Not_Modified);
-                //     return Pistache::Rest::Route::Result::Ok;
-                // }
+            if(auto tag = maybe(request.headers, "if-none-match")) {
+                bool match = false;
+                bool all = *tag == "*";
+                if(!all) {
+                    for(auto part : *tag | std::views::split(',')) {
+                        std::string_view sv = common::trim(std::string_view{part});
+                        if(sv == etag) {
+                            match = true;
+                            break;
+                        }
+                    }
+                }
+
+                if(match) {
+                    response.status(304);
+                    return;
+                }
             }
 
             response.header("ETag", etag);
