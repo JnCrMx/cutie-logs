@@ -351,7 +351,7 @@ void Server::setup_api_routes() {
         response.status(200);
         send_response(response, accepts_beve, settings);
     });
-    server.stream_get("/api/v1/logs", [this](const glz::request& request, glz::streaming_response& response) -> void {
+    router.stream_get("/api/v1/logs", [this](const glz::request& request, glz::streaming_response& response) -> void {
         bool accepts_beve = accepts(request, mime::application_beve);
         bool accepts_ndjson = accepts(request, mime::application_ndjson);
         bool streaming = accepts_beve || accepts_ndjson; // we can stream both BEVE and NDJSON
@@ -382,7 +382,7 @@ void Server::setup_api_routes() {
             malloc_trim(1024*1024);
         }).wait();
     });
-    server.stream_get("/api/v1/logs/stencil", [this](const glz::request& request, glz::streaming_response& response) -> void {
+    router.stream_get("/api/v1/logs/stencil", [this](const glz::request& request, glz::streaming_response& response) -> void {
         auto params = validate_parameters(request, false, true); /* /stencil always streams */
         if(!params) {
             response.start_stream(400);
