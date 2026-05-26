@@ -296,6 +296,7 @@ export namespace common {
         std::string index_name;
         std::string sql;
         std::optional<bool> invalid;
+        std::optional<std::size_t> index_size;
     };
     static_assert(serializable<attribute_index>);
 

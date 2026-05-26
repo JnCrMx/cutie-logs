@@ -41,7 +41,9 @@ export class settings : public page {
         {
             profile.add_callback([this](auto&) { if(is_open) { open(); }});
             attribute_indices.add_callback([this](auto&) {
-                webpp::get_element_by_id("settings_attribute_indices")->inner_html(Webxx::render(render_attribute_indices()));
+                if(is_open) {
+                    webpp::get_element_by_id("settings_attribute_indices")->inner_html(Webxx::render(render_attribute_indices()));
+                }
             });
         }
 
@@ -662,7 +664,8 @@ export class settings : public page {
                     each(indices, [this, &ctx](const common::attribute_index& index) {
                         std::string_view color = (index.invalid == true) ? "error" : (index.complete ? "success" : "warning");
                         return dv{{_class{"join"}},
-                            dv{{_class{std::format("join-item rounded-l-full pl-4 pr-2 h-[40px] shadow flex items-center font-bold bg-{}", color)}},common::to_string(index.type)},
+                            dv{{_class{"tooltip tooltip-bottom"}, _dataTip{common::format_size(*index.index_size)}},
+                                dv{{_class{std::format("join-item rounded-l-full pl-4 pr-2 h-[40px] shadow flex items-center font-bold bg-{}", color)}}, common::to_string(index.type)}},
                             dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Delete index"_}},
                                 ctx.on_click(button{{_class{"btn btn-secondary btn-square pr-1 join-item rounded-r-full"}}, assets::icons::delete_}, [this, attribute = index.attribute, type = index.type](webpp::event){
                                     webpp::coro::submit([this](auto attribute, auto type) -> webpp::coroutine<void> {
@@ -677,7 +680,7 @@ export class settings : public page {
                                             co_return;
                                         }
                                         components::show_alert("alert_success", std::string{"Index deleted"_},
-                                            "Index of type {} for attribute {} deleted successfully."_(common::to_string(type), attribute), std::chrono::seconds(10));
+                                            "Index of type {} for attribute \"{}\" deleted successfully."_(common::to_string(type), attribute), std::chrono::seconds(10));
 
                                         co_await refresh_func();
 
@@ -836,22 +839,22 @@ export class settings : public page {
 
             using namespace Webxx;
             return fragment{
-                fieldset{{_class{"flex flex-row gap-4 w-fit mb-4"}},
-                    select{{_class{"select"}, _id{"new_index_attribute"}},
+                fieldset{{_class{"flex flex-col md:flex-row gap-4 w-fit mb-4"}},
+                    select{{_class{"select md:min-w-80"}, _id{"new_index_attribute"}},
                         option{{_value{""}, _selected{}, _disabled{}}, "Select an attribute"_},
                         each(sorted_attributes, [&](const auto& attribute) {
                             return option{{_value{attribute}}, attribute};
                         })
                     },
-                    dv{{_class{"join"}},
+                    dv{{_class{"join join-vertical md:join-horizontal"}},
                         each(index_types, [](common::index_type type) {
                             int type_id = std::to_underlying(type);
                             auto id = std::format("new_index_type_{}", type_id);
 
                             if(type == index_types.front()) {
-                                return input{{_type{"radio"}, _id{id}, _name{"index_type"}, _class{"join-item btn rounded-l-full"}, _ariaLabel{common::to_string(type)}, _checked{}}};
+                                return input{{_type{"radio"}, _id{id}, _name{"index_type"}, _class{"join-item btn md:rounded-l-full"}, _ariaLabel{common::to_string(type)}, _checked{}}};
                             } else if(type == index_types.back()) {
-                                return input{{_type{"radio"}, _id{id}, _name{"index_type"}, _class{"join-item btn rounded-r-full"}, _ariaLabel{common::to_string(type)}}};
+                                return input{{_type{"radio"}, _id{id}, _name{"index_type"}, _class{"join-item btn md:rounded-r-full"}, _ariaLabel{common::to_string(type)}}};
                             }
                             return input{{_type{"radio"}, _id{id}, _name{"index_type"}, _class{"join-item btn"}, _ariaLabel{common::to_string(type)}}};
                         })
@@ -876,7 +879,7 @@ export class settings : public page {
 
                             webpp::get_element_by_id("new_index_create_button")->set_property("disabled", true);
                             components::show_alert("alert_success", std::string{"Creating index"_},
-                                "Creating index of type {} for attribute {}... This might take a while."_(common::to_string(type), attribute));
+                                "Creating index of type {} for attribute \"{}\"...<br>This might take a while."_(common::to_string(type), attribute), 0);
 
                             webpp::coro::submit([this](auto attribute, auto type) -> webpp::coroutine<void> {
                                 webpp::js_object request = webpp::js_object::create();
@@ -892,7 +895,7 @@ export class settings : public page {
                                     co_return;
                                 }
                                 components::show_alert("alert_success", std::string{"Index created"_},
-                                    "Index of type {} for attribute {} created successfully."_(common::to_string(type), attribute), std::chrono::seconds(10));
+                                    "Index of type {} for attribute \"{}\" created successfully."_(common::to_string(type), attribute), std::chrono::seconds(10));
 
                                 co_await refresh_func(); // this will re-render the subpage, so no need to reset the form
 

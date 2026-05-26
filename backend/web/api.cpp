@@ -931,9 +931,16 @@ void Server::setup_api_routes() {
             pqxx::nontransaction txn{conn};
             try {
                 auto result = txn.exec(pqxx::prepped{"get_indices"});
+
+                std::unordered_map<std::string, std::size_t> index_sizes{};
+
                 common::attribute_index_response res;
                 for(const auto& row : result) {
-                    if(!row["parent_index"].is_null() || row["index_comment"].is_null()) {
+                    if(!row["parent_index"].is_null()) {
+                        index_sizes[row["parent_index"].as<std::string>()] += row["index_size"].as<std::size_t>();
+                        continue;
+                    }
+                    if(row["index_comment"].is_null()) {
                         continue;
                     }
                     auto comment = row["index_comment"].as<std::string>();
@@ -945,6 +952,13 @@ void Server::setup_api_routes() {
                     auto index = std::move(*r);
                     index.invalid = row["is_invalid"].as<bool>();
                     res[index.attribute].push_back(std::move(index));
+                }
+                for(auto& [k, v] : res) {
+                    for(auto& i : v) {
+                        std::string lower_name = i.index_name;
+                        std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), [](unsigned char c){ return std::tolower(c); });
+                        i.index_size = index_sizes[lower_name];
+                    }
                 }
                 send_response(response, accepts_beve, res);
             } catch(const pqxx::failure& e) {

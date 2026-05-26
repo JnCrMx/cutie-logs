@@ -40,6 +40,19 @@ export std::string format_duration(std::chrono::seconds duration) {
     return std::format("{:.2f} days", std::chrono::duration_cast<std::chrono::duration<double, std::chrono::hours::period>>(duration).count() / 24);
 }
 
+export std::string format_size(std::size_t size) {
+    if(size < 1024) {
+        return std::format("{} B", size);
+    }
+    if(size < 1024*1024) {
+        return std::format("{:.2f} KiB", size / 1024.0);
+    }
+    if(size < 1024*1024*1024) {
+        return std::format("{:.2f} MiB", size / (1024.0*1024.0));
+    }
+    return std::format("{:.2f} GiB", size / (1024.0*1024.0*1024.0));
+}
+
 export std::optional<int> parse_int(std::string_view x) {
     return from_chars<int>(x, 10, false);
 }
