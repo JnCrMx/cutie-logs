@@ -31,10 +31,13 @@ export class settings : public page {
         common::cleanup_rules_response cleanup_rules;
         common::alert_rules_response alert_rules;
         r<common::attribute_index_response>& attribute_indices;
+
+        std::add_pointer_t<webpp::coroutine<void>()> refresh_func;
     public:
         settings(profile_data& profile, common::shared_settings& shared_settings, r<common::log_entry>& example_entry, r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes, r<common::logs_resources_response>& resources,
-            std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs, r<common::attribute_index_response>& attribute_indices)
-            : profile(profile), shared_settings(shared_settings), example_entry{example_entry}, attributes{attributes}, scopes{scopes}, resources{resources}, stencil_functions{std::move(mmdbs)}, attribute_indices{attribute_indices}
+            std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs, r<common::attribute_index_response>& attribute_indices, std::add_pointer_t<webpp::coroutine<void>()> refresh_func)
+            : profile(profile), shared_settings(shared_settings), example_entry{example_entry}, attributes{attributes}, scopes{scopes}, resources{resources}, stencil_functions{std::move(mmdbs)},
+              attribute_indices{attribute_indices}, refresh_func{refresh_func}
         {
             profile.add_callback([this](auto&) { if(is_open) { open(); }});
             attribute_indices.add_callback([this](auto&) {
@@ -427,12 +430,12 @@ export class settings : public page {
                 webpp::response res = co_await webpp::coro::fetch(std::format("/api/v1/settings/cleanup_rules/{}", rule.id), request);
                 if(!res.ok()) {
                     std::string message = co_await res.co_text();
-                    components::show_alert("settings_cleanup_rules_error", res.status_text(), message, std::chrono::seconds(30));
+                    components::show_alert("alert_error", res.status_text(), message, std::chrono::seconds(30));
                     co_return;
                 }
                 auto new_rule_expected = glz::read<common::beve_opts, common::cleanup_rule>(co_await res.co_bytes());
                 if(!new_rule_expected) {
-                    components::show_alert("settings_cleanup_rules_error", std::string{"Failed to parse rule"_},
+                    components::show_alert("alert_error", std::string{"Failed to parse rule"_},
                         glz::format_error(new_rule_expected.error()), std::chrono::seconds(30));
                     co_return;
                 }
@@ -468,12 +471,12 @@ export class settings : public page {
                 webpp::response res = co_await webpp::coro::fetch(std::format("/api/v1/settings/alert_rules/{}", rule.id), request);
                 if(!res.ok()) {
                     std::string message = co_await res.co_text();
-                    components::show_alert("settings_alert_rules_error", res.status_text(), message, std::chrono::seconds(30));
+                    components::show_alert("alert_error", res.status_text(), message, std::chrono::seconds(30));
                     co_return;
                 }
                 auto new_rule_expected = glz::read<common::beve_opts, common::alert_rule>(co_await res.co_bytes());
                 if(!new_rule_expected) {
-                    components::show_alert("settings_alert_rules_error", std::string{"Failed to parse rule"_},
+                    components::show_alert("alert_error", std::string{"Failed to parse rule"_},
                         glz::format_error(new_rule_expected.error()), std::chrono::seconds(30));
                     co_return;
                 }
@@ -662,7 +665,24 @@ export class settings : public page {
                             dv{{_class{std::format("join-item rounded-l-full pl-4 pr-2 h-[40px] shadow flex items-center font-bold bg-{}", color)}},common::to_string(index.type)},
                             dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Delete index"_}},
                                 ctx.on_click(button{{_class{"btn btn-secondary btn-square pr-1 join-item rounded-r-full"}}, assets::icons::delete_}, [this, attribute = index.attribute, type = index.type](webpp::event){
+                                    webpp::coro::submit([this](auto attribute, auto type) -> webpp::coroutine<void> {
+                                        webpp::js_object request = webpp::js_object::create();
+                                        request["headers"] = utils::fetch_headers;
+                                        request["method"] = "DELETE";
 
+                                        webpp::response res = co_await webpp::coro::fetch(std::format("/api/v1/settings/indices/{}/{}", attribute, std::to_underlying(type)), request);
+                                        if(!res.ok()) {
+                                            std::string message = co_await res.co_text();
+                                            components::show_alert("alert_error", res.status_text(), message, std::chrono::seconds(30));
+                                            co_return;
+                                        }
+                                        components::show_alert("alert_success", std::string{"Index deleted"_},
+                                            "Index of type {} for attribute {} deleted successfully."_(common::to_string(type), attribute), std::chrono::seconds(10));
+
+                                        co_await refresh_func();
+
+                                        co_return;
+                                    }(attribute, type));
                                 }),
                             },
                         };
@@ -735,8 +755,8 @@ export class settings : public page {
                             webpp::eval("localStorage.setItem('language', '{}');", language);
                             webpp::eval("localStorage.setItem('default_theme', '{}');", default_theme);
 
-                            components::show_alert("settings_ui_alert", std::string{"Settings saved"_},
-                                std::string{"Your UI settings have been saved successfully."_}, std::chrono::seconds(5));
+                            components::show_alert("alert_success", std::string{"Settings saved"_},
+                                std::string{"Your UI settings have been saved successfully."_}, std::chrono::seconds(10));
                         }),
                 },
             };
@@ -806,23 +826,85 @@ export class settings : public page {
             static event_context ctx;
             ctx.clear();
 
+            std::vector<std::string> sorted_attributes;
+            for(const auto& [attribute, _] : attributes->attributes) {
+                sorted_attributes.push_back(attribute);
+            }
+            std::sort(sorted_attributes.begin(), sorted_attributes.end());
+
+            constexpr static std::array index_types = {common::index_type::NUMERIC, common::index_type::JSON, common::index_type::TRIGRAM, common::index_type::FULLTEXT};
+
             using namespace Webxx;
             return fragment{
-                dv{{_class{"flex flex-col gap-4 w-fit mb-4"}},
-                    ctx.on_click(button{{_class{"btn btn-primary"}}, assets::icons::add, "Create index"_},
-                        [this](webpp::event e) {
-                            static event_context sctx;
-                            sctx.clear();
+                fieldset{{_class{"flex flex-row gap-4 w-fit mb-4"}},
+                    select{{_class{"select"}, _id{"new_index_attribute"}},
+                        option{{_value{""}, _selected{}, _disabled{}}, "Select an attribute"_},
+                        each(sorted_attributes, [&](const auto& attribute) {
+                            return option{{_value{attribute}}, attribute};
+                        })
+                    },
+                    dv{{_class{"join"}},
+                        each(index_types, [](common::index_type type) {
+                            int type_id = std::to_underlying(type);
+                            auto id = std::format("new_index_type_{}", type_id);
 
-                            webpp::get_element_by_id("dialog_placeholder")->inner_html(Webxx::render(render_alert_rule_dialog(sctx)));
-                            webpp::eval("document.getElementById('dialog_add_index').showModal();");
+                            if(type == index_types.front()) {
+                                return input{{_type{"radio"}, _id{id}, _name{"index_type"}, _class{"join-item btn rounded-l-full"}, _ariaLabel{common::to_string(type)}, _checked{}}};
+                            } else if(type == index_types.back()) {
+                                return input{{_type{"radio"}, _id{id}, _name{"index_type"}, _class{"join-item btn rounded-r-full"}, _ariaLabel{common::to_string(type)}}};
+                            }
+                            return input{{_type{"radio"}, _id{id}, _name{"index_type"}, _class{"join-item btn"}, _ariaLabel{common::to_string(type)}}};
+                        })
+                    },
+                    ctx.on_click(button{{_id{"new_index_create_button"}, _class{"btn btn-primary"}}, assets::icons::add, "Create index"_},
+                        [this](webpp::event) {
+                            std::string attribute = webpp::get_element_by_id("new_index_attribute")->get_property<std::string>("value").value_or("");
+                            if(attribute.empty()) {
+                                components::show_alert("alert_error", std::string{"Invalid attribute"_},
+                                    std::string{"Please select a valid attribute to create an index."_} , std::chrono::seconds(10));
+                                return;
+                            }
+                            common::index_type type = common::index_type::NUMERIC;
+                            for(common::index_type t : index_types) {
+                                int type_id = std::to_underlying(t);
+                                bool checked = webpp::get_element_by_id(std::format("new_index_type_{}", type_id))->get_property<bool>("checked").value_or(false);
+                                if(checked) {
+                                    type = t;
+                                    break;
+                                }
+                            }
+
+                            webpp::get_element_by_id("new_index_create_button")->set_property("disabled", true);
+                            components::show_alert("alert_success", std::string{"Creating index"_},
+                                "Creating index of type {} for attribute {}... This might take a while."_(common::to_string(type), attribute));
+
+                            webpp::coro::submit([this](auto attribute, auto type) -> webpp::coroutine<void> {
+                                webpp::js_object request = webpp::js_object::create();
+                                request["headers"] = utils::fetch_headers;
+                                request["method"] = "PUT";
+                                webpp::response res = co_await webpp::coro::fetch(std::format("/api/v1/settings/indices/{}/{}", attribute, std::to_underlying(type)), request);
+                                if(!res.ok()) {
+                                    std::string message = co_await res.co_text();
+                                    components::hide_alert("alert_success");
+                                    components::show_alert("alert_error", res.status_text(), message, std::chrono::seconds(30));
+
+                                    webpp::get_element_by_id("new_index_create_button")->set_property("disabled", false);
+                                    co_return;
+                                }
+                                components::show_alert("alert_success", std::string{"Index created"_},
+                                    "Index of type {} for attribute {} created successfully."_(common::to_string(type), attribute), std::chrono::seconds(10));
+
+                                co_await refresh_func(); // this will re-render the subpage, so no need to reset the form
+
+                                co_return;
+                            }(attribute, type));
                         })
                 },
                 ul{{_class{"list bg-base-200 rounded-box shadow-md"}},
                     each(*attribute_indices, [&](const auto& indices) {
                         return render_attribute_index(ctx, indices.first, indices.second);
                     }),
-                    maybe(alert_rules.rules.empty(), [&]() {
+                    maybe(attribute_indices->empty(), [&]() {
                         return li{{_class{"list-row items-center"}},
                             h3{{_class{"text-lg font-bold text-base-content/80"}}, "No search indices found"_},
                             p{{_class{"text-sm text-base-content/80 list-col-grow"}}, "You can create a new index by clicking the button above."_}
@@ -853,9 +935,8 @@ export class settings : public page {
                 },
                 dv{{_id{"dialog_placeholder"}}},
                 dv{{_id{"toasts"}, _class{"toast toast-top toast-end z-50"}},
-                    components::alert("settings_cleanup_rules_error", "mb-4"),
-                    components::alert("settings_alert_rules_error", "mb-4"),
-                    components::alert<components::alert_types::success>("settings_ui_alert", "mt-4"),
+                    components::alert("alert_error", "mb-4"),
+                    components::alert<components::alert_types::success>("alert_success", "mt-4"),
                 },
             };
         }

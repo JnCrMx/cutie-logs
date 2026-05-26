@@ -73,9 +73,11 @@ static std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs = {
 };
 static profile_data profile;
 
+auto refresh() -> webpp::coroutine<void>;
+
 static pages::logs logs_page(profile, example_entry, attributes, scopes, resources, mmdbs);
 static pages::table table_page(profile, example_entry, attributes, scopes, resources, mmdbs);
-static pages::settings settings_page(profile, settings, example_entry, attributes, scopes, resources, mmdbs, attributes_indicies);
+static pages::settings settings_page(profile, settings, example_entry, attributes, scopes, resources, mmdbs, attributes_indicies, refresh);
 
 using page_tuple = std::tuple<std::string_view, std::string_view, std::string_view, pages::page*>;
 static std::array all_pages = {
