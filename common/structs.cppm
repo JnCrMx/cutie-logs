@@ -276,6 +276,15 @@ export namespace common {
         TRIGRAM  = 100,
         FULLTEXT = 101,
     };
+    constexpr std::string_view to_string(index_type type) {
+        switch(type) {
+            case index_type::NUMERIC: return "NUMERIC";
+            case index_type::JSON: return "JSON";
+            case index_type::TRIGRAM: return "TRIGRAM";
+            case index_type::FULLTEXT: return "FULLTEXT";
+            default: return "UNKNOWN";
+        }
+    }
     struct attribute_index {
         std::string attribute;
         index_type type;

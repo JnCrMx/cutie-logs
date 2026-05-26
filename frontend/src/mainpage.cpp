@@ -60,6 +60,7 @@ static r<common::log_entry> example_entry;
 static r<common::logs_attributes_response> attributes;
 static r<common::logs_scopes_response> scopes;
 static r<common::logs_resources_response> resources;
+static r<common::attribute_index_response> attributes_indicies;
 
 static common::shared_settings settings;
 static common::mmdb geoip_country;
@@ -74,7 +75,7 @@ static profile_data profile;
 
 static pages::logs logs_page(profile, example_entry, attributes, scopes, resources, mmdbs);
 static pages::table table_page(profile, example_entry, attributes, scopes, resources, mmdbs);
-static pages::settings settings_page(profile, settings, example_entry, attributes, scopes, resources, mmdbs);
+static pages::settings settings_page(profile, settings, example_entry, attributes, scopes, resources, mmdbs, attributes_indicies);
 
 using page_tuple = std::tuple<std::string_view, std::string_view, std::string_view, pages::page*>;
 static std::array all_pages = {
@@ -98,10 +99,12 @@ auto refresh() -> webpp::coroutine<void> {
     auto scopes_future = webpp::coro::fetch("/api/v1/logs/scopes", utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes));
     auto resources_future = webpp::coro::fetch("/api/v1/logs/resources", utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes));
     auto example_future = webpp::coro::fetch("/api/v1/logs?limit=1&attributes=*", utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes));
+    auto indices_future = webpp::coro::fetch("/api/v1/settings/indices", utils::fetch_options).then(std::mem_fn(&webpp::response::co_bytes));
 
     attributes = glz::read<common::beve_opts, common::logs_attributes_response>(co_await attributes_future).value_or(common::logs_attributes_response{});
     scopes = glz::read<common::beve_opts, common::logs_scopes_response>(co_await scopes_future).value_or(common::logs_scopes_response{});
     resources = glz::read<common::beve_opts, common::logs_resources_response>(co_await resources_future).value_or(common::logs_resources_response{});
+    attributes_indicies = glz::read<common::beve_opts, common::attribute_index_response>(co_await indices_future).value_or(common::attribute_index_response{});
 
     auto resource_modals = Webxx::each(resources->resources, [](auto& e){
         return components::resource_modal{std::get<0>(e), std::get<0>(std::get<1>(e))};

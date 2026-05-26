@@ -30,12 +30,16 @@ export class settings : public page {
 
         common::cleanup_rules_response cleanup_rules;
         common::alert_rules_response alert_rules;
+        r<common::attribute_index_response>& attribute_indices;
     public:
         settings(profile_data& profile, common::shared_settings& shared_settings, r<common::log_entry>& example_entry, r<common::logs_attributes_response>& attributes, r<common::logs_scopes_response>& scopes, r<common::logs_resources_response>& resources,
-            std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs)
-            : profile(profile), shared_settings(shared_settings), example_entry{example_entry}, attributes{attributes}, scopes{scopes}, resources{resources}, stencil_functions{std::move(mmdbs)}
+            std::vector<std::pair<std::string_view, common::mmdb*>> mmdbs, r<common::attribute_index_response>& attribute_indices)
+            : profile(profile), shared_settings(shared_settings), example_entry{example_entry}, attributes{attributes}, scopes{scopes}, resources{resources}, stencil_functions{std::move(mmdbs)}, attribute_indices{attribute_indices}
         {
             profile.add_callback([this](auto&) { if(is_open) { open(); }});
+            attribute_indices.add_callback([this](auto&) {
+                webpp::get_element_by_id("settings_attribute_indices")->inner_html(Webxx::render(render_attribute_indices()));
+            });
         }
 
         webpp::coroutine<void> refresh() {
@@ -643,6 +647,30 @@ export class settings : public page {
             };
         }
 
+        auto render_attribute_index(event_context& ctx, const std::string& attribute, const std::vector<common::attribute_index>& indices) {
+            using namespace Webxx;
+
+            constexpr static char dataIndexIdAttr[] = "data-index-id";
+            using _dataIndexId = Webxx::attr<dataIndexIdAttr>;
+
+            return li{{_class{"list-row items-center flex flex-row gap-4"}},
+                h3{{_class{"text-lg font-bold"}}, sanitize(attribute)},
+                dv{{_class{"list-col-grow list-col-wrap flex flex-row gap-4"}},
+                    each(indices, [this, &ctx](const common::attribute_index& index) {
+                        std::string_view color = (index.invalid == true) ? "error" : (index.complete ? "success" : "warning");
+                        return dv{{_class{"join"}},
+                            dv{{_class{std::format("join-item rounded-l-full pl-4 pr-2 h-[40px] shadow flex items-center font-bold bg-{}", color)}},common::to_string(index.type)},
+                            dv{{_class{"tooltip tooltip-bottom"}, _dataTip{"Delete index"_}},
+                                ctx.on_click(button{{_class{"btn btn-secondary btn-square pr-1 join-item rounded-r-full"}}, assets::icons::delete_}, [this, attribute = index.attribute, type = index.type](webpp::event){
+
+                                }),
+                            },
+                        };
+                    })
+                }
+            };
+        }
+
         Webxx::fragment render_ui_settings() {
             static event_context ctx;
             ctx.clear();
@@ -774,6 +802,36 @@ export class settings : public page {
             };
         }
 
+        Webxx::fragment render_attribute_indices() {
+            static event_context ctx;
+            ctx.clear();
+
+            using namespace Webxx;
+            return fragment{
+                dv{{_class{"flex flex-col gap-4 w-fit mb-4"}},
+                    ctx.on_click(button{{_class{"btn btn-primary"}}, assets::icons::add, "Create index"_},
+                        [this](webpp::event e) {
+                            static event_context sctx;
+                            sctx.clear();
+
+                            webpp::get_element_by_id("dialog_placeholder")->inner_html(Webxx::render(render_alert_rule_dialog(sctx)));
+                            webpp::eval("document.getElementById('dialog_add_index').showModal();");
+                        })
+                },
+                ul{{_class{"list bg-base-200 rounded-box shadow-md"}},
+                    each(*attribute_indices, [&](const auto& indices) {
+                        return render_attribute_index(ctx, indices.first, indices.second);
+                    }),
+                    maybe(alert_rules.rules.empty(), [&]() {
+                        return li{{_class{"list-row items-center"}},
+                            h3{{_class{"text-lg font-bold text-base-content/80"}}, "No search indices found"_},
+                            p{{_class{"text-sm text-base-content/80 list-col-grow"}}, "You can create a new index by clicking the button above."_}
+                        };
+                    })
+                },
+            };
+        }
+
         Webxx::fragment render() override {
             static event_context ctx;
             ctx.clear();
@@ -789,6 +847,9 @@ export class settings : public page {
 
                     input{{_type{"radio"}, _name{"settings_tab"}, _class{"tab"}, _ariaLabel{"Alert rules"_}}},
                     dv{{_id{"settings_alert_rules"}, _class{"tab-content border-base-300 bg-base-100 p-10"}}, render_alert_rules()},
+
+                    input{{_type{"radio"}, _name{"settings_tab"}, _class{"tab"}, _ariaLabel{"Search indices"_}}},
+                    dv{{_id{"settings_attribute_indices"}, _class{"tab-content border-base-300 bg-base-100 p-10"}}, render_attribute_indices()},
                 },
                 dv{{_id{"dialog_placeholder"}}},
                 dv{{_id{"toasts"}, _class{"toast toast-top toast-end z-50"}},
