@@ -969,7 +969,7 @@ void Server::setup_api_routes() {
             std::string sql = "CREATE INDEX " + index_name + " ON logs ";
             switch(type) {
                 case static_cast<int>(common::index_type::NUMERIC):
-                    sql += "((attributes->>'" + txn.esc(attribute) + "')::numeric)";
+                    sql += "(((attributes->>'" + txn.esc(attribute) + "')::numeric))";
                     break;
                 case static_cast<int>(common::index_type::JSON):
                     sql += "USING GIN ((attributes->'" + txn.esc(attribute) + "'))";
