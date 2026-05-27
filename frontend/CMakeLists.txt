@@ -87,6 +87,7 @@ set(MODULE_SOURCES
   src/pages/page.cppm
   src/pages/logs.cppm
   src/pages/table.cppm
+  src/pages/search.cppm
   src/pages/settings.cppm
   src/pages/utils.cppm
 )

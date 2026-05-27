@@ -6,6 +6,7 @@ export namespace frontend::assets {
     namespace icons {
         extern const std::string_view text_view;
         extern const std::string_view table_view;
+        extern const std::string_view search;
         extern const std::string_view analysis;
         extern const std::string_view settings;
 

@@ -14,6 +14,11 @@ namespace frontend::assets {
         };
         const std::string_view table_view{table_view_data, sizeof(table_view_data)};
 
+        constexpr char search_data[] = {
+            #embed "assets/icons/search.svg"
+        };
+        const std::string_view search{search_data, sizeof(search_data)};
+
         constexpr char analysis_data[] = {
             #embed "assets/icons/analysis.svg"
         };

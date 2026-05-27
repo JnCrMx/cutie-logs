@@ -77,12 +77,14 @@ auto refresh() -> webpp::coroutine<void>;
 
 static pages::logs logs_page(profile, example_entry, attributes, scopes, resources, mmdbs);
 static pages::table table_page(profile, example_entry, attributes, scopes, resources, mmdbs);
+static pages::search search_page(profile, attributes, scopes, resources, attributes_indicies);
 static pages::settings settings_page(profile, settings, example_entry, attributes, scopes, resources, mmdbs, attributes_indicies, refresh);
 
 using page_tuple = std::tuple<std::string_view, std::string_view, std::string_view, pages::page*>;
 static std::array all_pages = {
     page_tuple{"logs", "Text View"_, assets::icons::text_view, &logs_page},
     page_tuple{"table", "Table View"_, assets::icons::table_view, &table_page},
+    page_tuple{"search", "Search"_, assets::icons::search, &search_page},
 //    page_tuple{"analysis", "Analysis", assets::icons::analysis, &logs_page},
     page_tuple{"settings", "Settings"_, assets::icons::settings, &settings_page},
 };
