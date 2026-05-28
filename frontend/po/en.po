@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: cutie-logs-frontend \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2017-07-14 02:40+0000\n"
-"PO-Revision-Date: 2026-02-22 21:20+0100\n"
+"PO-Revision-Date: 2026-05-27 18:59+0200\n"
 "Last-Translator: JCM <jcm@jcm.re>\n"
 "Language-Team: English\n"
 "Language: en\n"
@@ -16,7 +16,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
-"X-Generator: Gtranslator 49.0\n"
+"X-Generator: Gtranslator 50.0\n"
 
 #: src/components/dialog_add.cppm:57
 msgid "Edit {} \"{}\" ({})"
@@ -31,8 +31,8 @@ msgid "{} name"
 msgstr "{} name"
 
 #: src/components/dialog_add.cppm:65 src/components/dialog_delete.cppm:36
-#: src/mainpage.cpp:334 src/mainpage.cpp:386 src/mainpage.cpp:434
-#: src/pages/table.cppm:348
+#: src/mainpage.cpp:344 src/mainpage.cpp:396 src/mainpage.cpp:444
+#: src/pages/table.cppm:374
 msgid "Name"
 msgstr "Name"
 
@@ -84,36 +84,31 @@ msgstr "minutes"
 msgid "seconds"
 msgstr "seconds"
 
-#: src/components/resource_modal.cppm:27 src/pages/logs.cppm:158
-#: src/pages/table.cppm:289
-msgid "Resource #{}"
-msgstr "Resource #{}"
-
-#: src/components/resource_modal.cppm:36
+#: src/components/resource_modal.cppm:23
 msgid "false"
 msgstr "false"
 
-#: src/components/resource_modal.cppm:36
+#: src/components/resource_modal.cppm:23
 msgid "true"
 msgstr "true"
 
-#: src/components/resource_modal.cppm:90
+#: src/components/resource_modal.cppm:77
 msgid "Resource \"{}\" (#{})"
 msgstr "Resource \"{}\" (#{})"
 
-#: src/components/resource_modal.cppm:94
+#: src/components/resource_modal.cppm:81
 msgid "Attribute"
 msgstr "Attribute"
 
-#: src/components/resource_modal.cppm:95
+#: src/components/resource_modal.cppm:82
 msgid "Value"
 msgstr "Value"
 
-#: src/components/selection.cppm:84
+#: src/components/selection.cppm:90
 msgid "Search..."
 msgstr "Search..."
 
-#: src/components/selection.cppm:89
+#: src/components/selection.cppm:95
 msgid "Only show selected"
 msgstr "Only show selected"
 
@@ -121,419 +116,505 @@ msgstr "Only show selected"
 msgid "Themes"
 msgstr "Themes"
 
-#: src/mainpage.cpp:81
+#: src/mainpage.cpp:85
 msgid "Text View"
 msgstr "Text View"
 
-#: src/mainpage.cpp:82
+#: src/mainpage.cpp:86
 msgid "Table View"
 msgstr "Table View"
 
+#: src/mainpage.cpp:87
+msgid "Search"
+msgstr "Search"
+
 #. page_tuple{"analysis", "Analysis", assets::icons::analysis, &logs_page},
-#: src/mainpage.cpp:84
+#: src/mainpage.cpp:89
 msgid "Settings"
 msgstr "Settings"
 
-#: src/mainpage.cpp:151
+#: src/mainpage.cpp:161
 msgid "Total Log Entries"
 msgstr "Total Log Entries"
 
-#: src/mainpage.cpp:155
+#: src/mainpage.cpp:165
 msgid "Total Attributes"
 msgstr "Total Attributes"
 
-#: src/mainpage.cpp:159
+#: src/mainpage.cpp:169
 msgid "Total Resources"
 msgstr "Total Resources"
 
-#: src/mainpage.cpp:163
+#: src/mainpage.cpp:173
 msgid "Total Scopes"
 msgstr "Total Scopes"
 
-#: src/mainpage.cpp:217
+#: src/mainpage.cpp:227
 msgid "Invalid profile file"
 msgstr "Invalid profile file"
 
-#: src/mainpage.cpp:222
+#: src/mainpage.cpp:232
 msgid "Empty profile file"
 msgstr "Empty profile file"
 
-#: src/mainpage.cpp:241
+#: src/mainpage.cpp:251
 msgid "Create New Profile..."
 msgstr "Create New Profile..."
 
-#: src/mainpage.cpp:242
+#: src/mainpage.cpp:252
 msgid "Import Profile..."
 msgstr "Import Profile..."
 
-#: src/mainpage.cpp:286 src/mainpage.cpp:383 src/mainpage.cpp:402
+#: src/mainpage.cpp:296 src/mainpage.cpp:393 src/mainpage.cpp:412
 msgid "Rename profile"
 msgstr "Rename profile"
 
-#: src/mainpage.cpp:288
+#: src/mainpage.cpp:298
 msgid "Rename profile \"{}\""
 msgstr "Rename profile \"{}\""
 
-#: src/mainpage.cpp:294
+#: src/mainpage.cpp:304
 msgid "Export profile"
 msgstr "Export profile"
 
-#: src/mainpage.cpp:311 src/mainpage.cpp:431 src/mainpage.cpp:450
+#: src/mainpage.cpp:321 src/mainpage.cpp:441 src/mainpage.cpp:460
 msgid "Delete profile"
 msgstr "Delete profile"
 
-#: src/mainpage.cpp:313
+#: src/mainpage.cpp:323
 msgid "Delete profile \"{}\""
 msgstr "Delete profile \"{}\""
 
-#: src/mainpage.cpp:331 src/mainpage.cpp:350
+#: src/mainpage.cpp:341 src/mainpage.cpp:360
 msgid "Add profile"
 msgstr "Add profile"
 
-#: src/mainpage.cpp:333
+#: src/mainpage.cpp:343
 msgid "Profile name"
 msgstr "Profile name"
 
-#: src/mainpage.cpp:343 src/mainpage.cpp:347 src/mainpage.cpp:395
-#: src/mainpage.cpp:399
+#: src/mainpage.cpp:353 src/mainpage.cpp:357 src/mainpage.cpp:405
+#: src/mainpage.cpp:409
 msgid "Profile name must be non-empty and unique."
 msgstr "Profile name must be non-empty and unique."
 
-#: src/mainpage.cpp:385
+#: src/mainpage.cpp:395
 msgid "New name"
 msgstr "New name"
 
-#: src/mainpage.cpp:433
+#: src/mainpage.cpp:443
 msgid "Please type the name of the profile to confirm deletion."
 msgstr "Please type the name of the profile to confirm deletion."
 
-#: src/mainpage.cpp:443 src/mainpage.cpp:447
+#: src/mainpage.cpp:453 src/mainpage.cpp:457
 msgid "Profile name must match."
 msgstr "Profile name must match."
 
-#: src/mainpage.cpp:479
+#: src/mainpage.cpp:489
 msgid "version {}"
 msgstr "version {}"
 
-#: src/pages/logs.cppm:28
+#: src/pages/logs.cppm:29
 msgid "Display Options"
 msgstr "Display Options"
 
-#: src/pages/logs.cppm:29
+#: src/pages/logs.cppm:30
 msgid "Log line stencil. Use {{...}} to insert values."
 msgstr "Log line stencil. Use {{...}} to insert values."
 
-#: src/pages/logs.cppm:46 src/pages/logs.cppm:113 src/pages/table.cppm:380
-msgid "Stencil invalid: \"{}\""
-msgstr "Stencil invalid: \"{}\""
-
-#: src/pages/logs.cppm:56 src/pages/table.cppm:392
+#: src/pages/logs.cppm:45 src/pages/table.cppm:406
 msgid "Preview"
 msgstr "Preview"
 
-#: src/pages/logs.cppm:146 src/pages/logs.cppm:211 src/pages/table.cppm:277
-#: src/pages/table.cppm:441
+#: src/pages/logs.cppm:71 src/pages/table.cppm:50
+msgid "Page {}"
+msgstr "Page {}"
+
+#: src/pages/logs.cppm:99 src/pages/table.cppm:271
+msgid "Failed to parse logs"
+msgstr "Failed to parse logs"
+
+#: src/pages/logs.cppm:115 src/pages/utils.cppm:50
+msgid "Stencil invalid: \"{}\""
+msgstr "Stencil invalid: \"{}\""
+
+#: src/pages/logs.cppm:153
+msgid "Auto-select"
+msgstr "Auto-select"
+
+#: src/pages/logs.cppm:158
+msgid "Cannot auto-select required attributes for invalid stencil."
+msgstr "Cannot auto-select required attributes for invalid stencil."
+
+#: src/pages/logs.cppm:184 src/pages/logs.cppm:262 src/pages/table.cppm:292
+#: src/pages/table.cppm:455
 msgid "Select Attributes"
 msgstr "Select Attributes"
 
-#: src/pages/logs.cppm:154 src/pages/logs.cppm:213 src/pages/table.cppm:285
-#: src/pages/table.cppm:443
+#: src/pages/logs.cppm:194 src/pages/logs.cppm:264 src/pages/table.cppm:300
+#: src/pages/table.cppm:457
 msgid "Filter Scopes"
 msgstr "Filter Scopes"
 
-#: src/pages/logs.cppm:169 src/pages/logs.cppm:212 src/pages/table.cppm:300
-#: src/pages/table.cppm:442
+#: src/pages/logs.cppm:206 src/pages/table.cppm:312
+msgid "Select similar"
+msgstr "Select similar"
+
+#: src/pages/logs.cppm:213 src/pages/logs.cppm:263 src/pages/table.cppm:319
+#: src/pages/table.cppm:456
 msgid "Filter Resources"
 msgstr "Filter Resources"
 
-#: src/pages/logs.cppm:221 src/pages/table.cppm:449
+#: src/pages/logs.cppm:272 src/pages/table.cppm:463
 msgid "Query"
 msgstr "Query"
 
-#: src/pages/logs.cppm:230
+#: src/pages/logs.cppm:283
 msgid "Download"
 msgstr "Download"
 
-#: src/pages/logs.cppm:234
+#: src/pages/logs.cppm:287
 msgid "100 entries"
 msgstr "100 entries"
 
-#: src/pages/logs.cppm:235
+#: src/pages/logs.cppm:288
 msgid "1k entries"
 msgstr "1k entries"
 
-#: src/pages/logs.cppm:236
+#: src/pages/logs.cppm:289
 msgid "10k entries"
 msgstr "10k entries"
 
-#: src/pages/logs.cppm:237
+#: src/pages/logs.cppm:290
 msgid "100k entries"
 msgstr "100k entries"
 
-#: src/pages/logs.cppm:238
+#: src/pages/logs.cppm:291
 msgid "1M entries"
 msgstr "1M entries"
 
-#: src/pages/settings.cppm:72 src/pages/settings.cppm:412
+#: src/pages/settings.cppm:81 src/pages/settings.cppm:421
 msgid "Cleanup Rule"
 msgstr "Cleanup Rule"
 
-#: src/pages/settings.cppm:79 src/pages/settings.cppm:179
+#: src/pages/settings.cppm:88 src/pages/settings.cppm:188
 msgid "Rule name must be non-empty."
 msgstr "Rule name must be non-empty."
 
-#: src/pages/settings.cppm:86 src/pages/settings.cppm:186
+#: src/pages/settings.cppm:95 src/pages/settings.cppm:195
 msgid "Rule name must be unique."
 msgstr "Rule name must be unique."
 
-#: src/pages/settings.cppm:97 src/pages/settings.cppm:230
+#: src/pages/settings.cppm:106 src/pages/settings.cppm:239
 msgid "Enabled"
 msgstr "Enabled"
 
-#: src/pages/settings.cppm:103
+#: src/pages/settings.cppm:112
 msgid "Just here for equal spacing."
 msgstr "Just here for equal spacing."
 
-#: src/pages/settings.cppm:106 src/pages/settings.cppm:107
+#: src/pages/settings.cppm:115 src/pages/settings.cppm:116
 msgid "Execution interval"
 msgstr "Execution interval"
 
-#: src/pages/settings.cppm:108
+#: src/pages/settings.cppm:117
 msgid "Execution interval must be a positive number."
 msgstr "Execution interval must be a positive number."
 
-#: src/pages/settings.cppm:114 src/pages/settings.cppm:280
+#: src/pages/settings.cppm:123 src/pages/settings.cppm:289
 msgid "Conditions"
 msgstr "Conditions"
 
-#: src/pages/settings.cppm:116 src/pages/settings.cppm:117
+#: src/pages/settings.cppm:125 src/pages/settings.cppm:126
 msgid "Minimum age"
 msgstr "Minimum age"
 
-#: src/pages/settings.cppm:118
+#: src/pages/settings.cppm:127
 msgid "Minimum age must be a positive number."
 msgstr "Minimum age must be a positive number."
 
-#: src/pages/settings.cppm:156 src/pages/settings.cppm:359
-#: src/pages/settings.cppm:431 src/pages/settings.cppm:472
+#: src/pages/settings.cppm:165 src/pages/settings.cppm:368
+#: src/pages/settings.cppm:440 src/pages/settings.cppm:481
 msgid "Failed to parse rule"
 msgstr "Failed to parse rule"
 
-#: src/pages/settings.cppm:172 src/pages/settings.cppm:453
+#: src/pages/settings.cppm:181 src/pages/settings.cppm:462
 msgid "Alert Rule"
 msgstr "Alert Rule"
 
-#: src/pages/settings.cppm:239
+#: src/pages/settings.cppm:248
 msgid "Notification Provider"
 msgstr "Notification Provider"
 
-#: src/pages/settings.cppm:241
+#: src/pages/settings.cppm:250
 msgid "Select a provider"
 msgstr "Select a provider"
 
-#: src/pages/settings.cppm:268
+#: src/pages/settings.cppm:277
 msgid "Notification Settings"
 msgstr "Notification Settings"
 
-#: src/pages/settings.cppm:270
+#: src/pages/settings.cppm:279
 msgid "Please select a notification provider first."
 msgstr "Please select a notification provider first."
 
-#: src/pages/settings.cppm:308 src/pages/settings.cppm:312
-#: src/pages/settings.cppm:321 src/pages/settings.cppm:325
+#: src/pages/settings.cppm:317 src/pages/settings.cppm:321
+#: src/pages/settings.cppm:330 src/pages/settings.cppm:334
 msgid "Invalid JSON for option {}"
 msgstr "Invalid JSON for option {}"
 
-#: src/pages/settings.cppm:312
+#: src/pages/settings.cppm:321
 msgid "Expected an object."
 msgstr "Expected an object."
 
-#: src/pages/settings.cppm:325
+#: src/pages/settings.cppm:334
 msgid "Expected an array."
 msgstr "Expected an array."
 
-#: src/pages/settings.cppm:332
+#: src/pages/settings.cppm:341
 msgid "The notification provider option type is not supported yet."
 msgstr "The notification provider option type is not supported yet."
 
-#: src/pages/settings.cppm:332
+#: src/pages/settings.cppm:341
 msgid "Unknown option type"
 msgstr "Unknown option type"
 
-#: src/pages/settings.cppm:581
+#: src/pages/settings.cppm:590
 msgid "Last run: {}"
 msgstr "Last run: {}"
 
-#: src/pages/settings.cppm:582
+#: src/pages/settings.cppm:591
 msgid "Never run"
 msgstr "Never run"
 
-#: src/pages/settings.cppm:583
+#: src/pages/settings.cppm:592
 msgid "Delete logs older than {}"
 msgstr "Delete logs older than {}"
 
-#: src/pages/settings.cppm:588 src/pages/settings.cppm:627
+#: src/pages/settings.cppm:597 src/pages/settings.cppm:636
 msgid "Enable/Disable rule"
 msgstr "Enable/Disable rule"
 
-#: src/pages/settings.cppm:591
+#: src/pages/settings.cppm:600
 msgid "Execution interval: {}"
 msgstr "Execution interval: {}"
 
-#: src/pages/settings.cppm:594 src/pages/settings.cppm:633
+#: src/pages/settings.cppm:603 src/pages/settings.cppm:642
 msgid "No description"
 msgstr "No description"
 
-#: src/pages/settings.cppm:598 src/pages/settings.cppm:637
+#: src/pages/settings.cppm:607 src/pages/settings.cppm:646
 msgid "Edit rule"
 msgstr "Edit rule"
 
-#: src/pages/settings.cppm:601 src/pages/settings.cppm:640
+#: src/pages/settings.cppm:610 src/pages/settings.cppm:649
 msgid "Delete rule"
 msgstr "Delete rule"
 
-#: src/pages/settings.cppm:620
+#: src/pages/settings.cppm:629
 msgid "Last alert: {}"
 msgstr "Last alert: {}"
 
-#: src/pages/settings.cppm:621
+#: src/pages/settings.cppm:630
 msgid "Never triggered"
 msgstr "Never triggered"
 
-#: src/pages/settings.cppm:630
+#: src/pages/settings.cppm:639
 msgid "Provider: {}"
 msgstr "Provider: {}"
 
-#: src/pages/settings.cppm:660
+#: src/pages/settings.cppm:669
+msgid "Delete index"
+msgstr "Delete index"
+
+#: src/pages/settings.cppm:682
+msgid "Index deleted"
+msgstr "Index deleted"
+
+#: src/pages/settings.cppm:683
+msgid "Index of type {} for attribute \"{}\" deleted successfully."
+msgstr "Index of type {} for attribute \"{}\" deleted successfully."
+
+#: src/pages/settings.cppm:711
 msgid "Use system language"
 msgstr "Use system language"
 
-#: src/pages/settings.cppm:661
+#: src/pages/settings.cppm:712
 msgid "English"
 msgstr "English"
 
-#: src/pages/settings.cppm:662
+#: src/pages/settings.cppm:713
 msgid "German"
 msgstr "German"
 
-#: src/pages/settings.cppm:672
+#: src/pages/settings.cppm:723
 msgid ""
 "These settings only apply to this browser and will not affect other sessions."
 msgstr ""
 "These settings only apply to this browser and will not affect other sessions."
 
-#: src/pages/settings.cppm:675
+#: src/pages/settings.cppm:726
 msgid "Language"
 msgstr "Language"
 
-#: src/pages/settings.cppm:685
+#: src/pages/settings.cppm:736
 msgid "Please refresh the page after changing the language."
 msgstr "Please refresh the page after changing the language."
 
-#: src/pages/settings.cppm:687
+#: src/pages/settings.cppm:738
 msgid "Default theme"
 msgstr "Default theme"
 
-#: src/pages/settings.cppm:700
+#: src/pages/settings.cppm:751
 msgid "The default theme only applies to newly created profiles."
 msgstr "The default theme only applies to newly created profiles."
 
-#: src/pages/settings.cppm:702
+#: src/pages/settings.cppm:753
 msgid "Save"
 msgstr "Save"
 
-#: src/pages/settings.cppm:710
+#: src/pages/settings.cppm:761
 msgid "Settings saved"
 msgstr "Settings saved"
 
-#: src/pages/settings.cppm:711
+#: src/pages/settings.cppm:762
 msgid "Your UI settings have been saved successfully."
 msgstr "Your UI settings have been saved successfully."
 
-#: src/pages/settings.cppm:729
+#: src/pages/settings.cppm:775
 msgid "Add cleanup rule"
 msgstr "Add cleanup rule"
 
-#: src/pages/settings.cppm:744
+#: src/pages/settings.cppm:790
 msgid "No cleanup rules found"
 msgstr "No cleanup rules found"
 
-#: src/pages/settings.cppm:745 src/pages/settings.cppm:776
+#: src/pages/settings.cppm:791 src/pages/settings.cppm:821
 msgid "You can add a new rule by clicking the button above."
 msgstr "You can add a new rule by clicking the button above."
 
-#: src/pages/settings.cppm:760
+#: src/pages/settings.cppm:805
 msgid "Add alert rule"
 msgstr "Add alert rule"
 
-#: src/pages/settings.cppm:775
+#: src/pages/settings.cppm:820
 msgid "No alert rules found"
 msgstr "No alert rules found"
 
-#: src/pages/settings.cppm:790
+#: src/pages/settings.cppm:844
+msgid "Select an attribute"
+msgstr "Select an attribute"
+
+#: src/pages/settings.cppm:862
+msgid "Create index"
+msgstr "Create index"
+
+#: src/pages/settings.cppm:866
+msgid "Invalid attribute"
+msgstr "Invalid attribute"
+
+#: src/pages/settings.cppm:867
+msgid "Please select a valid attribute to create an index."
+msgstr "Please select a valid attribute to create an index."
+
+#: src/pages/settings.cppm:881
+msgid "Creating index"
+msgstr "Creating index"
+
+#: src/pages/settings.cppm:882
+msgid ""
+"Creating index of type {} for attribute \"{}\"...<br>This might take a while."
+msgstr ""
+"Creating index of type {} for attribute \"{}\"...<br>This might take a while."
+
+#: src/pages/settings.cppm:897
+msgid "Index created"
+msgstr "Index created"
+
+#: src/pages/settings.cppm:898
+msgid "Index of type {} for attribute \"{}\" created successfully."
+msgstr "Index of type {} for attribute \"{}\" created successfully."
+
+#: src/pages/settings.cppm:912
+msgid "No search indices found"
+msgstr "No search indices found"
+
+#: src/pages/settings.cppm:913
+msgid "You can create a new index by clicking the button above."
+msgstr "You can create a new index by clicking the button above."
+
+#: src/pages/settings.cppm:927
 msgid "User interface"
 msgstr "User interface"
 
-#: src/pages/settings.cppm:793
+#: src/pages/settings.cppm:930
 msgid "Cleanup rules"
 msgstr "Cleanup rules"
 
-#: src/pages/settings.cppm:796
+#: src/pages/settings.cppm:933
 msgid "Alert rules"
 msgstr "Alert rules"
 
-#: src/pages/table.cppm:168
+#: src/pages/settings.cppm:936
+msgid "Search indices"
+msgstr "Search indices"
+
+#: src/pages/table.cppm:176
 msgid "error: {}"
 msgstr "error: {}"
 
-#: src/pages/table.cppm:174
+#: src/pages/table.cppm:182
 msgid "missing"
 msgstr "missing"
 
-#: src/pages/table.cppm:203
+#: src/pages/table.cppm:211
 msgid ":T:Timestamp"
 msgstr ":T:Timestamp"
 
-#: src/pages/table.cppm:205
+#: src/pages/table.cppm:213
 msgid ":R:Resource"
 msgstr ":R:Resource"
 
-#: src/pages/table.cppm:207
+#: src/pages/table.cppm:215
 msgid ":S:Scope"
 msgstr ":S:Scope"
 
-#: src/pages/table.cppm:209
+#: src/pages/table.cppm:217
 msgid ":V:Severity"
 msgstr ":V:Severity"
 
-#: src/pages/table.cppm:229
+#: src/pages/table.cppm:237
 msgid ":B:Body"
 msgstr ":B:Body"
 
-#: src/pages/table.cppm:345 src/pages/table.cppm:465
+#: src/pages/table.cppm:371 src/pages/table.cppm:481
 msgid "Add custom column"
 msgstr "Add custom column"
 
-#: src/pages/table.cppm:347
+#: src/pages/table.cppm:373
 msgid "Column name"
 msgstr "Column name"
 
-#: src/pages/table.cppm:357 src/pages/table.cppm:361
+#: src/pages/table.cppm:383 src/pages/table.cppm:387
 msgid "Column name must be non-empty and unique."
 msgstr "Column name must be non-empty and unique."
 
-#: src/pages/table.cppm:363
+#: src/pages/table.cppm:389
 msgid "Stencil"
 msgstr "Stencil"
 
-#: src/pages/table.cppm:364
+#: src/pages/table.cppm:390
 msgid "Column stencil. Use {{...}} to insert values."
 msgstr "Column stencil. Use {{...}} to insert values."
 
-#: src/pages/table.cppm:396
+#: src/pages/table.cppm:410
 msgid "Add column"
 msgstr "Add column"
 
-#: src/pages/table.cppm:457
+#: src/pages/table.cppm:473
 msgid "Reset table"
 msgstr "Reset table"
+
+#: src/utils.cppm:25
+msgid "Resource #{}"
+msgstr "Resource #{}"

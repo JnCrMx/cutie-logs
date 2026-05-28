@@ -22,6 +22,8 @@ generatePOT:
       long: Generate .pot file
       settings:
         CUTIE_LOGS_GENERATE_POT: true
+        CMAKE_C_COMPILER_LAUNCHER: ""
+        CMAKE_CXX_COMPILER_LAUNCHER: ""
     no:
       short: NoPOT
       long: Do not generate .pot file
