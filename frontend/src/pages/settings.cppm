@@ -840,8 +840,8 @@ export class settings : public page {
             using namespace Webxx;
             return fragment{
                 fieldset{{_class{"flex flex-col md:flex-row gap-4 w-fit mb-4"}},
-                    select{{_class{"select md:min-w-80"}, _id{"new_index_attribute"}},
-                        option{{_value{""}, _selected{}, _disabled{}}, "Select an attribute"_},
+                    input{{_class{"input"}, _type{"text"}, _id{"new_index_attribute"}, _placeholder{"Attribute name"}, _list{"new_index_attribute_list"}}},
+                    datalist{{_id{"new_index_attribute_list"}},
                         each(sorted_attributes, [&](const auto& attribute) {
                             return option{{_value{attribute}}, attribute};
                         })
