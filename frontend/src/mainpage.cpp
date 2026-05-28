@@ -45,6 +45,13 @@ namespace intl {
         }
         return nullptr;
     }
+    const char* dngettext(const char* domainname, const char* msgid, const char* msgid_plural, unsigned long n) {
+        if(n == 1) { // TODO: make this locale dependent
+            return dgettext(domainname, msgid);
+        } else {
+            return dgettext(domainname, msgid_plural);
+        }
+    }
 }
 
 namespace frontend {

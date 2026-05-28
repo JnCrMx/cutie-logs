@@ -3,6 +3,7 @@
 
 namespace intl {
     const char* dgettext(const char* domainname, const char* msgid);
+    const char* dngettext(const char* domainname, const char* msgid, const char* msgid_plural, unsigned long n);
 }
 
 #ifdef __has_attribute
@@ -19,6 +20,13 @@ extern "C" {
     I18N_ATTR() char* dgettext(I18N_ATTR(_domain_begin) const char* domainname, I18N_ATTR(_singular_begin) const char* msgid) {
         const char* p = intl::dgettext(domainname, msgid);
         return p ? const_cast<char*>(p) : const_cast<char*>(msgid);
+    }
+
+    I18N_ATTR() char *dngettext(I18N_ATTR(_domain_begin) const char *domainname, I18N_ATTR(_singular_begin) const char *msgid,
+                                I18N_ATTR(_plural_begin) const char *msgid_plural, unsigned long n)
+    {
+        const char* p = intl::dngettext(domainname, msgid, msgid_plural, n);
+        return p ? const_cast<char*>(p) : const_cast<char*>(n == 1 ? msgid : msgid_plural);
     }
 }
 
