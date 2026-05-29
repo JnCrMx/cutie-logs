@@ -490,8 +490,17 @@ std::string build_search_query(pqxx::transaction_base& txn, const common::search
     query += " LIMIT " + std::to_string(limit);
     return query;
 }
+class search_query_error : public std::runtime_error {
+public:
+    using std::runtime_error::runtime_error;
+};
 std::vector<common::log_entry> search_logs(pqxx::transaction_base& txn, const common::search_query& q, unsigned int limit = 100) {
-    std::string query = build_search_query(txn, q, limit);
+    std::string query;
+    try {
+        query = build_search_query(txn, q, limit);
+    } catch(const std::exception& e) {
+        throw search_query_error(e.what());
+    }
     spdlog::trace("Search query: {}", query);
 
     auto result = txn.exec(query);
@@ -634,11 +643,15 @@ void Server::setup_api_routes() {
                 common::logs_response res = search_logs(txn, common::body_query{q});
                 send_response(response, false, res);
             } catch(const pqxx::failure& e) {
-                spdlog::error("Failed to create index: [{}, {}] {}", e.name(), e.sqlstate(), e.what());
+                spdlog::error("Failed to search: [{}, {}] {}", e.name(), e.sqlstate(), e.what());
                 response.send(Pistache::Http::Code::Internal_Server_Error, std::format("[{}, {}] {}", e.name(), e.sqlstate(), e.what()));
                 return;
+            } catch(const search_query_error& e) {
+                spdlog::warn("Failed to build search query: {}", e.what());
+                response.send(Pistache::Http::Code::Bad_Request, e.what());
+                return;
             } catch(const std::exception& e) {
-                spdlog::error("Failed to create index: {}", e.what());
+                spdlog::error("Failed to search: {}", e.what());
                 response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
                 return;
             }
@@ -668,11 +681,15 @@ void Server::setup_api_routes() {
                 common::logs_response res = search_logs(txn, query);
                 send_response(response, false, res);
             } catch(const pqxx::failure& e) {
-                spdlog::error("Failed to create index: [{}, {}] {}", e.name(), e.sqlstate(), e.what());
+                spdlog::error("Failed to search: [{}, {}] {}", e.name(), e.sqlstate(), e.what());
                 response.send(Pistache::Http::Code::Internal_Server_Error, std::format("[{}, {}] {}", e.name(), e.sqlstate(), e.what()));
                 return;
+            } catch(const search_query_error& e) {
+                spdlog::warn("Failed to build search query: {}", e.what());
+                response.send(Pistache::Http::Code::Bad_Request, e.what());
+                return;
             } catch(const std::exception& e) {
-                spdlog::error("Failed to create index: {}", e.what());
+                spdlog::error("Failed to search: {}", e.what());
                 response.send(Pistache::Http::Code::Internal_Server_Error, e.what());
                 return;
             }
