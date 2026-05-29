@@ -323,10 +323,18 @@ export namespace common {
         std::string attribute;
         std::set<search_type> types;
 
+        // for fulltext, text_equal, text_like, text_contains, text_starts_with, text_ends_with
         std::optional<std::string> search;
-        std::optional<double> exact_value;
-        std::optional<double> min_value;
-        std::optional<double> max_value;
+
+        // for boolean_equal
+        std::optional<bool> boolean_value;
+
+        // for number_equal, number_greater_than, number_greater_than_or_equal, number_less_than, number_less_than_or_equal
+        std::optional<double> number_value;
+
+        // for number_in_range
+        std::optional<double> number_min_value;
+        std::optional<double> number_max_value;
 
         auto operator<=>(const attribute_query&) const = default;
     };

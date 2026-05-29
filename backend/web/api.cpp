@@ -391,8 +391,61 @@ std::string build_search_subfilter(pqxx::transaction_base& txn, const common::bo
     return "(" + sql.substr(0, sql.size()-4) + ")";
 }
 std::string build_search_subfilter(pqxx::transaction_base& txn, const common::attribute_query& query) {
-    // TODO
-    throw std::runtime_error("attribute_query not implemented");
+    if(query.types.empty()) {
+        return "(FALSE)";
+    }
+
+    std::string sql = "";
+    std::string escaped_attribute = txn.esc(query.attribute);
+    for(common::search_type t : query.types) {
+        switch(t) {
+            case common::search_type::fulltext:
+                sql += "jsonb_to_tsvector('english', attributes->'" + escaped_attribute + "', '\"all\"') @@ to_tsquery('" + txn.esc(query.search.value()) + "') OR ";
+                break;
+            case common::search_type::text_equal:
+                sql += "(attributes->>'" + escaped_attribute + "')::text = '" + txn.esc(query.search.value()) + "' OR ";
+                break;
+            case common::search_type::text_like:
+                sql += "(attributes->>'" + escaped_attribute + "')::text LIKE '" + txn.esc(query.search.value()) + "' OR ";
+                break;
+            case common::search_type::text_contains:
+                sql += "(attributes->>'" + escaped_attribute + "')::text LIKE '%" + txn.esc(query.search.value()) + "%' OR ";
+                break;
+            case common::search_type::text_starts_with:
+                sql += "(attributes->>'" + escaped_attribute + "')::text LIKE '" + txn.esc(query.search.value()) + "%' OR ";
+                break;
+            case common::search_type::text_ends_with:
+                sql += "(attributes->>'" + escaped_attribute + "')::text LIKE '%" + txn.esc(query.search.value()) + "' OR ";
+                break;
+            case common::search_type::boolean_equal:
+                sql += "(attributes->>'" + escaped_attribute + "')::boolean = " + (query.boolean_value.value() ? "TRUE" : "FALSE") + " OR ";
+                break;
+            case common::search_type::number_equal:
+                sql += "(attributes->>'" + escaped_attribute + "')::numeric = " + std::to_string(query.number_value.value()) + " OR ";
+                break;
+            case common::search_type::number_greater_than:
+                sql += "(attributes->>'" + escaped_attribute + "')::numeric > " + std::to_string(query.number_value.value()) + " OR ";
+                break;
+            case common::search_type::number_greater_than_or_equal:
+                sql += "(attributes->>'" + escaped_attribute + "')::numeric >= " + std::to_string(query.number_value.value()) + " OR ";
+                break;
+            case common::search_type::number_less_than:
+                sql += "(attributes->>'" + escaped_attribute + "')::numeric < " + std::to_string(query.number_value.value()) + " OR ";
+                break;
+            case common::search_type::number_less_than_or_equal:
+                sql += "(attributes->>'" + escaped_attribute + "')::numeric <= " + std::to_string(query.number_value.value()) + " OR ";
+                break;
+            case common::search_type::number_in_range:
+                sql += "((attributes->>'" + escaped_attribute + "')::numeric >= " + std::to_string(query.number_min_value.value()) +
+                       "AND (attributes->>'" + escaped_attribute + "')::numeric <= " + std::to_string(query.number_max_value.value()) + ") OR ";
+                break;
+            default:
+                throw std::runtime_error(std::format("unsupported search type {} for attribute_query", static_cast<int>(t)));
+        }
+    }
+
+    assert(!sql.empty());
+    return "(" + sql.substr(0, sql.size()-4) + ")";
 }
 std::string build_search_subfilter(pqxx::transaction_base& txn, const common::and_query& query) {
     if(query.queries.empty()) {
