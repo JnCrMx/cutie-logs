@@ -222,4 +222,11 @@ export std::string ipv6_to_string(__uint128_t ip) {
     );
 }
 
+export template<typename T>
+struct scope_exit {
+    T fn;
+    scope_exit(T&& fn) : fn(std::forward<T>(fn)) {}
+    ~scope_exit() { fn(); }
+};
+
 }

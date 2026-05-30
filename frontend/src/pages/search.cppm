@@ -232,10 +232,18 @@ export class search : public page {
 
         common::search_query query = common::or_query{{common::body_query{}}};
 
+        void finish_search() {
+            webpp::get_element_by_id("search_button")->remove_class("btn-disabled");
+            webpp::get_element_by_id("search_button_icon")->remove_class("hidden");
+            webpp::get_element_by_id("search_button_loading")->add_class("hidden");
+        }
+
         auto do_search() -> webpp::coroutine<void> {
+            common::scope_exit guard{[this](){ finish_search(); }};
+
             auto beve = glz::write<common::beve_opts>(query);
-            if(!beve) {
-                // TODO: show error
+            if(beve) {
+                components::show_alert("alert_error", std::string{"Failed to serialize search query"_}, glz::format_error(beve));
                 co_return;
             }
 
@@ -257,7 +265,6 @@ export class search : public page {
             }
 
             // TODO: render search results
-
             co_return;
         }
 
@@ -276,11 +283,19 @@ export class search : public page {
                     dv{{_class{"self-start w-full"}},
                         render_query(query, ctx, top_funcs),
                     },
-                    ctx.on_click(button{{_class{"btn btn-primary btn-wide"}}, "Search"_}, [this](webpp::event){
+                    ctx.on_click(button{{_id{"search_button"}, _class{"btn btn-primary btn-wide"}},
+                        span{{_id{"search_button_loading"}, _class{"loading loading-spinner hidden"}}},
+                        span{{_id{"search_button_icon"}}, assets::icons::run},
+                        "Search"_
+                    }, [this](webpp::event){
+                        webpp::get_element_by_id("search_button")->add_class("btn-disabled");
+                        webpp::get_element_by_id("search_button_icon")->add_class("hidden");
+                        webpp::get_element_by_id("search_button_loading")->remove_class("hidden");
+                        components::hide_alert("alert_error");
                         webpp::coro::submit(do_search());
                     }),
-                    dv{{_id{"search_results"}, _class{"self-start w-full flex flex-col gap-2 items-stretch overflow-y-auto h-full"}},
-                    }
+                    components::alert("alert_error", "w-[50%] items-start"),
+                    dv{{_id{"search_results"}, _class{"self-start w-full flex flex-col gap-2 items-stretch overflow-y-auto h-full"}},}
                 }
             };
         }
