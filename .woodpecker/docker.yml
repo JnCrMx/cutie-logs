@@ -16,7 +16,7 @@ variables:
 
 when:
   - event: push
-    branch: ${CI_REPO_DEFAULT_BRANCH}
+  - event: tag
   - event: manual
 
 steps:
@@ -27,7 +27,8 @@ steps:
       repo: *repositories
       dockerfile: Dockerfile
       platforms: *platforms
-      tag: ["latest", "${CI_COMMIT_SHA}", "${CI_COMMIT_SHA:0:10}"]
+      tag: ["${CI_COMMIT_BRANCH}", "${CI_COMMIT_SHA}", "${CI_COMMIT_SHA:0:10}"]
+      auto_tag: true
       logins: *publish_logins
       build_args:
         COMPILE_JOBS: "3"
