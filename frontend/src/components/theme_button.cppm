@@ -27,7 +27,7 @@ export struct theme_button : component<theme_button> {
         dv{{_class{"tooltip tooltip-left"}, _dataTip{"Themes"_}},
             dv{{_class{"dropdown dropdown-end dropdown-bottom"}},
                 dv{{_class{"btn btn-square m-1"}, _tabindex{"0"}, _role{"button"}}, assets::icons::themes},
-                ul{{_class{"dropdown-content bg-base-300 rounded-box z-[1] w-52 p-2 shadow-2xl h-80 overflow-y-auto"}, _tabindex{"0"}},
+                ul{{_class{"dropdown-content bg-base-300 rounded-box z-[1] w-52 p-2 shadow-2xl h-80 overflow-y-auto"}, _tabindex{"-1"}},
                     each(themes, [&ctx, &profile](const auto& theme) {
                         auto cb = [theme, &profile](webpp::event) {
                             auto current = profile.get_data("theme").value_or("light");

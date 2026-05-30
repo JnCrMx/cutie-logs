@@ -641,7 +641,7 @@ void Server::setup_api_routes() {
             pqxx::nontransaction txn{conn};
             try {
                 common::logs_response res = search_logs(txn, common::body_query{q});
-                send_response(response, false, res);
+                send_response(response, accepts_beve, res);
             } catch(const pqxx::failure& e) {
                 spdlog::error("Failed to search: [{}, {}] {}", e.name(), e.sqlstate(), e.what());
                 response.send(Pistache::Http::Code::Internal_Server_Error, std::format("[{}, {}] {}", e.name(), e.sqlstate(), e.what()));
@@ -679,7 +679,7 @@ void Server::setup_api_routes() {
             pqxx::nontransaction txn{conn};
             try {
                 common::logs_response res = search_logs(txn, query);
-                send_response(response, false, res);
+                send_response(response, accepts_beve, res);
             } catch(const pqxx::failure& e) {
                 spdlog::error("Failed to search: [{}, {}] {}", e.name(), e.sqlstate(), e.what());
                 response.send(Pistache::Http::Code::Internal_Server_Error, std::format("[{}, {}] {}", e.name(), e.sqlstate(), e.what()));

@@ -377,6 +377,7 @@ export namespace common {
     struct not_query {
         detail::not_query inner;
 
+        not_query() = default;
         not_query(search_query&& query) : inner{std::make_shared<search_query>(std::move(query))} {}
 
         operator detail::not_query&&() {
