@@ -232,17 +232,77 @@ export class search : public page {
 
         common::search_query query = common::or_query{{common::body_query{}}};
 
-        void finish_search() {
+        static void finish_search() {
             webpp::get_element_by_id("search_button")->remove_class("btn-disabled");
             webpp::get_element_by_id("search_button_icon")->remove_class("hidden");
             webpp::get_element_by_id("search_button_loading")->add_class("hidden");
+        }
+
+        static Webxx::dialog render_search_result_attribute_dialog(const glz::generic& attributes) {
+            using namespace Webxx;
+
+            std::set<std::string> keys;
+            for(auto& [key, value] : attributes.get_object()) {
+                keys.insert(key);
+            }
+
+            return dialog{{_id{"search_result_attribute_dialog"}, _class{"modal"}},
+                dv{{_class{"modal-box w-11/12 max-w-5xl max-h-[75vh]"}},
+                    form{{_method{"dialog"}},
+                        button{{_class{"btn btn-sm btn-circle btn-ghost absolute right-2 top-2"}}, "x"}
+                    },
+                    dv{{_class{"overflow-auto"}},
+                        table{{_class{"table table-zebra w-full"}},
+                            thead{tr{
+                                th{"Attribute"_},
+                                th{"Value"_}
+                            }},
+                            Webxx::each(keys, [&](auto& key){
+                                auto attr = attributes[key];
+                                return tr{
+                                    td{{_class{"font-bold w-0"}}, sanitize(key)},
+                                    td{components::json_table(attr)}
+                                };
+                            })
+                        }
+                    }
+                },
+                form{{_method{"dialog"}, _class{"modal-backdrop"}},
+                    button{"close"}
+                },
+            };
+        }
+
+        Webxx::li render_search_result(event_context& ctx, const common::log_entry& entry) {
+            using namespace Webxx;
+            using sys_seconds_double = std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<double>>;
+            auto timestamp_double = sys_seconds_double{std::chrono::duration<double>{entry.timestamp}};
+            auto timestamp_int = std::chrono::time_point_cast<std::chrono::sys_seconds::duration>(timestamp_double);
+
+            auto timestamp = std::format("{:%Y-%m-%d %H:%M:%S}", timestamp_int);
+            auto resource = a{{_class{"link"}, _onClick{std::format("document.getElementById('modal_resource_{}').showModal()", entry.resource)}},
+                        sanitize(resource_name(std::get<0>(resources->resources[entry.resource])))};
+            auto scope = sanitize(entry.scope);
+            auto body = sanitize(entry.body.is_string() ? entry.body.get_string() : entry.body.dump().value_or("error"));
+
+            return li{{_class{"list-row bg-base-200"}},
+                dv{std::move(timestamp)},
+                dv{std::move(resource)},
+                dv{std::move(scope)},
+                dv{{_class{std::format("badge badge-{}", log_severity_color(entry.severity))}}, std::format("{}", entry.severity)},
+                p{{_class{"list-col-grow"}}, std::move(body)},
+                ctx.on_click(button{{_class{"btn"}}, "Attributes"_}, [&ctx, attributes = entry.attributes](webpp::event){
+                    webpp::get_element_by_id("search_result_attribute_dialog_placeholder")->inner_html(Webxx::render(render_search_result_attribute_dialog(attributes)));
+                    webpp::eval("document.getElementById('search_result_attribute_dialog').showModal()");
+                })
+            };
         }
 
         auto do_search() -> webpp::coroutine<void> {
             common::scope_exit guard{[this](){ finish_search(); }};
 
             auto beve = glz::write<common::beve_opts>(query);
-            if(beve) {
+            if(!beve) {
                 components::show_alert("alert_error", std::string{"Failed to serialize search query"_}, glz::format_error(beve));
                 co_return;
             }
@@ -264,7 +324,18 @@ export class search : public page {
                 co_return;
             }
 
-            // TODO: render search results
+            static event_context ctx;
+            ctx.clear();
+
+            using namespace Webxx;
+            auto list = ul{{_class{"list bg-base-100 rounded-box shadow-md gap-2"}},
+                each(result, [&](const auto& entry) {
+                    return render_search_result(ctx, entry);
+                })
+            };
+            webpp::get_element_by_id("search_results")->inner_html(Webxx::render(list));
+
+
             co_return;
         }
 
@@ -295,7 +366,8 @@ export class search : public page {
                         webpp::coro::submit(do_search());
                     }),
                     components::alert("alert_error", "w-[50%] items-start"),
-                    dv{{_id{"search_results"}, _class{"self-start w-full flex flex-col gap-2 items-stretch overflow-y-auto h-full"}},}
+                    dv{{_id{"search_results"}, _class{"self-start w-full flex flex-col gap-2 items-stretch overflow-y-auto h-full"}}},
+                    dv{{_id{"search_result_attribute_dialog_placeholder"}}}
                 }
             };
         }

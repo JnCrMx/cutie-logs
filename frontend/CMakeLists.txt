@@ -79,6 +79,7 @@ set(MODULE_SOURCES
   src/components/dialog_add.cppm
   src/components/dialog_delete.cppm
   src/components/duration_picker.cppm
+  src/components/json_table.cppm
   src/components/resource_modal.cppm
   src/components/selection.cppm
   src/components/theme_button.cppm

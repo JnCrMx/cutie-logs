@@ -8,6 +8,7 @@ import i18n;
 import common;
 
 import :utils;
+import :json_table;
 
 namespace frontend::components {
 
@@ -15,53 +16,6 @@ using namespace Webxx;
 using namespace mfk::i18n::literals;
 
 export struct resource_modal : component<resource_modal> {
-    static Webxx::fragment render_attribute_value(const glz::generic& v) {
-        using namespace Webxx;
-        if(v.is_boolean()) {
-            return fragment{
-                span{{_class{v.get_boolean() ? "text-success" : "text-error"}},
-                    v.get_boolean() ? "true"_ : "false"_
-                }
-            };
-        }
-        if(v.is_array()) {
-            unsigned int index = 0;
-            return fragment{
-                table{{_class{"table table-zebra w-full border-l-3 border-base-300"}},
-                    each(v.get_array(), [&](const auto& e){
-                        return tr{
-                            td{{_class{"text-right w-0"}}, std::format("{}", index++)},
-                            td{render_attribute_value(e)}
-                        };
-                    })
-                }
-            };
-        }
-        if(v.is_object()) {
-            std::set<std::string> keys;
-            for(auto& [key, value] : v.get_object()) {
-                keys.insert(key);
-            }
-            return fragment{
-                table{{_class{"table table-zebra w-full border-l-3 border-base-300"}},
-                    each(keys, [&](const auto& key){
-                        return tr{
-                            td{{_class{"font-bold w-0"}}, sanitize(key)},
-                            td{render_attribute_value(v[key])}
-                        };
-                    })
-                }
-            };
-        }
-        if(v.is_null()) {
-            return fragment{
-                i{"null"}
-            };
-        }
-        // this will handle strings (quoted :D) and numbers
-        return fragment{sanitize(v.dump().value_or("error"))};
-    }
-
     resource_modal(unsigned int id, const common::log_resource& resource) : component<resource_modal>{
         [&](){
             std::set<std::string> attributes;
@@ -70,7 +24,7 @@ export struct resource_modal : component<resource_modal> {
             }
 
             return dialog{{_id{std::format("modal_resource_{}", id)}, _class{"modal"}},
-                dv{{_class{"modal-box w-11/12 max-w-5xl"}},
+                dv{{_class{"modal-box w-11/12 max-w-5xl max-h-[75vh]"}},
                     form{{_method{"dialog"}},
                         button{{_class{"btn btn-sm btn-circle btn-ghost absolute right-2 top-2"}}, "x"}
                     },
@@ -85,7 +39,7 @@ export struct resource_modal : component<resource_modal> {
                                 auto attr = resource.attributes[key];
                                 return tr{
                                     td{{_class{"font-bold w-0"}}, sanitize(key)},
-                                    td{render_attribute_value(attr)}
+                                    td{json_table(attr)}
                                 };
                             })
                         }

@@ -90,4 +90,42 @@ std::string build_resources_selector(const std::unordered_map<std::string, bool>
     return resources_selector+"0";
 }
 
+std::string_view log_severity_color(common::log_severity level) {
+    switch(level) {
+        case common::log_severity::UNSPECIFIED:
+            return "neutral";
+        case common::log_severity::TRACE:
+        case common::log_severity::TRACE2:
+        case common::log_severity::TRACE3:
+        case common::log_severity::TRACE4:
+            return "neutral";
+        case common::log_severity::DEBUG:
+        case common::log_severity::DEBUG2:
+        case common::log_severity::DEBUG3:
+        case common::log_severity::DEBUG4:
+            return "info";
+        case common::log_severity::INFO:
+        case common::log_severity::INFO2:
+        case common::log_severity::INFO3:
+        case common::log_severity::INFO4:
+            return "success";
+        case common::log_severity::WARN:
+        case common::log_severity::WARN2:
+        case common::log_severity::WARN3:
+        case common::log_severity::WARN4:
+            return "warning";
+        case common::log_severity::ERROR:
+        case common::log_severity::ERROR2:
+        case common::log_severity::ERROR3:
+        case common::log_severity::ERROR4:
+            return "error";
+        case common::log_severity::FATAL:
+        case common::log_severity::FATAL2:
+        case common::log_severity::FATAL3:
+        case common::log_severity::FATAL4:
+            return "error";
+    }
+    return "neutral";
+}
+
 }
