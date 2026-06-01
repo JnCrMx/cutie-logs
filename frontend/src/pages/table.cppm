@@ -145,7 +145,7 @@ export class table : public page {
                     auto e_resource = a{{_class{"link"}, _onClick{std::format("document.getElementById('modal_resource_{}').showModal()", entry.resource)}},
                         sanitize(resource_name(std::get<0>(resources->resources[entry.resource])))};
                     auto e_scope = sanitize(entry.scope);
-                    auto e_severity = common::log_severity_names[std::to_underlying(entry.severity)];
+                    auto e_severity = dv{{_class{std::format("badge badge-{}", log_severity_color(entry.severity))}}, std::format("{}", entry.severity)};
                     auto e_body = sanitize(entry.body.is_string() ? entry.body.get_string() : entry.body.dump().value_or("error"));
 
                     return tr{
