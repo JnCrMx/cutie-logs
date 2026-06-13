@@ -21,6 +21,7 @@ namespace backend::web {
                 return Pistache::Http::Endpoint::options()
                     .threads(4)
                     .threadsName("http-web")
+                    .maxRequestSize(1 * 1024 * 1024) // moderate max request size to avoid running into https://github.com/pistacheio/pistache/issues/1190
                     .flags(Pistache::Tcp::Options::ReuseAddr);
             }
 

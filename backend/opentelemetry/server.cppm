@@ -69,6 +69,7 @@ namespace backend::opentelemetry {
                 return Pistache::Http::Endpoint::options()
                     .threads(4)
                     .threadsName("http-otel")
+                    .maxRequestSize(64 * 1024 * 1024) // high max request size to avoid running into https://github.com/pistacheio/pistache/issues/1190
                     .flags(Pistache::Tcp::Options::ReuseAddr);
             }
 
