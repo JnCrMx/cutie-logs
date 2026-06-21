@@ -17,7 +17,7 @@ FetchContent_Declare(opentelemetry-proto
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(pistache
   GIT_REPOSITORY https://github.com/JnCrMx/pistache.git
-  GIT_TAG        cmake-optional-rapidjson
+  GIT_TAG        for-cutie-logs
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(gzip-hpp
   GIT_REPOSITORY https://github.com/mapbox/gzip-hpp.git
