@@ -30,6 +30,9 @@ _LIBCPP_BEGIN_NAMESPACE_STD
                     bool is_regular_file() const {
                         __builtin_trap();
                     }
+                    bool is_regular_file(std::error_code& ec) const noexcept {
+                        __builtin_trap();
+                    }
                     std::filesystem::path path() const {
                         __builtin_trap();
                     }
@@ -43,6 +46,9 @@ _LIBCPP_BEGIN_NAMESPACE_STD
                     explicit directory_iterator(const std::filesystem::path& p) {
                         __builtin_trap();
                     }
+                    explicit directory_iterator(const std::filesystem::path& p, std::error_code& ec) {
+                        __builtin_trap();
+                    }
 
                     bool operator==(const directory_iterator&) const {
                         __builtin_trap();
@@ -51,6 +57,9 @@ _LIBCPP_BEGIN_NAMESPACE_STD
                         __builtin_trap();
                     }
                     directory_iterator& operator++() {
+                        __builtin_trap();
+                    }
+                    directory_iterator& increment(std::error_code& ec) {
                         __builtin_trap();
                     }
                     const std::filesystem::directory_entry& operator*() const {
@@ -69,6 +78,10 @@ _LIBCPP_BEGIN_NAMESPACE_STD
         class basic_ofstream<char> : public std::basic_ostream<char> {
             public:
                 basic_ofstream(const char* filename, ios_base::openmode mode) {
+                    __builtin_trap();
+                }
+
+                void close() {
                     __builtin_trap();
                 }
         };

@@ -13,7 +13,7 @@ find_package(ZLIB REQUIRED)
 
 FetchContent_Declare(opentelemetry-proto
   GIT_REPOSITORY https://github.com/open-telemetry/opentelemetry-proto.git
-  GIT_TAG        v1.10.0
+  GIT_TAG        v1.11.1
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(pistache
   GIT_REPOSITORY https://github.com/JnCrMx/pistache.git
@@ -26,7 +26,7 @@ FetchContent_Declare(gzip-hpp
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(pqxx
   GIT_REPOSITORY https://github.com/jtv/libpqxx.git
-  GIT_TAG        8.0.1
+  GIT_TAG        8.0.2
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(argparse
   GIT_REPOSITORY https://github.com/p-ranav/argparse.git
@@ -34,23 +34,26 @@ FetchContent_Declare(argparse
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG        v7.4.0
+  GIT_TAG        v9.1.0
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(cpr
   GIT_REPOSITORY https://github.com/libcpr/cpr.git
-  GIT_TAG        1.14.2
+  GIT_TAG        1.15.1
+  GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
+FetchContent_Declare(spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog.git
+  GIT_TAG        v1.17.0
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 
 set(PISTACHE_BUILD_TESTS OFF CACHE BOOL "Pistache: Build tests" FORCE)
 set(PISTACHE_USE_RAPIDJSON OFF CACHE BOOL "Pistache: Use RapidJSON" FORCE)
 set(CPR_ENABLE_CURL_HTTP_ONLY OFF CACHE BOOL "CPR: Enable only HTTP" FORCE)
 set(CPR_USE_SYSTEM_CURL ON CACHE BOOL "CPR: Use system libcurl" FORCE)
+set(SPDLOG_USE_STD_FORMAT ON CACHE BOOL "spdlog: use std::format" FORCE)
 set(SKIP_BUILD_TEST ON CACHE BOOL "" FORCE)
 set(BUILD_TEST OFF CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(opentelemetry-proto pistache gzip-hpp pqxx argparse glaze cpr)
-
-find_package(spdlog REQUIRED)
+FetchContent_MakeAvailable(opentelemetry-proto pistache gzip-hpp pqxx argparse glaze cpr spdlog)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../third_party ${CMAKE_CURRENT_BINARY_DIR}/third_party)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../common ${CMAKE_CURRENT_BINARY_DIR}/common)

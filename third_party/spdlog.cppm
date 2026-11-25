@@ -8,10 +8,6 @@ module;
 #include <spdlog/details/synchronous_factory.h>
 #include <spdlog/sinks/base_sink.h>
 
-#include <fmt/core.h>
-#include <fmt/chrono.h>
-#include <fmt/ranges.h>
-
 export module spdlog;
 
 export namespace spdlog {
@@ -52,14 +48,3 @@ export namespace spdlog {
         using spdlog::details::null_mutex;
     }
 };
-
-export namespace fmt {
-    using fmt::formatter;
-    using fmt::string_view;
-    using fmt::arg;
-    using fmt::join;
-    using fmt::format;
-
-    using fmt::format_context;
-    using fmt::format_to;
-}

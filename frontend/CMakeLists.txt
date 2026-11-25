@@ -31,7 +31,7 @@ FetchContent_Declare(webxx
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(glaze
   GIT_REPOSITORY https://github.com/stephenberry/glaze.git
-  GIT_TAG        v7.4.0
+  GIT_TAG        v9.1.0
   GIT_SHALLOW TRUE EXCLUDE_FROM_ALL)
 FetchContent_Declare(i18n++
   GIT_REPOSITORY https://github.com/JnCrMx/i18n-cpp.git
@@ -48,10 +48,13 @@ set(NO_LIBINTL ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(webxx glaze webpp i18n++)
 
 add_library(stdModule STATIC)
-target_sources(stdModule PUBLIC FILE_SET CXX_MODULES BASE_DIRS /usr/lib/llvm-20/share/libc++/v1/
-    FILES /usr/lib/llvm-20/share/libc++/v1/std.cppm)
+file(REAL_PATH /usr/include/c++/v1/../../../share/libc++/v1/ STD_DIR)
+message(STATUS "libc++ modules are hopefully in ${STD_DIR}")
+target_sources(stdModule PUBLIC FILE_SET CXX_MODULES BASE_DIRS ${STD_DIR} FILES ${STD_DIR}/std.cppm)
 target_compile_features(stdModule PUBLIC cxx_std_23)
+# The standard library may use reserved identifiers
 target_compile_options(stdModule PRIVATE -Wno-reserved-identifier)
+# These two are not supported by WASI, so we just define their header guards, so they will be skipped
 target_compile_definitions(stdModule PRIVATE _LIBCPP_CSETJMP _LIBCPP_CSIGNAL)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../third_party ${CMAKE_CURRENT_BINARY_DIR}/third_party)

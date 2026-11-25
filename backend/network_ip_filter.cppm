@@ -1,10 +1,11 @@
 module;
+#include <charconv>
 #include <cstdint>
+#include <expected>
+#include <format>
 #include <ranges>
 #include <string_view>
 #include <vector>
-#include <charconv>
-#include <expected>
 
 #include <netinet/in.h>
 
@@ -141,33 +142,51 @@ export class NetworkIpFilter {
 
 }
 
-export template<>
-struct fmt::formatter<backend::NetworkIpFilter::filter_action> : fmt::formatter<std::string>
+export template<typename CharT>
+struct std::formatter<backend::NetworkIpFilter::filter_action, CharT>
 {
-    auto format(backend::NetworkIpFilter::filter_action action, format_context &ctx) const -> decltype(ctx.out())
+    template<class ParseContext>
+    constexpr ParseContext::iterator parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<class FmtContext>
+    FmtContext::iterator format(backend::NetworkIpFilter::filter_action action, FmtContext &ctx) const
     {
         switch (action) {
-            case backend::NetworkIpFilter::filter_action::deny: return fmt::format_to(ctx.out(), "DENY");
-            case backend::NetworkIpFilter::filter_action::allow: return fmt::format_to(ctx.out(), "ALLOW");
-            default: return fmt::format_to(ctx.out(), "UNKNOWN");
+            case backend::NetworkIpFilter::filter_action::deny: return std::format_to(ctx.out(), "DENY");
+            case backend::NetworkIpFilter::filter_action::allow: return std::format_to(ctx.out(), "ALLOW");
+            default: return std::format_to(ctx.out(), "UNKNOWN");
         }
     }
 };
 
-export template<>
-struct fmt::formatter<backend::NetworkIpFilter::IPv4Subnet> : fmt::formatter<std::string>
+export template<typename CharT>
+struct std::formatter<backend::NetworkIpFilter::IPv4Subnet, CharT>
 {
-    auto format(const backend::NetworkIpFilter::IPv4Subnet& subnet, format_context &ctx) const -> decltype(ctx.out())
+    template<class ParseContext>
+    constexpr ParseContext::iterator parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<class FmtContext>
+    FmtContext::iterator format(const backend::NetworkIpFilter::IPv4Subnet& subnet, FmtContext &ctx) const
     {
-        return fmt::format_to(ctx.out(), "{} {}/{}", subnet.action, common::ipv4_to_string(subnet.network), subnet.prefix_len);
+        return std::format_to(ctx.out(), "{} {}/{}", subnet.action, common::ipv4_to_string(subnet.network), subnet.prefix_len);
     }
 };
 
-export template<>
-struct fmt::formatter<backend::NetworkIpFilter::IPv6Subnet> : fmt::formatter<std::string>
+export template<typename CharT>
+struct std::formatter<backend::NetworkIpFilter::IPv6Subnet, CharT>
 {
-    auto format(const backend::NetworkIpFilter::IPv6Subnet& subnet, format_context &ctx) const -> decltype(ctx.out())
+    template<class ParseContext>
+    constexpr ParseContext::iterator parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<class FmtContext>
+    FmtContext::iterator format(const backend::NetworkIpFilter::IPv6Subnet& subnet, FmtContext &ctx) const
     {
-        return fmt::format_to(ctx.out(), "{} {}/{}", subnet.action, common::ipv6_to_string(subnet.network), subnet.prefix_len);
+        return std::format_to(ctx.out(), "{} {}/{}", subnet.action, common::ipv6_to_string(subnet.network), subnet.prefix_len);
     }
 };

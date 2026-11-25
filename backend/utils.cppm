@@ -1,5 +1,6 @@
 module;
 #include <cstdint>
+#include <format>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
@@ -14,12 +15,18 @@ import pistache;
 
 export import :network_ip_filter;
 
-export template<>
-struct fmt::formatter<Pistache::Address> : fmt::formatter<std::string>
+export template<typename CharT>
+struct std::formatter<Pistache::Address, CharT>
 {
-    auto format(const Pistache::Address& addr, format_context &ctx) const -> decltype(ctx.out())
+    template<class ParseContext>
+    constexpr ParseContext::iterator parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template<class FmtContext>
+    FmtContext::iterator format(const Pistache::Address& addr, FmtContext &ctx) const
     {
-        return fmt::format_to(ctx.out(), "{}:{}", addr.host(), static_cast<uint16_t>(addr.port()));
+        return std::format_to(ctx.out(), "{}:{}", addr.host(), static_cast<uint16_t>(addr.port()));
     }
 };
 
